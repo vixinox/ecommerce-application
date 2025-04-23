@@ -22,7 +22,13 @@ public class WebMvcConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtInterceptor)
                 .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/login", "/api/register", "/api/avatar/**");
+                .excludePathPatterns(
+                    "/api/user/login",
+                    "/api/user/register",
+                    "/api/image/avatar/**",
+                    "/api/user/check/**",
+                    "/api/products/**"
+                );
     }
 
     @Override
@@ -34,7 +40,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("http://localhost:5173", "http://192.168.1.148:5173")
+                .allowedOrigins("http://localhost:3000", "http://192.168.1.148:3000")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true);

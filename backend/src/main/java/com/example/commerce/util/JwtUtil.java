@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 public class JwtUtil {
     private static final String SECRET_KEY = "t241tf341gv34ef43efg43g145146135514614634wef24ef3442ef43e234567890";
-    private static final long EXPIRATION_TIME = 3600_000;
+    private static final long EXPIRATION_TIME = 86400000;
     private static final Key key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET_KEY));
     public static String generateToken(String username) {
         Map<String, Object> claims = new HashMap<>();

@@ -5,17 +5,11 @@ import com.example.commerce.service.UserService;
 import com.example.commerce.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -23,6 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
+@RequestMapping("/api/user")
 public class UserController {
 
     @Autowired
@@ -31,234 +26,124 @@ public class UserController {
     @Value("${file.upload-dir}")
     private String uploadDir;
 
-    @PostMapping("/api/login")
+    @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> loginData) {
-        String name = loginData.get("username");
-        String password = loginData.get("password");
+        String email = loginData.get("email");
+        String hashedPassword = loginData.get("password");
 
-        User user = userService.login(name, password);
-
-        if (user != null) {
-            String token = JwtUtil.generateToken(name);
-            Map<String, Object> response = new HashMap<>();
-            response.put("token", token);
-            response.put("name", user.getUsername());
-            return ResponseEntity.ok(response);
-        } else {
-            Map<String, String> errorResponse = new HashMap<>();
-            errorResponse.put("message", "用户名或密码错误");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+        try {
+            User user = userService.login(email, hashedPassword);
+            if (user != null) {
+                user.setPassword(null);
+                String token = JwtUtil.generateToken(user.getUsername());
+                Map<String, Object> response = new HashMap<>();
+                response.put("token", token);
+                response.put("user", user);
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("用户名或密码错误");
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(e.getMessage());
         }
     }
 
-    @PostMapping("/api/register")
+    @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody User user) {
         try {
-            userService.register(user.getUsername(), user.getNickname(), user.getEmail(), user.getPassword());
+            userService.checkUsername(user.getUsername());
+            userService.checkEmail(user.getEmail());
+            userService.checkNickname(user.getNickname());
+            userService.register(user);
             return ResponseEntity.ok("注册成功");
         } catch (Exception e) {
-            Map<String, String> errorResponse = new HashMap<>();
-            errorResponse.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(e.getMessage());
         }
     }
 
-    @GetMapping("/api/user/info")
+    @GetMapping("/info")
     public ResponseEntity<?> getUserInfo(@RequestHeader(value = "Authorization", required = false) String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("{\"error\": \"Invalid token\"}");
-        }
-
-        String token = authHeader.substring(7);
-        String username = JwtUtil.getUsernameFromToken(token);
-
-        if (username != null && JwtUtil.isTokenValid(token)) {
-            User user = userService.findByName(username);
-            if (user != null) {
-                return ResponseEntity.ok(user);
-            } else {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("{\"error\": \"User not found\"}");
-            }
-        }
-
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body("{\"error\": \"Invalid token\"}");
-    }
-
-    @PostMapping("/api/user/update/avatar")
-    public ResponseEntity<String> uploadAvatar(
-            @RequestParam("file") MultipartFile file,
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
-
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("{\"error\": \"Invalid token\"}");
-        }
-
-        String token = authHeader.substring(7);
-        String username = JwtUtil.getUsernameFromToken(token);
-        User user = userService.findByName(username);
-
-        if (username != null && JwtUtil.isTokenValid(token)) {
-            try {
-                userService.uploadAvatar(username, file, user.getAvatar());
-                return ResponseEntity.ok("头像上传成功");
-            } catch (Exception e) {
-                return ResponseEntity.badRequest().body("头像上传失败: " + e.getMessage());
-            }
-        }
-
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body("{\"error\": \"Invalid token\"}");
-    }
-
-    @GetMapping("/api/avatar/{username}")
-    public ResponseEntity<?> getUserAvatar(@PathVariable String username) {
-        User user = userService.findByName(username);
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("{\"error\": \"User not found\"}");
-        }
-
-        String avatarPath = user.getAvatar();
-        if (avatarPath == null || avatarPath.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("{\"error\": \"Avatar not found\"}");
-        }
-
         try {
-            Path filePath = Paths.get(uploadDir).resolve(avatarPath.replace("/avatars/", ""));
-            Resource resource = new UrlResource(filePath.toUri());
-            if (resource.exists() && resource.isReadable()) {
-                return ResponseEntity.ok()
-                        .contentType(MediaType.IMAGE_JPEG)
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
-                        .body(resource);
-            } else {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("{\"error\": \"Avatar file not found\"}");
-            }
-        } catch (MalformedURLException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("{\"error\": \"Error accessing avatar file\"}");
-        }
-    }
-
-    @PostMapping("/api/user/update/info")
-    public ResponseEntity<String> updateUserInfo(
-            @RequestParam("nickname") String nickname,
-            @RequestParam("email") String email,
-            @RequestParam("bio") String bio,
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            User user = userService.checkAuthorization(authHeader);
+            return ResponseEntity.ok(user);
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("{\"error\": \"Invalid token\"}");
+                    .body(e.getMessage());
         }
-
-        String token = authHeader.substring(7);
-        String username = JwtUtil.getUsernameFromToken(token);
-        System.out.println("get username: " + username);
-
-        if (username != null && JwtUtil.isTokenValid(token)) {
-            User user = userService.findByName(username);
-            if (user != null) {
-                userService.updateUserInfo(user, nickname, email, bio);
-                return ResponseEntity.ok("用户信息更新成功");
-            } else {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("{\"error\": \"User not found\"}");
-            }
-        }
-
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body("{\"error\": \"Invalid token\"}");
     }
 
-    @PostMapping("/api/user/delete")
+    @PostMapping("/update/info")
+    public ResponseEntity<?> updateUserInfo(
+            @RequestBody Map<String, String> userInfo,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            User user = userService.checkAuthorization(authHeader);
+            userService.updateUserInfo(user, userInfo.get("email"), userInfo.get("nickname"));
+            return ResponseEntity.ok("用户信息更新成功");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/update/password")
+    public ResponseEntity<String> updateUserPassword(
+            @RequestBody Map<String, String> passwordData,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            User user = userService.checkAuthorization(authHeader);
+            userService.updatePassword(user, passwordData.get("currentPassword"), passwordData.get("newPassword"));
+            return ResponseEntity.ok("密码修改成功");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(e.getMessage());
+        }
+    }
+
+
+    @PostMapping("/delete")
     public ResponseEntity<String> deleteUser(
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("{\"error\": \"Invalid token\"}");
-        }
-        String token = authHeader.substring(7);
-        String username = JwtUtil.getUsernameFromToken(token);
-        if (username != null && JwtUtil.isTokenValid(token)) {
-            User user = userService.findByName(username);
-            if (user != null) {
-                String avatarPath = user.getAvatar();
-                if (avatarPath != null && !avatarPath.isEmpty()) {
-                    try {
-                        Path filePath = Paths.get(uploadDir).resolve(avatarPath.replace("/avatars/", ""));
-                        Files.deleteIfExists(filePath);
-                    } catch (IOException e) {
-                        System.err.println("删除头像文件失败: " + e.getMessage());
-                    }
+        try {
+            User user = userService.checkAuthorization(authHeader);
+            String avatarPath = user.getAvatar();
+            if (avatarPath != null && !avatarPath.isEmpty()) {
+                try {
+                    Path filePath = Paths.get(uploadDir).resolve(avatarPath.replace("/avatars/", ""));
+                    Files.deleteIfExists(filePath);
+                } catch (IOException e) {
+                    System.err.println("删除头像文件失败: " + e.getMessage());
                 }
-                userService.deleteUser(username);
-                return ResponseEntity.ok("用户删除成功");
-            } else {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("{\"error\": \"User not found\"}");
             }
+            userService.deleteUser(user.getUsername());
+            return ResponseEntity.ok("用户删除成功");
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("用户不存在"))
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("用户不存在");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("无效的登录凭证");
         }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body("{\"error\": \"Invalid token\"}");
     }
 
-    @PostMapping("/api/user/update/password")
-    public ResponseEntity<String> updateUserPassword(
-            @RequestParam("password") String password,
-            @RequestParam("newPassword") String newPassword,
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("{\"error\": \"Invalid token\"}");
+    @GetMapping("/check/username")
+    public ResponseEntity<String> checkUsername(@RequestParam("username") String username) {
+        try {
+            userService.checkUsername(username);
+        } catch (Exception e) {
+            return ResponseEntity.ok(e.getMessage());
         }
-
-        String token = authHeader.substring(7);
-        String username = JwtUtil.getUsernameFromToken(token);
-
-        if (username != null && JwtUtil.isTokenValid(token)) {
-            User user = userService.findByName(username);
-            if (user != null) {
-                if (password.equals(user.getPassword())) {
-                    userService.updatePassword(username, newPassword);
-                    return ResponseEntity.ok("密码修改成功");
-                } else {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                            .body("{\"error\": \"原密码错误\"}");
-                }
-            } else {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("{\"error\": \"User not found\"}");
-            }
-        }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body("{\"error\": \"Invalid token\"}");
+        return ResponseEntity.ok("用户名可用");
     }
 
-    @GetMapping("/api/check-token")
-    public ResponseEntity<String> checkUser(
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("{\"error\": \"Invalid token\"}");
+    @GetMapping("/check/email")
+    public ResponseEntity<String> checkEmail(@RequestParam("email") String email) {
+        try {
+            userService.checkEmail(email);
+        } catch (Exception e) {
+            return ResponseEntity.ok(e.getMessage());
         }
-
-        String token = authHeader.substring(7);
-        String username = JwtUtil.getUsernameFromToken(token);
-
-        if (username != null && JwtUtil.isTokenValid(token)) {
-            User user = userService.findByName(username);
-            if (user != null) {
-                return ResponseEntity.ok("token有效");
-            }
-        }
-
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body("{\"error\": \"Invalid token\"}");
+        return ResponseEntity.ok("邮箱可用");
     }
 }
