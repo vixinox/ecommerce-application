@@ -1,0 +1,112 @@
+"use client"
+
+import { useState } from "react"
+import Image from "next/image"
+import Link from "next/link"
+import { Heart, ShoppingCart } from "lucide-react"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { useAuth } from "@/components/auth-provider"
+import type { Product } from "@/lib/products"
+import { formatPrice } from "@/lib/utils"
+import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+
+const MotionButton = motion.create(Button);
+
+export function ProductCard({product}: {product: Product}) {
+  const router = useRouter();
+  const {user, token} = useAuth()
+  const [isWishlisted, setIsWishlisted] = useState(false)
+
+  const checkLogin = () => {
+    if (!user || !token) {
+      toast.error("请先登录", {
+        action: {
+          label: "登录",
+          onClick: () => router.push("/auth/login"),
+        },
+      })
+      return false;
+    }
+    return true;
+  }
+
+  const toggleWishlist = () => {
+    if (!checkLogin()) return;
+
+    setIsWishlisted(!isWishlisted)
+    if (!isWishlisted)
+      toast.success(`${product.name} 已加入愿望单`)
+    else
+      toast(`${product.name} 已从愿望单移除`)
+  }
+
+  return (
+    <Card className="overflow-hidden group">
+      <Link
+        href={`/product/${product.id}`}
+        className="relative aspect-square block"
+        onClick={(e) => {
+          if (!checkLogin())
+            e.preventDefault();
+        }}
+      >
+        <Image
+          src={product.image || "/placeholder.svg"}
+          alt={product.name}
+          fill
+          className="object-cover transition-transform group-hover:scale-105"
+          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 25vw"
+        />
+        <MotionButton
+          variant="ghost"
+          size="icon"
+          className={`absolute right-2 top-2 z-10 rounded-full bg-white/80 backdrop-blur-sm dark:bg-gray-900/80 ${
+            isWishlisted ? "text-red-500" : "text-gray-500"
+          }`}
+          onClick={(e) => {
+            e.preventDefault()
+            toggleWishlist()
+          }}
+          whileHover={{scale: 1.1}}
+          whileTap={{scale: 0.9}}
+        >
+          {}
+          <Heart className={`h-5 w-5 ${isWishlisted ? "fill-current" : ""}`}/>
+          <span className="sr-only">Add to wishlist</span>
+        </MotionButton>
+      </Link>
+      <CardContent className="p-4">
+        <Link
+          href={`/product/${product.id}`}
+          className="hover:underline"
+          onClick={(e) => {
+            if (!checkLogin())
+              e.preventDefault();
+          }}
+        >
+          <h3 className="font-medium">{product.name}</h3>
+        </Link>
+        <p className="text-sm text-muted-foreground">{product.category}</p>
+      </CardContent>
+      <CardFooter className="flex items-center justify-between p-4 pt-0">
+        <div className="font-semibold">{formatPrice(product.price)}</div>
+        <MotionButton
+          size="sm"
+          className="rounded-full"
+          onClick={() => {
+            if (!checkLogin()) return;
+            router.push(`/product/${product.id}`)
+          }}
+          whileHover={{scale: 1.05}}
+          whileTap={{scale: 1}}
+        >
+          <ShoppingCart className="mr-2 h-4 w-4"/>
+          查看详情
+        </MotionButton>
+      </CardFooter>
+    </Card>
+  )
+}
