@@ -1,11 +1,11 @@
 package com.example.commerce.dao;
 
-import com.example.commerce.model.CartItem;
 import com.example.commerce.model.Product;
 import com.example.commerce.model.ProductVariant;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
+import java.util.Set;
 
 @Mapper
 public interface ProductDAO {
@@ -34,6 +34,29 @@ public interface ProductDAO {
     List<ProductVariant> findVariantsByProductId(@Param("productId") Long productId);
 
     /**
+     * 根据一批商品IDs批量获取其所有变体信息。
+     * 用于在列表页查询商品时，批量获取价格等变体信息，避免N+1问题。
+     *
+     * @param productIds 商品ID集合
+     * @return 商品变体列表
+     */
+    @Results({
+            @Result(column = "in_stock", property = "inStock"),
+            @Result(column = "stock_quantity", property = "stockQuantity"),
+            @Result(column = "product_id", property = "productId"),
+    })
+    @Select({
+            "<script>",
+            "SELECT id, product_id, color, size, price, image, stock_quantity, in_stock ",
+            "FROM product_variants WHERE product_id IN",
+            "<foreach item='productId' collection='productIds' open='(' separator=',' close=')'>",
+            "#{productId}",
+            "</foreach>",
+            "</script>"
+    })
+    List<ProductVariant> findVariantsByProductIds(@Param("productIds") Set<Long> productIds);
+
+    /**
      * 分页查询商品列表，可根据分类和关键词过滤。
      * 注意：此方法只返回 Product 的基本信息，ไม่包括大型 JSON 字段，以提高列表页性能。
      * JSON 字段会在获取详情时加载。
@@ -46,7 +69,7 @@ public interface ProductDAO {
     @Result(column = "images_json", property = "imagesJson")
     @Select({
             "<script>",
-            "SELECT id, name, category, price, images_json ",
+            "SELECT id, name, category, images_json ",
             "FROM products",
             "<where>",
             "   <if test='category != null and category != \"\"'>",
@@ -61,7 +84,7 @@ public interface ProductDAO {
     List<Product> findProducts(@Param("category") String category, @Param("keyword") String keyword);
 
     @Result(column = "images_json", property = "imagesJson")
-    @Select("SELECT id, name, category, price, images_json " +
+    @Select("SELECT id, name, category, images_json " +
             "FROM products " +
             "ORDER BY RAND() " +
             "LIMIT #{size}")
@@ -74,34 +97,6 @@ public interface ProductDAO {
     @Select("SELECT * FROM product_variants WHERE id = #{id}")
     ProductVariant getVariantById(Long productVariantId);
 
-    @Insert("INSERT INTO cart_items (user_id, product_variant_id, quantity) " +
-            "VALUES (#{userId}, #{productVariantId}, #{quantity})")
-    void addCardItem(Long userId, Long productVariantId, Long quantity);
-
-    @Delete("DELETE FROM cart_items WHERE user_id = #{userId} AND id = #{cartId}")
-    void removeCardItem(Long userId, Long cartId);
-
-
-    @Results({
-            @Result(column = "user_id", property = "userId"),
-            @Result(column = "product_variant_id", property = "productVariantId"),
-    })
-    @Select("SELECT * FROM cart_items WHERE id = #{id}")
-    CartItem findCartItemByCartId(Long cartId);
-
-    @Results({
-            @Result(column = "user_id", property = "userId"),
-            @Result(column = "product_variant_id", property = "productVariantId"),
-    })
-    @Select("SELECT * FROM cart_items WHERE user_id = #{id}")
-    List<CartItem> getCartItemByUserId(Long userId);
-
-    @Update("UPDATE cart_items SET quantity = #{quantity} WHERE id = #{cartId}")
-    void updateCardItem(Long cartId, Long quantity);
-
-    @Delete("DELETE FROM cart_items WHERE user_id = #{userId}")
-    void clearCart(Long userId);
-
-    @Select("SELECT * FROM cart_items WHERE user_id = #{userId} AND product_variant_id = #{productVariantId}")
-    CartItem findCartItemByVariantId(Long userId, Long productVariantId);
+    @Update("UPDATE product_variants SET stock_quantity = stock_quantity - #{quantity}, updated_at = NOW() WHERE id = #{variantId} AND stock_quantity >= #{quantity}")
+    int deductStock(@Param("variantId") Long variantId, @Param("quantity") Integer quantity);
 }

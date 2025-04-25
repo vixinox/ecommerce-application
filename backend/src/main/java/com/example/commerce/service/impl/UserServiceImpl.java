@@ -1,12 +1,12 @@
-package com.example.commerce.service;
+package com.example.commerce.service.impl;
 
+import com.example.commerce.dao.UserDAO;
+import com.example.commerce.model.User;
+import com.example.commerce.service.UserService;
 import com.example.commerce.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-
-import com.example.commerce.dao.UserDAO;
-import com.example.commerce.model.User;
 
 import java.util.Objects;
 import java.util.Optional;

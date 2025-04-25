@@ -1,6 +1,7 @@
-package com.example.commerce.service;
+package com.example.commerce.service.impl;
 
 import com.example.commerce.dao.UserDAO;
+import com.example.commerce.service.ImageService;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

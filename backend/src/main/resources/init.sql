@@ -1,94 +1,122 @@
-CREATE DATABASE IF NOT EXISTS `commerce` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `commerce`;
-
 SET FOREIGN_KEY_CHECKS = 0;
 
-DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS products;
-DROP TABLE IF EXISTS product_variants;
-DROP TABLE IF EXISTS product_images;
-DROP TABLE IF EXISTS product_specifications;
-DROP TABLE IF EXISTS product_features;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS order_items;
 DROP TABLE IF EXISTS cart_items;
 DROP TABLE IF EXISTS wishlist_items;
+DROP TABLE IF EXISTS product_variants;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS users;
+
 
 CREATE TABLE IF NOT EXISTS users
 (
-    id          INT PRIMARY KEY AUTO_INCREMENT COMMENT '用户ID',
-    username    VARCHAR(255) NOT NULL UNIQUE COMMENT '用户名',
-    email       VARCHAR(255) NOT NULL UNIQUE COMMENT '邮箱',
-    password    VARCHAR(255) NOT NULL COMMENT '密码哈希',
-    nickname    VARCHAR(255) COMMENT '昵称',
-    avatar      VARCHAR(255) COMMENT '头像URL',
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
-) COMMENT='用户信息表';
+    id         BIGINT PRIMARY KEY AUTO_INCREMENT,
+    username   VARCHAR(255) NOT NULL UNIQUE,
+    email      VARCHAR(255) NOT NULL UNIQUE,
+    password   VARCHAR(255) NOT NULL,
+    nickname   VARCHAR(255),
+    avatar     VARCHAR(255),
+    role       VARCHAR(50) DEFAULT 'USER',
+    created_at TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP   DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 
 CREATE TABLE IF NOT EXISTS products
 (
-    id              BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '商品ID',
-    name            VARCHAR(255) NOT NULL COMMENT '商品名称',
-    description     TEXT COMMENT '商品描述',
-    category        VARCHAR(100) COMMENT '商品分类',
-    price           DECIMAL(10, 2) NOT NULL COMMENT '商品基础价格',
-
-    images_json         JSON COMMENT '商品图片列表 JSON',
-    features_json       JSON COMMENT '商品特性列表 JSON',
-    specifications_json JSON COMMENT '商品规格列表 JSON',
-
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-
-    INDEX idx_products_category (category)
-) COMMENT='商品基础信息表 (合并图片、规格、特性数据)';
+    id                  BIGINT PRIMARY KEY AUTO_INCREMENT,
+    owner_id            BIGINT         NOT NULL,
+    name                VARCHAR(255)   NOT NULL,
+    description         TEXT,
+    category            VARCHAR(100),
+    price               DECIMAL(10, 2) NOT NULL,
+    images_json         JSON,
+    features_json       JSON,
+    specifications_json JSON,
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_products_owner FOREIGN KEY (owner_id) REFERENCES users (id) ON DELETE RESTRICT,
+    INDEX idx_products_category (category),
+    INDEX idx_products_owner_user_id (owner_id)
+);
 
 CREATE TABLE IF NOT EXISTS product_variants
 (
-    id              BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '变体ID',
-    product_id      BIGINT NOT NULL COMMENT '商品ID',
-    color           VARCHAR(50) COMMENT '颜色变体值',
-    size            VARCHAR(50) COMMENT '尺寸变体值',
-    price           DECIMAL(10, 2) COMMENT '该变体价格 (可选)',
-    image           VARCHAR(255) COMMENT '该变体图片URL (可选)',
-    stock_quantity  INT NOT NULL DEFAULT 0 COMMENT '变体库存数量',
-    in_stock        BOOLEAN AS (stock_quantity > 0) STORED COMMENT '是否有货状态 (生成列)',
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-
+    id             BIGINT PRIMARY KEY AUTO_INCREMENT,
+    product_id     BIGINT NOT NULL,
+    color          VARCHAR(50),
+    size           VARCHAR(50),
+    price          DECIMAL(10, 2),
+    image          VARCHAR(255),
+    stock_quantity INT    NOT NULL DEFAULT 0,
+    in_stock       BOOLEAN AS (stock_quantity > 0) STORED,
+    created_at     TIMESTAMP       DEFAULT CURRENT_TIMESTAMP,
+    updated_at     TIMESTAMP       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT uk_product_variant UNIQUE (product_id, color, size),
-    CONSTRAINT fk_product_variant_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    CONSTRAINT fk_product_variant_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
     INDEX idx_product_variants_product_id (product_id)
-) COMMENT='商品变体(SKU)信息表';
+);
+
+CREATE TABLE IF NOT EXISTS orders
+(
+    id           BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id      BIGINT         NOT NULL,
+    total_amount DECIMAL(10, 2) NOT NULL,
+    status       VARCHAR(50)    NOT NULL DEFAULT '待发货',
+    created_at   TIMESTAMP               DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TIMESTAMP               DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE RESTRICT,
+    INDEX idx_orders_user_id (user_id),
+    INDEX idx_orders_status (status)
+);
+
+CREATE TABLE IF NOT EXISTS order_items
+(
+    id                     BIGINT PRIMARY KEY AUTO_INCREMENT,
+    order_id               BIGINT         NOT NULL,
+    product_id             BIGINT,
+    product_variant_id     BIGINT,
+    quantity               INT            NOT NULL DEFAULT 1,
+    purchased_price        DECIMAL(10, 2) NOT NULL,
+    snapshot_product_name  VARCHAR(255)   NOT NULL,
+    snapshot_variant_color VARCHAR(50),
+    snapshot_variant_size  VARCHAR(50),
+    snapshot_variant_image VARCHAR(255),
+    created_at             TIMESTAMP               DEFAULT CURRENT_TIMESTAMP,
+    updated_at             TIMESTAMP               DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_order_item_order FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE,
+    INDEX idx_order_items_order_id (order_id),
+    INDEX idx_order_items_product_id (product_id),
+    INDEX idx_order_items_variant_id (product_variant_id)
+);
 
 CREATE TABLE IF NOT EXISTS cart_items
 (
-    id                  BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '购物车项ID',
-    user_id             INT NOT NULL COMMENT '用户ID',
-    product_variant_id  BIGINT NOT NULL COMMENT '商品变体ID',
-    quantity            INT NOT NULL DEFAULT 1 COMMENT '购买数量',
-    added_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '添加时间',
-    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-
+    id                 BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id            BIGINT NOT NULL,
+    product_variant_id BIGINT NOT NULL,
+    quantity           INT    NOT NULL DEFAULT 1,
+    added_at           TIMESTAMP       DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMP       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT uk_cart_item UNIQUE (user_id, product_variant_id),
-    CONSTRAINT fk_cart_item_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_cart_item_product_variant FOREIGN KEY (product_variant_id) REFERENCES product_variants(id) ON DELETE CASCADE,
+    CONSTRAINT fk_cart_item_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_cart_item_product_variant FOREIGN KEY (product_variant_id) REFERENCES product_variants (id) ON DELETE CASCADE,
     INDEX idx_cart_items_user_id (user_id),
     INDEX idx_cart_items_product_variant_id (product_variant_id)
-) COMMENT='用户购物车项表';
+);
 
 CREATE TABLE IF NOT EXISTS wishlist_items
 (
-    id          BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '收藏夹项ID',
-    user_id     INT NOT NULL COMMENT '用户ID',
-    product_id  BIGINT NOT NULL COMMENT '商品ID',
-    added_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '添加时间',
-    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-
+    id         BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id    BIGINT NOT NULL,
+    product_id BIGINT NOT NULL,
+    added_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT uk_wishlist_item UNIQUE (user_id, product_id),
-    CONSTRAINT fk_wishlist_item_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_wishlist_item_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    CONSTRAINT fk_wishlist_item_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_wishlist_item_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
     INDEX idx_wishlist_items_user_id (user_id),
     INDEX idx_wishlist_items_product_id (product_id)
-) COMMENT='用户收藏夹项表';
+);
 
 SET FOREIGN_KEY_CHECKS = 1;

@@ -12,5 +12,5 @@ public class CartItemDTO {
     private String productCategory;
 
     private ProductVariant productVariant;
-    private Long quantity;
+    private Integer quantity;
 }
