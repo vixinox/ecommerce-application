@@ -28,4 +28,12 @@ public interface ProductService {
     void editProduct(Long productId, UploadProductDTO updatedProductDTO, User user) throws Exception;
 
     void deleteProduct(Long productId, User user);
+
+    PageInfo<Product> getAllProductsAdmin(int pageNum, int pageSize, String statusFilter);
+
+    void updateProductStatus(Long productId, String status);
+
+    Optional<ProductEditResponseDTO> getProductDetailsAdmin(Long productId);
+
+    void softDeleteProduct(Long productId);
 }

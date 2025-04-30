@@ -10,6 +10,7 @@ import com.example.commerce.model.ProductVariant;
 import com.example.commerce.model.User;
 import com.example.commerce.service.ImageService;
 import com.example.commerce.service.ProductService;
+import com.example.commerce.service.UserService;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import org.mybatis.spring.SqlSessionTemplate;
@@ -36,13 +37,29 @@ public class ProductServiceImpl implements ProductService {
 
     private static final Logger logger = LoggerFactory.getLogger(ProductServiceImpl.class);
 
+    // 定义商品状态常量和有效状态集
+    public static final String PRODUCT_STATUS_PENDING = "PENDING_APPROVAL";
+    public static final String PRODUCT_STATUS_ACTIVE = "ACTIVE";
+    public static final String PRODUCT_STATUS_INACTIVE = "INACTIVE"; // 例如下架
+    public static final String PRODUCT_STATUS_REJECTED = "REJECTED";
+    public static final String PRODUCT_STATUS_DELETED = "DELETED";
+    private static final Set<String> VALID_PRODUCT_STATUSES = Set.of(
+            PRODUCT_STATUS_PENDING,
+            PRODUCT_STATUS_ACTIVE,
+            PRODUCT_STATUS_INACTIVE,
+            PRODUCT_STATUS_REJECTED,
+            PRODUCT_STATUS_DELETED
+    );
+
     private final ImageService imageService;
     private final ProductDAO productDAO;
+    private final UserService userService;
 
     @Autowired
-    public ProductServiceImpl(ImageService imageService, ProductDAO productDAO) {
+    public ProductServiceImpl(ImageService imageService, ProductDAO productDAO, UserService userService) {
         this.imageService = imageService;
         this.productDAO = productDAO;
+        this.userService = userService;
     }
 
     @Override
@@ -237,17 +254,20 @@ public class ProductServiceImpl implements ProductService {
             }
         }
 
-        ProductEditResponseDTO responseDTO = new ProductEditResponseDTO(
-                product.getId(),
-                product.getName(),
-                product.getCategory(),
-                product.getDescription(),
-                product.getFeatures(),
-                product.getSpecifications(),
-                variantDtos,
-                colorImageUrls,
-                product.getStatus()
-        );
+        // 使用无参构造函数和 setters 创建 DTO
+        ProductEditResponseDTO responseDTO = new ProductEditResponseDTO();
+        responseDTO.setId(product.getId());
+        responseDTO.setName(product.getName());
+        responseDTO.setCategory(product.getCategory());
+        responseDTO.setDescription(product.getDescription());
+        responseDTO.setFeaturesJson(product.getFeatures());
+        responseDTO.setSpecificationsJson(product.getSpecifications());
+        responseDTO.setVariants(variantDtos);
+        responseDTO.setColorImageUrls(colorImageUrls);
+        responseDTO.setStatus(product.getStatus());
+        // getProductForEdit 不需要 ownerInfo，所以设为 null 或不设置
+        responseDTO.setOwnerInfo(null);
+
         return Optional.of(responseDTO);
     }
 
@@ -575,5 +595,85 @@ public class ProductServiceImpl implements ProductService {
         }
 
         productDAO.deleteProduct(productId);
+    }
+
+    @Override
+    public PageInfo<Product> getAllProductsAdmin(int pageNum, int pageSize, String statusFilter) {
+        PageHelper.startPage(pageNum, pageSize);
+        List<Product> products = productDAO.findAllProductsAdmin(statusFilter);
+        return new PageInfo<>(products);
+    }
+
+    @Override
+    @Transactional
+    public void updateProductStatus(Long productId, String status) {
+        // 1. 校验状态值
+        if (!VALID_PRODUCT_STATUSES.contains(status)) {
+            throw new IllegalArgumentException("无效的商品状态: " + status + ". 合法状态为: " + VALID_PRODUCT_STATUSES);
+        }
+
+        Product product = productDAO.getProductById(productId);
+        if (product == null) {
+            throw new RuntimeException("商品不存在: " + productId);
+        }
+        String oldStatus = product.getStatus(); // 获取旧状态
+        productDAO.updateProductStatus(productId, status);
+        logger.info("管理员更新了商品 {} 的状态: {} -> {}", productId, oldStatus, status); // 添加日志
+    }
+
+    @Override
+    public Optional<ProductEditResponseDTO> getProductDetailsAdmin(Long productId) {
+        Optional<Product> productOpt = productDAO.findProductById(productId);
+        if (productOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        Product product = productOpt.get();
+
+        List<ProductVariant> variants = productDAO.getVariantsByProductId(productId);
+        List<ProductEditResponseDTO.VariantForEditDTO> variantDtos = variants.stream()
+                .map(pv -> new ProductEditResponseDTO.VariantForEditDTO(
+                        pv.getId(), pv.getColor(), pv.getSize(), pv.getPrice(), pv.getStockQuantity()
+                ))
+                .collect(Collectors.toList());
+
+        Map<String, String> colorImageUrls = new HashMap<>();
+        Map<String, ProductVariant> variantsByColor = new HashMap<>();
+        for (ProductVariant pv : variants) {
+            if (pv.getImage() != null && !pv.getImage().trim().isEmpty()) {
+                variantsByColor.putIfAbsent(pv.getColor(), pv);
+            }
+        }
+        for(Map.Entry<String, ProductVariant> entry : variantsByColor.entrySet()){
+            try {
+                String imageUrl = imageService.generateImageUrl(entry.getValue().getImage());
+                colorImageUrls.put(entry.getKey(), imageUrl);
+            } catch (Exception e) {
+                logger.error("为管理员生成商品 {} 颜色 '{}' 的图片URL失败: {}", productId, entry.getKey(), entry.getValue().getImage(), e);
+                colorImageUrls.put(entry.getKey(), null);
+            }
+        }
+
+        User ownerInfo = userService.findUserById(product.getOwnerId());
+
+        ProductEditResponseDTO responseDTO = new ProductEditResponseDTO();
+        responseDTO.setId(product.getId());
+        responseDTO.setName(product.getName());
+        responseDTO.setCategory(product.getCategory());
+        responseDTO.setDescription(product.getDescription());
+        responseDTO.setFeaturesJson(product.getFeatures());
+        responseDTO.setSpecificationsJson(product.getSpecifications());
+        responseDTO.setVariants(variantDtos);
+        responseDTO.setColorImageUrls(colorImageUrls);
+        responseDTO.setStatus(product.getStatus());
+        responseDTO.setOwnerInfo(ownerInfo);
+
+        return Optional.of(responseDTO);
+    }
+
+    @Override
+    @Transactional
+    public void softDeleteProduct(Long productId) {
+        updateProductStatus(productId, PRODUCT_STATUS_DELETED);
+        logger.info("管理员软删除了商品 {}", productId); // 添加日志
     }
 }

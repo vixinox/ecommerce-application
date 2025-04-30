@@ -1,6 +1,7 @@
 package com.example.commerce.service;
 
 import com.example.commerce.model.User;
+import com.github.pagehelper.PageInfo;
 
 public interface UserService {
     User login(String email, String password);
@@ -17,4 +18,14 @@ public interface UserService {
     User checkMerchant(String authHeader) throws RuntimeException;
 
     User checkAdmin(String authHeader);
+
+    PageInfo<User> getAllUsers(int pageNum, int pageSize, String statusFilter);
+
+    void updateUserStatus(String username, String status);
+
+    User findUserById(Long userId);
+
+    void updateUserRoleAdmin(String username, String newRole);
+
+    void softDeleteUser(String username);
 }

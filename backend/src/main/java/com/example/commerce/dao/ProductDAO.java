@@ -148,4 +148,22 @@ public interface ProductDAO {
             "JOIN products p ON pv.product_id = p.id " +
             "WHERE p.owner_id = #{merchantId} AND pv.stock_quantity < #{threshold}")
     Long countMerchantLowStockVariants(@Param("merchantId") Long merchantId, @Param("threshold") int threshold);
+
+    @SelectProvider(type = ProductSqlProvider.class, method = "findAllProductsAdminFiltered")
+    List<Product> findAllProductsAdmin(@Param("statusFilter") String statusFilter);
+
+    @Update("UPDATE products SET status = #{status}, updated_at = CURRENT_TIMESTAMP WHERE id = #{productId}")
+    void updateProductStatus(@Param("productId") Long productId, @Param("status") String status);
+
+    // 添加统计总商品数的方法
+    @Select("SELECT COUNT(*) FROM products")
+    Long countTotalProducts();
+
+    // 添加按状态统计商品数的方法
+    @Select("SELECT COUNT(*) FROM products WHERE status = #{status}")
+    Long countProductsByStatus(@Param("status") String status);
+
+    // 添加统计低库存变体数的方法
+    @Select("SELECT COUNT(*) FROM product_variants WHERE stock_quantity < #{threshold}")
+    Long countLowStockVariants(@Param("threshold") int threshold);
 }

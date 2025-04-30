@@ -1,5 +1,6 @@
 package com.example.commerce.service;
 
+import com.example.commerce.dto.AdminDashboardDTO;
 import com.example.commerce.dto.MerchantDashboardDTO;
 import com.example.commerce.model.User;
 
@@ -11,6 +12,9 @@ public interface DashboardService {
      * @return 包含仪表盘统计数据的 DTO
      */
     MerchantDashboardDTO getMerchantDashboardData(User merchant);
+
+    // 添加管理员仪表盘数据获取方法
+    AdminDashboardDTO getAdminDashboardData();
 
     // 如果未来需要管理员仪表盘，可以在这里添加相应方法
     // AdminDashboardDTO getAdminDashboardData(User admin);

@@ -1,5 +1,6 @@
 package com.example.commerce.dto;
 
+import com.example.commerce.model.User;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -21,6 +22,7 @@ public class ProductEditResponseDTO {
     private List<VariantForEditDTO> variants;
     private Map<String, String> colorImageUrls;
     private String status;
+    private User ownerInfo;
 
     @Data
     @NoArgsConstructor

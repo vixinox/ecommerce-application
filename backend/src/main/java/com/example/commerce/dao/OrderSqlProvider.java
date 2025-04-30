@@ -155,4 +155,37 @@ public class OrderSqlProvider implements ProviderMethodResolver {
             WHERE("p.owner_id = #{merchantId}");
         }}.toString();
     }
-} 
+
+    /**
+     * 构建管理员查询所有订单的SQL (支持状态过滤)
+     */
+    public String findAllOrdersAdmin(Map<String, Object> params) {
+        String statusFilter = (String) params.get("statusFilter");
+
+        return new SQL() {{
+            SELECT("o.id, o.user_id, o.total_amount, o.status, o.created_at, o.updated_at");
+            // 可以考虑 JOIN users 表获取购买者用户名: LEFT JOIN users u ON o.user_id = u.id
+            // 然后在 SELECT 中添加 u.username AS buyerUsername
+            FROM(ORDERS_TABLE);
+            if (StringUtils.hasText(statusFilter)) {
+                WHERE("o.status = #{statusFilter}");
+            }
+            ORDER_BY("o.created_at DESC"); // 按创建时间降序
+        }}.toString();
+    }
+
+    /**
+     * 构建管理员更新订单状态的SQL
+     */
+    public String updateOrderStatusAdmin(Map<String, Object> params) {
+        Long orderId = (Long) params.get("orderId");
+        String status = (String) params.get("status");
+
+        return new SQL() {{
+            UPDATE(ORDERS_TABLE.split(" ")[0]); // UPDATE orders ...
+            SET("status = #{status}");
+            SET("updated_at = NOW()");
+            WHERE("id = #{orderId}");
+        }}.toString();
+    }
+}
