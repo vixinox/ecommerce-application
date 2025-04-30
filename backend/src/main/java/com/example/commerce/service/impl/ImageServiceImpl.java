@@ -187,7 +187,11 @@ public class ImageServiceImpl implements ImageService {
         }
         Path filePathToDelete;
         try {
-            Path relativePath = Paths.get(dbPath);
+            String relativePathString = dbPath;
+            if (relativePathString.startsWith("/"))
+                relativePathString = relativePathString.substring(1);
+
+            Path relativePath = Paths.get(relativePathString);
             filePathToDelete = this.uploadsBaseDir.resolve(relativePath).normalize();
             if (!filePathToDelete.startsWith(this.uploadsBaseDir.normalize())) {
                 logger.warn("警告: 尝试删除的文件 {} 不在上传根目录 {} 中，为防止误删操作被阻止。", filePathToDelete.toAbsolutePath(), this.uploadsBaseDir.toAbsolutePath());

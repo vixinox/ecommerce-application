@@ -26,4 +26,6 @@ public interface ProductService {
     Optional<ProductEditResponseDTO> getProductForEdit(Long productId);
 
     void editProduct(Long productId, UploadProductDTO updatedProductDTO, User user) throws Exception;
+
+    void deleteProduct(Long productId, User user);
 }

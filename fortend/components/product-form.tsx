@@ -359,20 +359,56 @@ export function ProductForm({param}: { param?: string }) {
   }, [colorImageUrls]);
 
   const removeImage = useCallback((color: string) => {
-    console.log("colorImages", colorImages);
-    //
+    // console.log("colorImagesUrls", colorImageUrls); // 移除这条用于调试的 console.log
+
+    // 获取即将被移除的当前显示的图片 URL，用于后续的 Blob URL 释放
+    const urlToRemove = colorImageUrls[color];
+
+    // 1. 将该颜色标记为已删除颜色，如果它是从后端加载的图片
+    // initialColorImageUrlsRef 保存了加载时后端返回的所有图片的 URL
     if (initialColorImageUrlsRef.current[color]) {
       setDeletedColors(prev => {
-        if (prev.includes(color)) return prev;
-        return [...prev, color];
+        // 避免重复添加
+        if (!prev.includes(color)) {
+          return [...prev, color];
+        }
+        return prev;
       });
     }
+
+    // 2. 从 colorImages 状态中移除对应的 File 对象
     setColorImages(prevColorImages => {
       const nextColorImages = {...prevColorImages};
       delete nextColorImages[color];
       return nextColorImages;
     });
-  }, [initialColorImageUrlsRef]);
+
+    // 3. 从 colorImageUrls 状态中移除对应的 URL <-- 修复的关键步骤
+    setColorImageUrls(prevColorImageUrls => {
+      const nextColorImageUrls = {...prevColorImageUrls};
+      delete nextColorImageUrls[color];
+      return nextColorImageUrls;
+    });
+
+    // 4. 如果被移除的 URL 是一个 Blob URL，则释放它
+    // 这一步放在状态更新之后，确保状态更新是有效的，但及时释放内存
+    if (urlToRemove && urlToRemove.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(urlToRemove);
+        // console.log("Revoked blob URL upon explicit removal:", urlToRemove); // 可以保留用于调试
+      } catch (e) {
+        console.warn("Failed to revoke URL on explicit removal:", urlToRemove, e);
+      }
+    }
+
+    // useCallback 的依赖项需要包含 colorImageUrls，因为我们直接读取了它的值
+    // 同时，因为我们直接调用了 setColorImages 和 setColorImageUrls，虽然它们是稳定的 setter，
+    // 但从严格的 React Hooks ESLint 规则角度看，通常推荐将状态或其 setter 作为依赖项。
+    // 在这个场景下，colorImageUrls 是一个状态值， its value is used directly.
+    // initialColorImageUrlsRef 是 ref，是稳定的，不需要作为依赖。
+    // setters are stable.
+    // 所以主要依赖项是 colorImageUrls。
+  }, [initialColorImageUrlsRef, colorImageUrls]);
 
   const onSubmit = useCallback(async (data: ProductFormValues) => {
     if (!token) {
@@ -695,7 +731,7 @@ export function ProductForm({param}: { param?: string }) {
                       {imageUrl ? (
                         <>
                           <Image
-                            src={imageUrl}
+                            src={imageUrl.startsWith("blob") ? imageUrl : `${API_URL}/api/image${imageUrl}`}
                             alt={`商品图片 - ${color}`}
                             fill
                             className="object-cover"
@@ -873,7 +909,6 @@ export function ProductForm({param}: { param?: string }) {
                       </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                      {/* Sort variants for stable display order, preserving original objects */}
                       {variants.slice().sort((a, b) => {
                         const colorComparison = a.color.localeCompare(b.color);
                         if (colorComparison !== 0) return colorComparison;

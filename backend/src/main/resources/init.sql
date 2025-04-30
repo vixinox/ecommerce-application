@@ -126,61 +126,55 @@ SET FOREIGN_KEY_CHECKS = 1;
 DELIMITER //
 
 -- 触发器：在 product_variants 插入数据后
--- 更新对应商品的 default_image, min_price 和 total_stock_quantity
+-- 重新计算对应商品的 default_image, min_price 和 total_stock
 CREATE TRIGGER after_product_variant_insert
     AFTER INSERT
     ON product_variants
     FOR EACH ROW
 BEGIN
     UPDATE products
-    SET default_image = IFNULL(
-            (SELECT image FROM product_variants WHERE product_id = NEW.product_id ORDER BY id LIMIT 1), ''),
+    SET
+        -- 重新计算 default_image: 找到 image 非空且 id 最小的 variant 的图片
+        default_image = (SELECT image FROM product_variants WHERE product_id = NEW.product_id AND image IS NOT NULL ORDER BY id LIMIT 1),
+        -- 重新计算 min_price
         min_price     = IFNULL((SELECT MIN(price) FROM product_variants WHERE product_id = NEW.product_id), 0),
+        -- 重新计算 total_stock
         total_stock   = IFNULL((SELECT SUM(stock_quantity) FROM product_variants WHERE product_id = NEW.product_id), 0)
     WHERE id = NEW.product_id;
 END//
 
 -- 触发器：在 product_variants 更新数据后
--- 更新对应商品的 min_price (如果价格变动), default_image (如果第一变体图片变动), 和 total_stock_quantity (如果库存变动)
+-- 重新计算对应商品的 default_image, min_price 和 total_stock
 CREATE TRIGGER after_product_variant_update
     AFTER UPDATE
     ON product_variants
     FOR EACH ROW
 BEGIN
-    -- 更新 min_price 如果价格变动
-    IF NEW.price <> OLD.price THEN
-        UPDATE products
-        SET min_price = IFNULL((SELECT MIN(price) FROM product_variants WHERE product_id = NEW.product_id), 0)
-        WHERE id = NEW.product_id;
-    END IF;
-
-    -- 更新 default_image 如果更新的是该商品第一个变体且图片变动
-    IF (SELECT id FROM product_variants WHERE product_id = NEW.product_id ORDER BY id LIMIT 1) = NEW.id AND
-       NEW.image <> OLD.image THEN
-        UPDATE products
-        SET default_image = NEW.image
-        WHERE id = NEW.product_id;
-    END IF;
-
-    IF NEW.stock_quantity <> OLD.stock_quantity THEN
-        UPDATE products
-        SET total_stock = IFNULL((SELECT SUM(stock_quantity) FROM product_variants WHERE product_id = NEW.product_id),
-                                 0)
-        WHERE id = NEW.product_id;
-    END IF;
+    UPDATE products
+    SET
+        -- 重新计算 default_image: 找到 image 非空且 id 最小的 variant 的图片
+        default_image = (SELECT image FROM product_variants WHERE product_id = NEW.product_id AND image IS NOT NULL ORDER BY id LIMIT 1),
+        -- 重新计算 min_price
+        min_price     = IFNULL((SELECT MIN(price) FROM product_variants WHERE product_id = NEW.product_id), 0),
+        -- 重新计算 total_stock
+        total_stock   = IFNULL((SELECT SUM(stock_quantity) FROM product_variants WHERE product_id = NEW.product_id), 0)
+    WHERE id = NEW.product_id;
 END//
 
 -- 触发器：在 product_variants 删除数据后
--- 更新对应商品的 default_image, min_price 和 total_stock_quantity
+-- 重新计算对应商品的 default_image, min_price 和 total_stock
 CREATE TRIGGER after_product_variant_delete
     AFTER DELETE
     ON product_variants
     FOR EACH ROW
 BEGIN
     UPDATE products
-    SET default_image = IFNULL(
-            (SELECT image FROM product_variants WHERE product_id = OLD.product_id ORDER BY id LIMIT 1), ''),
+    SET
+        -- 重新计算 default_image: 找到剩余 variants 中 image 非空且 id 最小的图片
+        default_image = (SELECT image FROM product_variants WHERE product_id = OLD.product_id AND image IS NOT NULL ORDER BY id LIMIT 1),
+        -- 重新计算 min_price
         min_price     = IFNULL((SELECT MIN(price) FROM product_variants WHERE product_id = OLD.product_id), 0),
+        -- 重新计算 total_stock
         total_stock   = IFNULL((SELECT SUM(stock_quantity) FROM product_variants WHERE product_id = OLD.product_id), 0)
     WHERE id = OLD.product_id;
 END//

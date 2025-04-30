@@ -125,4 +125,7 @@ public interface ProductDAO {
     void updateProduct(Product productToUpdate);
 
     void updateProductVariants(List<ProductVariant> variantsToUpdate);
+
+    @Delete("DELETE FROM products WHERE id = #{productId}")
+    void deleteProduct(Long productId);
 }

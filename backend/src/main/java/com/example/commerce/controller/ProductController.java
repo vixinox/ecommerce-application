@@ -11,6 +11,7 @@ import com.example.commerce.service.ProductService;
 import com.example.commerce.service.UserService;
 import com.github.pagehelper.PageInfo;
 
+import org.apache.ibatis.annotations.Delete;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -126,6 +127,20 @@ public class ProductController {
             return ResponseEntity.ok().body(Map.of("message", "商品更新成功"));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "商品更新失败: " + e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/delete/{productId}")
+    public ResponseEntity<?> deleteProduct(
+            @PathVariable Long productId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            User user = userService.checkMerchant(authHeader);
+            productService.deleteProduct(productId, user);
+            return ResponseEntity.ok().body("商品删除成功");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body((e.getMessage()));
         }
     }
 

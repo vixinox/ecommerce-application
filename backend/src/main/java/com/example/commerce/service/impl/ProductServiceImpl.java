@@ -12,9 +12,11 @@ import com.example.commerce.service.ImageService;
 import com.example.commerce.service.ProductService;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import org.mybatis.spring.SqlSessionTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -489,6 +491,7 @@ public class ProductServiceImpl implements ProductService {
 
             if (!variantsToUpdate.isEmpty()) {
                 logger.info("开始更新商品 {} 的变体，共 {} 条。", productId, variantsToUpdate.size());
+                logger.info("{}", variantsToUpdate);
                 productDAO.updateProductVariants(variantsToUpdate);
                 logger.info("商品 {} 的变体更新成功。", productId);
             }
@@ -550,5 +553,27 @@ public class ProductServiceImpl implements ProductService {
             }
             throw dbException;
         }
+    }
+
+    @Override
+    public void deleteProduct(Long productId, User user) {
+        Product product = productDAO.getProductById(productId);
+        if (product == null)
+            throw new NoSuchElementException("商品不存在，ID: " + productId);
+        if (!product.getOwnerId().equals(user.getId()))
+            throw new IllegalArgumentException("你没有权限删除此商品。");
+
+        List<ProductVariant> variants = productDAO.getVariantsByProductId(productId);
+        for (ProductVariant variant : variants) {
+            if (variant.getImage() != null && !variant.getImage().trim().isEmpty()) {
+                try {
+                    imageService.deleteFile(variant.getImage());
+                } catch (Exception e) {
+                    logger.error("删除商品 {} 变体 {} 图片失败。", productId, variant.getId(), e);
+                }
+            }
+        }
+
+        productDAO.deleteProduct(productId);
     }
 }

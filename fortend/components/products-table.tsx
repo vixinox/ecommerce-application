@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Product } from "@/lib/types";
 import { API_URL } from "@/lib/api";
+import { useAuth } from "@/components/auth-provider";
 
 interface ProductsTableProps {
   products: Product[];
@@ -39,6 +40,7 @@ interface ProductsTableProps {
 
 export function ProductsTable({products, isLoading}: ProductsTableProps) {
   const router = useRouter();
+  const {token} = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
@@ -57,12 +59,28 @@ export function ProductsTable({products, isLoading}: ProductsTableProps) {
     setDeleteDialogOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (productToDelete) {
-      // TODO: 调用删除 API
-      // 注意：实际删除应向上层传递 productToDelete 并由父组件触发 API 调用和数据更新
-      // 这里仅模拟 UI 反馈和对话框关闭
-      toast.success("产品删除请求已发送 (实际删除需调用 API)");
+      const res = await fetch(`${API_URL}/api/products/delete/${productToDelete}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) {
+        if (res.status === 401) {
+          toast.error("请先登录");
+          router.push("/account/login");
+          return;
+        }
+        const error = await res.json();
+        toast.error(error.message);
+        return;
+      } else {
+        toast.success("已删除商品");
+        window.location.reload();
+      }
+
       setDeleteDialogOpen(false);
       setProductToDelete(null);
     }

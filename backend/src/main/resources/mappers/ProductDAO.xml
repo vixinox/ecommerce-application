@@ -164,17 +164,48 @@
     </update>
 
     <update id="updateProductVariants" parameterType="java.util.List">
-        <foreach collection="list" item="variant" separator=";">
-            UPDATE product_variants
-            <set>
-                product_id = #{variant.productId},
-                color = #{variant.color},
-                size = #{variant.size},
-                price = #{variant.price},
-                stock_quantity = #{variant.stockQuantity},
-                image = #{variant.image}
-            </set>
-            WHERE id = #{variant.id}
+        UPDATE product_variants
+        SET
+        product_id =
+        CASE id
+        <foreach collection="list" item="variant">
+            WHEN #{variant.id} THEN #{variant.productId}
+        </foreach>
+        ELSE product_id
+        END,
+        color =
+        CASE id
+        <foreach collection="list" item="variant">
+            WHEN #{variant.id} THEN #{variant.color}
+        </foreach>
+        ELSE color END,
+        size =
+        CASE id
+        <foreach collection="list" item="variant">
+            WHEN #{variant.id} THEN #{variant.size}
+        </foreach>
+        ELSE size END,
+        price =
+        CASE id
+        <foreach collection="list" item="variant">
+            WHEN #{variant.id} THEN #{variant.price}
+        </foreach>
+        ELSE price END,
+        stock_quantity =
+        CASE id
+        <foreach collection="list" item="variant">
+            WHEN #{variant.id} THEN #{variant.stockQuantity}
+        </foreach>
+        ELSE stock_quantity END,
+        image =
+        CASE id
+        <foreach collection="list" item="variant">
+            WHEN #{variant.id} THEN #{variant.image}
+        </foreach>
+        ELSE image END
+        WHERE id IN
+        <foreach collection="list" item="variant" open="(" separator="," close=")">
+            #{variant.id}
         </foreach>
     </update>
 
@@ -183,7 +214,7 @@
         SET image = NULL
         WHERE product_id = #{productId}
         AND color IN
-        <foreach collection="colors" item="color" open="(" separator="," close=")">
+        <foreach collection="deletedColors" item="color" open="(" separator="," close=")">
             #{color}
         </foreach>
     </update>
