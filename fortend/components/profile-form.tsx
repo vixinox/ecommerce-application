@@ -1,4 +1,5 @@
 "use client";
+
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,19 +8,11 @@ import { Loader2, Upload } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, } from "@/components/ui/form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/components/auth-provider";
 import { API_URL } from "@/lib/api";
 import { sha256 } from "@/lib/auth";
@@ -46,7 +39,7 @@ export function ProfileForm() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [avatarUrl, setAvatarUrl] = useState(`${API_URL}/api/image/avatar/${user?.username}`);
+
 
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -74,6 +67,10 @@ export function ProfileForm() {
 
   async function onProfileSubmit(data: ProfileFormValues) {
     setIsUpdating(true);
+    if (!token) {
+      setIsUpdating(false);
+      return;
+    }
     try {
       const response = await fetch(`${API_URL}/api/user/update/info`, {
         method: "POST",
@@ -84,15 +81,20 @@ export function ProfileForm() {
         body: JSON.stringify(data),
       });
 
-      if (response.status === 200) {
-        login({username: user!.username, email: data.email, nickname: data.nickname}, token!, false)
+      if (response.ok) {
+        const userData = await response.json();
+        if (login) {
+          login(userData, token, false);
+        }
         toast.success("个人资料更新成功");
-      }
-      else {
-        if (response.status === 401)
+      } else {
+        const errorData = await response.json();
+        const errorMessage = errorData.message || response.statusText || "未知错误";
+        if (response.status === 401) {
           logout("登录凭据已过期，请重新登录");
-        else
-          toast.error("个人信息更新失败", {description: response.text()});
+        } else {
+          toast.error("个人信息更新失败", {description: errorMessage});
+        }
       }
     } catch (error) {
       toast.error("网络连接异常", {description: error instanceof Error ? error.message : "未知错误"});
@@ -103,10 +105,15 @@ export function ProfileForm() {
 
   async function onPasswordSubmit(data: PasswordFormValues) {
     setIsChangingPassword(true);
+    if (!token) {
+      setIsChangingPassword(false);
+      return;
+    }
 
     try {
       const hashedCurrentPassword = await sha256(data.currentPassword);
       const hashedNewPassword = await sha256(data.newPassword);
+
       const response = await fetch(`${API_URL}/api/user/update/password`, {
         method: "POST",
         headers: {
@@ -119,12 +126,14 @@ export function ProfileForm() {
       if (response.ok) {
         toast.success("密码修改成功");
         logout("密码已修改，请重新登录");
-      }
-      else {
-        if (response.status === 401)
+      } else {
+        const errorData = await response.json();
+        const errorMessage = errorData.message || response.statusText || "未知错误";
+        if (response.status === 401) {
           logout("登录凭据已过期，请重新登录");
-        else
-          toast.error("密码修改失败", {description: response.text()});
+        } else {
+          toast.error("密码修改失败", {description: errorMessage});
+        }
       }
     } catch (error) {
       toast.error("网络连接异常", {description: error instanceof Error ? error.message : "未知错误"});
@@ -140,10 +149,12 @@ export function ProfileForm() {
     const validTypes = ['image/jpeg', 'image/png'];
     if (!validTypes.includes(file.type)) {
       toast.error("仅支持 JPEG 或 PNG 格式");
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
     if (file.size >= 5 * 1024 * 1024) {
       toast.error('图片大小不能超过 5MB');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
@@ -151,28 +162,49 @@ export function ProfileForm() {
     const formData = new FormData();
     formData.append('file', file);
 
+    if (!token) {
+      setIsUpdating(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      toast.error("未登录");
+      return;
+    }
+
     try {
-      const response = await fetch(`${API_URL}/api/image/update/avatar`, {
+      const response = await fetch(`${API_URL}/api/image/upload/avatar`, {
         method: 'POST',
         headers: {Authorization: `Bearer ${token}`},
         body: formData,
       });
 
       if (response.ok) {
+        const uploadResult = await response.json();
+        const newAvatarPath = uploadResult.avatarPath;
+
+        if (login && user) {
+          const updatedUser = {...user, avatar: newAvatarPath};
+          login(updatedUser, token, false);
+        }
+
         toast.success("头像上传成功");
-      }
-      else {
+
+      } else {
         const errorData = await response.json();
-        toast.error("上传失败", {description: errorData.message});
+        const errorMessage = errorData.message || response.statusText || "未知错误";
+        if (response.status === 401) {
+          logout("登录凭据已过期，请重新登录");
+        } else {
+          toast.error("上传失败", {description: errorMessage});
+        }
       }
     } catch (error) {
-
+      toast.error("网络连接异常", {description: error instanceof Error ? error.message : "未知错误"});
     } finally {
       setIsUpdating(false);
-      fileInputRef.current = null;
-      setAvatarUrl(`${API_URL}/api/image/avatar/${user?.username}?t=${Date.now()}`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }
+
+  const currentAvatarSrc = user?.avatar ? `${API_URL}/api/image${user.avatar}` : 'placeholder.svg';
 
   return (
     <Tabs defaultValue="general" className="w-full">
@@ -186,7 +218,7 @@ export function ProfileForm() {
             <CardContent className="pt-6">
               <div className="flex flex-col items-center space-y-4">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src={avatarUrl} alt={user?.username || "?"} className="object-cover"/>
+                  <AvatarImage src={currentAvatarSrc} alt={user?.username || "?"} className="object-cover"/>
                   <AvatarFallback className="text-2xl">
                     {user?.nickname?.[0] || user?.username?.[0]?.toUpperCase() || "U"}
                   </AvatarFallback>
@@ -198,18 +230,19 @@ export function ProfileForm() {
                 <div className="w-full">
                   <label
                     htmlFor="avatar-upload"
-                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" // 添加 disabled 样式
                   >
-                    <Upload className="h-4 w-4"/>
-                    更改头像
+                    {isUpdating ? <Loader2 className="h-4 w-4 animate-spin"/> : <Upload className="h-4 w-4"/>}
+                    {isUpdating ? "正在上传..." : "更改头像"}
                   </label>
                   <input
                     id="avatar-upload"
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg, image/png"
                     className="hidden"
                     onChange={handleAvatarChange}
                     ref={fileInputRef}
+                    disabled={isUpdating} // 上传中禁用文件输入
                   />
                 </div>
               </div>
@@ -233,7 +266,7 @@ export function ProfileForm() {
                     <FormItem>
                       <FormLabel>电子邮件</FormLabel>
                       <FormControl>
-                        <Input placeholder="your.email@example.com" {...field} />
+                        <Input placeholder="your.email@example.com" {...field} disabled={isUpdating}/>
                       </FormControl>
                       <FormDescription>我们不会与任何人分享您的电子邮件</FormDescription>
                       <FormMessage/>
@@ -247,14 +280,14 @@ export function ProfileForm() {
                     <FormItem>
                       <FormLabel>昵称</FormLabel>
                       <FormControl>
-                        <Input placeholder="请输入昵称" {...field} />
+                        <Input placeholder="请输入昵称" {...field} disabled={isUpdating}/>
                       </FormControl>
                       <FormDescription>您希望在平台上被如何称呼</FormDescription>
                       <FormMessage/>
                     </FormItem>
                   )}
                 />
-                <Button type="submit" disabled={isUpdating}>
+                <Button type="submit" disabled={isUpdating || !profileForm.formState.isDirty}>
                   {isUpdating ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
@@ -284,7 +317,7 @@ export function ProfileForm() {
                 <FormItem>
                   <FormLabel>当前密码</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="请输入当前密码" {...field} />
+                    <Input type="password" placeholder="请输入当前密码" {...field} disabled={isChangingPassword}/>
                   </FormControl>
                   <FormMessage/>
                 </FormItem>
@@ -297,7 +330,7 @@ export function ProfileForm() {
                 <FormItem>
                   <FormLabel>新密码</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="请输入新密码" {...field} />
+                    <Input type="password" placeholder="请输入新密码" {...field} disabled={isChangingPassword}/>
                   </FormControl>
                   <FormDescription>
                     密码至少6个字符
@@ -313,13 +346,13 @@ export function ProfileForm() {
                 <FormItem>
                   <FormLabel>确认新密码</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="请确认新密码" {...field} />
+                    <Input type="password" placeholder="请确认新密码" {...field} disabled={isChangingPassword}/>
                   </FormControl>
                   <FormMessage/>
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={isChangingPassword}>
+            <Button type="submit" disabled={isChangingPassword || !passwordForm.formState.isValid}>
               {isChangingPassword ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin"/>

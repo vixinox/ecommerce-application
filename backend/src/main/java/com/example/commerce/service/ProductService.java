@@ -1,9 +1,13 @@
 package com.example.commerce.service;
 
-import com.example.commerce.dto.CartItemDTO;
 import com.example.commerce.dto.ProductDTO;
 import com.example.commerce.dto.ProductDetailDTO;
+import com.example.commerce.dto.ProductEditResponseDTO;
+import com.example.commerce.dto.UploadProductDTO;
+import com.example.commerce.model.Product;
+import com.example.commerce.model.User;
 import com.github.pagehelper.PageInfo;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,13 +19,11 @@ public interface ProductService {
 
     List<ProductDTO> getRandomProducts(int size);
 
-    void addToCart(Long userId, Long productVariantId, Long quantity);
+    void addProduct(UploadProductDTO newProduct, User user) throws Exception;
 
-    void updateCart(Long userId, Long cartId, Long variantId, Long quantity);
+    List<Product> getProductByOwner(User user);
 
-    void removeFromCart(Long userId, Long cartId);
+    Optional<ProductEditResponseDTO> getProductForEdit(Long productId);
 
-    void clearCart(Long id);
-
-    List<CartItemDTO>  getCartItem(Long id);
+    void editProduct(Long productId, UploadProductDTO updatedProductDTO, User user) throws Exception;
 }

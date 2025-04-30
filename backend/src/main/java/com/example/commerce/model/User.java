@@ -1,8 +1,10 @@
 package com.example.commerce.model;
 
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
 public class User {
     private Long id;
     private String username;
@@ -11,7 +13,4 @@ public class User {
     private String nickname;
     private String avatar;
     private String role;
-
-    public User() {
-    }
 }

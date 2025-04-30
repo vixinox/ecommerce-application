@@ -4,9 +4,10 @@ import { useState } from "react";
 import { ProductCard } from "@/components/product-card";
 import { Badge } from "@/components/ui/badge";
 import { AnimatePresence, motion } from "framer-motion";
-import { Product } from "@/lib/products";
+import { Product } from "@/lib/types";
+
 const containerVariants = {
-  hidden: { opacity: 0 },
+  hidden: {opacity: 0},
   visible: {
     opacity: 1,
     transition: {
@@ -16,16 +17,12 @@ const containerVariants = {
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: 20, transition: { duration: 0.1 } },
+  hidden: {opacity: 0, y: 20},
+  visible: {opacity: 1, y: 0},
+  exit: {opacity: 0, y: 20, transition: {duration: 0.1}},
 };
 
-interface ProductGridProps {
-  initialProducts: Product[];
-}
-
-export default function ProductGrid({ initialProducts }: ProductGridProps) {
+export default function ProductGrid({initialProducts}: { initialProducts: Product[] }) {
   const [selectedCategory, setSelectedCategory] = useState("全部");
   const categories = ["全部", ...new Set(initialProducts.map((product) => product.category))];
   const filteredProducts =
@@ -65,7 +62,7 @@ export default function ProductGrid({ initialProducts }: ProductGridProps) {
               exit="exit"
               layout
             >
-              <ProductCard product={product} />
+              <ProductCard product={product}/>
             </motion.div>
           ))}
         </motion.div>

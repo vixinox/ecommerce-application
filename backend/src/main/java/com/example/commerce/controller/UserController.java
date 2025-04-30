@@ -20,11 +20,15 @@ import java.util.Map;
 @RequestMapping("/api/user")
 public class UserController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
-    @Value("${file.upload-dir}")
-    private String uploadDir;
+    @Autowired
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @Value("${file.avatar-upload-dir}")
+    private String avatarUploadDir;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> loginData) {
@@ -81,8 +85,8 @@ public class UserController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             User user = userService.checkAuthorization(authHeader);
-            userService.updateUserInfo(user, userInfo.get("email"), userInfo.get("nickname"));
-            return ResponseEntity.ok("用户信息更新成功");
+            User updatedUser = userService.updateUserInfo(user, userInfo.get("email"), userInfo.get("nickname"));
+            return ResponseEntity.ok(updatedUser);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(e.getMessage());
@@ -112,7 +116,7 @@ public class UserController {
             String avatarPath = user.getAvatar();
             if (avatarPath != null && !avatarPath.isEmpty()) {
                 try {
-                    Path filePath = Paths.get(uploadDir).resolve(avatarPath.replace("/avatars/", ""));
+                    Path filePath = Paths.get(avatarUploadDir).resolve(avatarPath.replace("/avatars/", ""));
                     Files.deleteIfExists(filePath);
                 } catch (IOException e) {
                     System.err.println("删除头像文件失败: " + e.getMessage());
@@ -124,6 +128,8 @@ public class UserController {
             if (e.getMessage().contains("用户不存在"))
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("用户不存在");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("无效的登录凭证");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 

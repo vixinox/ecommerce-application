@@ -1,166 +1,475 @@
-"use client"
+"use client";
+import type React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, } from "@/components/ui/form";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { API_URL } from "@/lib/api";
+import { useAuth } from "@/components/auth-provider";
 
-import type React from "react"
-
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Image from "next/image"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { toast } from "sonner"
-import { Loader2, Plus, Trash2, Upload, X } from "lucide-react"
-import { z } from "zod"
-
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
-import { Switch } from "@/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import type { MockProduct } from "@/lib/mock-products"
-
-// Product schema for validation
 const productSchema = z.object({
-  name: z
-    .string()
-    .min(3, "Product name must be at least 3 characters")
-    .max(100, "Product name cannot exceed 100 characters"),
-  description: z
-    .string()
-    .min(10, "Description must be at least 10 characters")
-    .max(1000, "Description cannot exceed 1000 characters"),
-  price: z.coerce.number().positive("Price must be positive").min(0.01, "Price must be at least 0.01"),
-  category: z.string().min(1, "Please select a category"),
-  stock: z.coerce.number().int("Stock must be a whole number").min(0, "Stock cannot be negative"),
-  status: z.enum(["active", "draft"]),
-})
+  name: z.string().min(1, {message: "商品名称不能为空"}),
+  category: z.string().min(1, {message: "分类不能为空"}),
+  description: z.string().optional(),
+});
+type ProductFormValues = z.infer<typeof productSchema>;
 
-type ProductFormValues = z.infer<typeof productSchema>
-
-interface ProductFormProps {
-  product?: MockProduct
+interface UploadVariantDTO {
+  id?: string;
+  color: string;
+  size: string;
+  price: number;
+  stockQuantity: number;
 }
 
-export function ProductForm({ product }: ProductFormProps) {
-  const router = useRouter()
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [productImages, setProductImages] = useState<string[]>(product?.images || [])
-  const [specifications, setSpecifications] = useState<Record<string, string>>(product?.specifications || {})
-  const [newSpecKey, setNewSpecKey] = useState("")
-  const [newSpecValue, setNewSpecValue] = useState("")
-  const [colors, setColors] = useState<string[]>(product?.colors || [])
-  const [newColor, setNewColor] = useState("")
-  const [sizes, setSizes] = useState<string[]>(product?.sizes || [])
-  const [newSize, setNewSize] = useState("")
+interface UploadProductDTO {
+  id?: number;
+  name: string;
+  category: string;
+  description: string;
+  featuresJson: string;
+  specificationsJson: string;
+  variants: UploadVariantDTO[];
+  status?: string;
+}
 
+interface FetchedProductDTO extends Omit<UploadProductDTO, 'colorImages'> {
+  colorImageUrls?: { [key: string]: string };
+}
+
+export function ProductForm({param}: { param?: string }) {
+  const {token} = useAuth();
+  const router = useRouter();
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
-      name: product?.name || "",
-      description: product?.description || "",
-      price: product?.price || 0,
-      category: product?.category || "",
-      stock: product?.stock || 0,
-      status: product?.status || "draft",
+      name: "",
+      description: "",
+      category: "",
     },
-  })
-
-  async function onSubmit(data: ProductFormValues) {
-    setIsSubmitting(true)
-
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Combine form data with other state
-      const productData = {
-        ...data,
-        images: productImages,
-        specifications,
-        colors,
-        sizes,
+  });
+  const [features, setFeatures] = useState<string[]>([]);
+  const [newFeature, setNewFeature] = useState<string>('');
+  const [specifications, setSpecifications] = useState<Record<string, string>>({});
+  const [newSpecKey, setNewSpecKey] = useState("");
+  const [newSpecValue, setNewSpecValue] = useState("");
+  const [variants, setVariants] = useState<UploadVariantDTO[]>([]);
+  const [colors, setColors] = useState<string[]>([]);
+  const [sizes, setSizes] = useState<string[]>([]);
+  const [newColor, setNewColor] = useState("");
+  const [newSize, setNewSize] = useState("");
+  const [deletedColors, setDeletedColors] = useState<string[]>([]);
+  const [colorImages, setColorImages] = useState<{ [key: string]: File }>({});
+  const [colorImageUrls, setColorImageUrls] = useState<{ [key: string]: string }>({});
+  const prevColorImagesRef = useRef<{ [key: string]: File }>({});
+  const initialColorImageUrlsRef = useRef<{ [key: string]: string }>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
+  useEffect(() => {
+    if (!param) {
+      setIsLoading(false);
+      setIsHydrated(true);
+      return;
+    }
+    if (!token) {
+      toast.error("请先登录");
+      router.push("/auth/login");
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    setIsHydrated(false);
+    const fetchProduct = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/products/edit/${param}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (res.ok) {
+          const data: FetchedProductDTO = await res.json();
+          form.reset({
+            name: data.name || "",
+            description: data.description || "",
+            category: data.category || "",
+          });
+          try {
+            setFeatures(JSON.parse(data.featuresJson || '[]'));
+          } catch (e) {
+            console.error("Failed to parse featuresJson", e);
+            setFeatures([]);
+          }
+          try {
+            const specsArray = JSON.parse(data.specificationsJson || '[]');
+            const specsObject = specsArray.reduce((acc: Record<string, string>, item: {
+              key: string,
+              value: string
+            }) => {
+              acc[item.key] = item.value;
+              return acc;
+            }, {});
+            setSpecifications(specsObject);
+          } catch (e) {
+            console.error("Failed to parse specificationsJson", e);
+            setSpecifications({});
+          }
+          setVariants(data.variants || []);
+          const fetchedVariants = data.variants || [];
+          setColors(Array.from(new Set(fetchedVariants.map(v => v.color))).filter(Boolean));
+          setSizes(Array.from(new Set(fetchedVariants.map(v => v.size))).filter(Boolean));
+          if (data.colorImageUrls) {
+            setColorImageUrls(data.colorImageUrls);
+            initialColorImageUrlsRef.current = data.colorImageUrls;
+          } else {
+            setColorImageUrls({});
+            initialColorImageUrlsRef.current = {};
+          }
+        } else {
+          setColors([]);
+          setSizes([]);
+          const errorText = await res.text();
+          console.error(`Fetch Error (${res.status}):`, errorText);
+          if (res.status === 401) {
+            toast.error("登录状态过期，请重新登录");
+            router.push("/auth/login");
+          } else if (res.status === 404) {
+            toast.error("商品不存在");
+            router.push("/account/merchant/products");
+          } else {
+            toast.error(`获取商品失败`, {description: errorText || res.statusText});
+          }
+          form.reset({name: "", description: "", category: ""});
+          setFeatures([]);
+          setSpecifications({});
+          setVariants([]);
+          setColorImages({});
+          setColorImageUrls({});
+          initialColorImageUrlsRef.current = {};
+        }
+      } catch (error: any) {
+        console.error("Fetch error:", error);
+        toast.error(`获取商品详情失败`, {description: error.message || "网络请求失败"});
+        form.reset({name: "", description: "", category: ""});
+        setFeatures([]);
+        setSpecifications({});
+        setVariants([]);
+        setColorImages({});
+        setColorImageUrls({});
+        setColors([]);
+        setSizes([]);
+        initialColorImageUrlsRef.current = {};
+      } finally {
+        setIsLoading(false);
+        setIsHydrated(true);
       }
+    };
+    fetchProduct();
+  }, [param, token, router, form]);
+  useEffect(() => {
+    const prevFiles = prevColorImagesRef.current;
+    const currentFiles = colorImages;
+    const nextImageUrls: { [key: string]: string } = {};
+    Object.keys(colorImageUrls).forEach(color => {
+      if (!currentFiles[color]) {
+        nextImageUrls[color] = colorImageUrls[color];
+      }
+    });
+    Object.keys(prevFiles).forEach(color => {
+      const prevFile = prevFiles[color];
+      const currentFile = currentFiles[color];
+      if (prevFile instanceof File) {
+        if (!currentFile || currentFile !== prevFile) {
+          const urlToRevoke = URL.createObjectURL(prevFile);
+          if (colorImageUrls[color] === urlToRevoke) {
+            try {
+              URL.revokeObjectURL(urlToRevoke);
+            } catch (e) {
+              console.warn("Failed to revoke URL:", urlToRevoke, e);
+            }
+          }
+        }
+      }
+    });
 
-      console.log("Product data to submit:", productData)
-
-      toast.success(product ? "Product updated successfully" : "Product created successfully")
-      router.push("/account/merchant/products")
-    } catch (error) {
-      toast.error(product ? "Failed to update product" : "Failed to create product")
-      console.error(error)
-    } finally {
-      setIsSubmitting(false)
+    Object.keys(currentFiles).forEach(color => {
+      const file = currentFiles[color];
+      if (file instanceof File)
+        nextImageUrls[color] = URL.createObjectURL(file);
+    });
+    setColorImageUrls(nextImageUrls);
+    prevColorImagesRef.current = currentFiles;
+    return () => {
+      Object.values(colorImageUrls).forEach(url => {
+        if (url && url.startsWith("blob:")) {
+          try {
+            URL.revokeObjectURL(url);
+          } catch (e) {
+            console.warn("Failed to revoke URL in cleanup:", url, e);
+          }
+        }
+      });
+      prevColorImagesRef.current = {};
+      initialColorImageUrlsRef.current = {};
+    };
+  }, [colorImages]);
+  useEffect(() => {
+    if (!isHydrated) return;
+    const desiredVariantCombinations: { color: string, size: string }[] = [];
+    if (colors.length > 0 && sizes.length > 0) {
+      colors.forEach(color => {
+        sizes.forEach(size => {
+          desiredVariantCombinations.push({color, size});
+        });
+      });
     }
-  }
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
-
-    // In a real app, we would upload the files to a storage service
-    // Here we're just creating object URLs for preview
-    const newImages = Array.from(files).map((file) => URL.createObjectURL(file))
-    setProductImages([...productImages, ...newImages])
-
-    // Reset the input
-    e.target.value = ""
-  }
-
-  const removeImage = (index: number) => {
-    setProductImages(productImages.filter((_, i) => i !== index))
-  }
-
-  const addSpecification = () => {
+    const existingVariantsMap = new Map<string, UploadVariantDTO>();
+    variants.forEach(v => {
+      if (v.color && v.size) {
+        existingVariantsMap.set(`${v.color}_${v.size}`, v);
+      }
+    });
+    const newVariantsState: UploadVariantDTO[] = desiredVariantCombinations.map(combo => {
+      const existingVariant = existingVariantsMap.get(`${combo.color}_${combo.size}`);
+      if (existingVariant) {
+        return existingVariant;
+      } else {
+        return {
+          color: combo.color,
+          size: combo.size,
+          price: 0,
+          stockQuantity: 0,
+          id: undefined,
+        };
+      }
+    });
+    const sortedCurrentVariantKeys = variants.map(v => `${v.color}_${v.size}`).filter(key => key !== '_').sort().join(',');
+    const sortedNewVariantKeys = newVariantsState.map(v => `${v.color}_${v.size}`).filter(key => key !== '_').sort().join(',');
+    if (sortedCurrentVariantKeys !== sortedNewVariantKeys)
+      setVariants(newVariantsState);
+  }, [colors, sizes, isHydrated]);
+  const addSpecification = useCallback(() => {
     if (newSpecKey.trim() && newSpecValue.trim()) {
-      setSpecifications({
-        ...specifications,
-        [newSpecKey]: newSpecValue,
-      })
-      setNewSpecKey("")
-      setNewSpecValue("")
+      setSpecifications((prevSpecs) => ({
+        ...prevSpecs,
+        [newSpecKey.trim()]: newSpecValue.trim(),
+      }));
+      setNewSpecKey("");
+      setNewSpecValue("");
     }
-  }
-
-  const removeSpecification = (key: string) => {
-    const { [key]: _, ...rest } = specifications
-    setSpecifications(rest)
-  }
-
-  const addColor = () => {
-    if (newColor.trim() && !colors.includes(newColor.trim())) {
-      setColors([...colors, newColor.trim()])
-      setNewColor("")
+  }, [newSpecKey, newSpecValue]);
+  const removeSpecification = useCallback((keyToRemove: string) => {
+    setSpecifications((prevSpecs) => {
+      const {[keyToRemove]: _, ...rest} = prevSpecs;
+      return rest;
+    });
+  }, []);
+  const addFeature = useCallback(() => {
+    if (newFeature.trim() && !features.includes(newFeature.trim())) {
+      setFeatures((prevFeatures) => [...prevFeatures, newFeature.trim()]);
+      setNewFeature('');
     }
-  }
-
-  const removeColor = (color: string) => {
-    setColors(colors.filter((c) => c !== color))
-  }
-
-  const addSize = () => {
-    if (newSize.trim() && !sizes.includes(newSize.trim())) {
-      setSizes([...sizes, newSize.trim()])
-      setNewSize("")
+  }, [newFeature, features]);
+  const removeFeature = useCallback((indexToRemove: number) => {
+    setFeatures((prevFeatures) => prevFeatures.filter((_, index) => index !== indexToRemove));
+  }, []);
+  const addColor = useCallback(() => {
+    const trimmedColor = newColor.trim();
+    if (trimmedColor && !colors.includes(trimmedColor)) {
+      setColors(prevColors => [...prevColors, trimmedColor]);
+      setNewColor("");
     }
+  }, [newColor, colors]);
+  const removeColor = useCallback((colorToRemove: string) => {
+    setColors(prevColors => prevColors.filter(color => color !== colorToRemove));
+    if (initialColorImageUrlsRef.current[colorToRemove] || colorImages[colorToRemove]) {
+      setDeletedColors(prev => {
+        if (initialColorImageUrlsRef.current[colorToRemove] && !prev.includes(colorToRemove)) {
+          return [...prev, colorToRemove];
+        }
+        return prev;
+      });
+    }
+    setColorImages(prevColorImages => {
+      const nextImages = {...prevColorImages};
+      delete nextImages[colorToRemove];
+      return nextImages;
+    });
+  }, [initialColorImageUrlsRef, colorImages]);
+  const addSize = useCallback(() => {
+    const trimmedSize = newSize.trim();
+    if (trimmedSize && !sizes.includes(trimmedSize)) {
+      setSizes(prevSizes => [...prevSizes, trimmedSize]);
+      setNewSize("");
+    }
+  }, [newSize, sizes]);
+  const removeSize = useCallback((sizeToRemove: string) => {
+    setSizes(prevSizes => prevSizes.filter(size => size !== sizeToRemove))
+  }, []);
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>, color: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const maxFileSize = 5 * 1024 * 1024;
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("不支持的图片格式", {description: "支持 JPEG, PNG, WebP"});
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > maxFileSize) {
+      toast.error("文件过大", {description: "最大文件大小为 5MB"});
+      e.target.value = "";
+      return;
+    }
+
+    setColorImages(prevColorImages => {
+      setDeletedColors(prev => prev.filter(deletedColor => deletedColor !== color));
+      const oldNewFile = prevColorImages[color];
+      if (oldNewFile instanceof File && oldNewFile !== file) {
+        const oldLocalUrl = colorImageUrls[color];
+        if (oldLocalUrl && oldLocalUrl.startsWith("blob:")) {
+          try {
+            URL.revokeObjectURL(oldLocalUrl);
+          } catch (e) {
+            console.warn("Failed to revoke old local URL on replace:", oldLocalUrl, e);
+          }
+        }
+      }
+      return {
+        ...prevColorImages,
+        [color]: file,
+      };
+    });
+    e.target.value = "";
+  }, [colorImageUrls]);
+
+  const removeImage = useCallback((color: string) => {
+    console.log("colorImages", colorImages);
+    //
+    if (initialColorImageUrlsRef.current[color]) {
+      setDeletedColors(prev => {
+        if (prev.includes(color)) return prev;
+        return [...prev, color];
+      });
+    }
+    setColorImages(prevColorImages => {
+      const nextColorImages = {...prevColorImages};
+      delete nextColorImages[color];
+      return nextColorImages;
+    });
+  }, [initialColorImageUrlsRef]);
+
+  const onSubmit = useCallback(async (data: ProductFormValues) => {
+    if (!token) {
+      toast.error("请先登录");
+      router.push("/auth/login");
+      return;
+    }
+    setIsSubmitting(true);
+    const isEditing = !!param;
+    const endpoint = isEditing ? `${API_URL}/api/products/edit/${param}` : `${API_URL}/api/products/add`;
+    const method = isEditing ? 'PUT' : 'POST';
+    try {
+      const formData = new FormData();
+      if (isEditing && param) {
+        formData.append("id", param.toString());
+        deletedColors.forEach(color => {
+          formData.append('deletedColors', color)
+        });
+      }
+      formData.append("name", data.name);
+      formData.append("category", data.category);
+      formData.append("description", data.description || "");
+      const specificationsArray = Object.entries(specifications).map(([key, value]) => ({key, value}));
+      formData.append("specificationsJson", JSON.stringify(specificationsArray));
+      formData.append("featuresJson", JSON.stringify(features));
+      variants.forEach((variant, index) => {
+        if (variant.id)
+          formData.append(`variants[${index}].id`, variant.id);
+        formData.append(`variants[${index}].color`, variant.color);
+        formData.append(`variants[${index}].size`, variant.size);
+        formData.append(`variants[${index}].price`, variant.price.toString());
+        formData.append(`variants[${index}].stockQuantity`, variant.stockQuantity.toString());
+      });
+      Object.entries(colorImages).forEach(([color, file]) => {
+        if (file instanceof File)
+          formData.append(`colorImages[${color}]`, file, file.name);
+      });
+      const res = await fetch(endpoint, {
+        method: method,
+        headers: {Authorization: `Bearer ${token}`},
+        body: formData,
+      });
+      if (res.ok) {
+        const successMessage = isEditing ? '商品更新成功' : '商品添加成功';
+        toast.success(successMessage, {description: data.name});
+        router.push("/account/merchant/products");
+      } else {
+        const errorText = await res.text();
+        console.error(`API Error (${res.status}):`, errorText);
+        if (res.status === 401) {
+          toast.error("登录状态过期，请重新登录", {description: "请重新登录"});
+          router.push("/auth/login");
+        } else {
+          const errorMessage = isEditing ? '商品更新失败' : '商品添加失败';
+          try {
+            const errorJson = JSON.parse(errorText);
+            toast.error(errorMessage, {description: errorJson.message || JSON.stringify(errorJson)});
+          } catch (e) {
+            toast.error(errorMessage, {description: errorText || res.statusText});
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error("Submission error:", error);
+      const errorMessage = isEditing ? '商品更新失败' : '商品添加失败';
+      toast.error(errorMessage, {description: error.message || "网络请求失败"});
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [token, router, param, specifications, features, variants, colorImages]);
+
+  if (isLoading && !isHydrated) {
+    return (
+      <div className="flex justify-center items-center min-h-60">
+        <Loader2 className="mr-2 h-8 w-8 animate-spin"/>
+        <span className="text-lg text-muted-foreground">
+          {param ? "加载商品信息..." : "准备表单..."}
+        </span>
+      </div>
+    );
   }
 
-  const removeSize = (size: string) => {
-    setSizes(sizes.filter((s) => s !== size))
+  if (!isHydrated && !isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-60 text-destructive">
+        <p>加载商品信息失败或权限不足，请稍后再试或检查登录状态。</p>
+      </div>
+    );
   }
 
   return (
     <Tabs defaultValue="basic" className="w-full pl-4 pr-4">
-      <TabsList className="grid w-full grid-cols-4">
-        <TabsTrigger value="basic">Basic Info</TabsTrigger>
-        <TabsTrigger value="images">Images</TabsTrigger>
-        <TabsTrigger value="specifications">Specifications</TabsTrigger>
-        <TabsTrigger value="variants">Variants</TabsTrigger>
+      <TabsList className="grid w-full grid-cols-3">
+        <TabsTrigger value="basic" disabled={isSubmitting}>基本信息</TabsTrigger>
+        <TabsTrigger value="specifications" disabled={isSubmitting}>商品规格/特点</TabsTrigger>
+        <TabsTrigger value="variants" disabled={isSubmitting}>商品款式</TabsTrigger>
       </TabsList>
-
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 pt-6">
           <TabsContent value="basic" className="space-y-6">
@@ -168,205 +477,91 @@ export function ProductForm({ product }: ProductFormProps) {
               <FormField
                 control={form.control}
                 name="name"
-                render={({ field }) => (
+                render={({field}) => (
                   <FormItem>
-                    <FormLabel>Product Name</FormLabel>
+                    <FormLabel>商品名称</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter product name" {...field} />
+                      <Input placeholder="请输入商品名称" {...field} disabled={isSubmitting}/>
                     </FormControl>
-                    <FormDescription>The name of your product as it will appear to customers.</FormDescription>
-                    <FormMessage />
+                    <FormDescription>商品在商城中展示的名称。</FormDescription>
+                    <FormMessage/>
                   </FormItem>
                 )}
               />
-
-              <FormField
-                control={form.control}
-                name="price"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Price</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
-                        <Input type="number" step="0.01" placeholder="0.00" className="pl-7" {...field} />
-                      </div>
-                    </FormControl>
-                    <FormDescription>The price of your product in USD.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               <FormField
                 control={form.control}
                 name="category"
-                render={({ field }) => (
+                render={({field}) => (
                   <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Clothing">Clothing</SelectItem>
-                        <SelectItem value="Electronics">Electronics</SelectItem>
-                        <SelectItem value="Accessories">Accessories</SelectItem>
-                        <SelectItem value="Footwear">Footwear</SelectItem>
-                        <SelectItem value="Home">Home</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>The category your product belongs to.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="stock"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Stock</FormLabel>
+                    <FormLabel>分类</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="0" {...field} />
+                      <Input placeholder="请输入商品分类，例如：服装、电子产品" {...field} disabled={isSubmitting}/>
                     </FormControl>
-                    <FormDescription>The number of items in stock.</FormDescription>
-                    <FormMessage />
+                    <FormDescription>商品的分类名称。</FormDescription>
+                    <FormMessage/>
                   </FormItem>
                 )}
               />
             </div>
-
             <FormField
               control={form.control}
               name="description"
-              render={({ field }) => (
+              render={({field}) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>商品描述</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Enter product description" className="min-h-32 resize-none" {...field} />
+                    <Textarea
+                      placeholder="请输入商品详细描述"
+                      className="min-h-32 resize-none"
+                      {...field}
+                      disabled={isSubmitting}
+                    />
                   </FormControl>
                   <FormDescription>
-                    Detailed description of your product. This helps customers understand what you're selling.
+                    详细描述您的商品。这将帮助顾客了解您销售的商品。
                   </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">Active Status</FormLabel>
-                    <FormDescription>Set whether this product is active and visible to customers.</FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value === "active"}
-                      onCheckedChange={(checked) => field.onChange(checked ? "active" : "draft")}
-                    />
-                  </FormControl>
+                  <FormMessage/>
                 </FormItem>
               )}
             />
           </TabsContent>
-
-          <TabsContent value="images" className="space-y-6">
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-medium">Product Images</h4>
-                <p className="text-sm text-muted-foreground">
-                  Upload images of your product. The first image will be used as the main image.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-                {productImages.map((image, index) => (
-                  <div key={index} className="group relative aspect-square overflow-hidden rounded-md border">
-                    <Image
-                      src={image || "/placeholder.svg"}
-                      alt={`Product image ${index + 1}`}
-                      fill
-                      className="object-cover"
-                    />
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      className="absolute right-1 top-1 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
-                      onClick={() => removeImage(index)}
-                    >
-                      <X className="h-4 w-4" />
-                      <span className="sr-only">Remove image</span>
-                    </Button>
-                    {index === 0 && <Badge className="absolute left-1 top-1">Main</Badge>}
-                  </div>
-                ))}
-
-                <label
-                  htmlFor="image-upload"
-                  className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-md border border-dashed text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                >
-                  <Upload className="mb-2 h-6 w-6" />
-                  <span className="text-xs">Upload</span>
-                  <input
-                    id="image-upload"
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={handleImageUpload}
-                  />
-                </label>
-              </div>
-
-              <p className="text-xs text-muted-foreground">Supported formats: JPEG, PNG, WebP. Max file size: 5MB.</p>
-            </div>
-          </TabsContent>
-
           <TabsContent value="specifications" className="space-y-6">
             <div className="space-y-4">
               <div>
-                <h4 className="text-sm font-medium">Product Specifications</h4>
-                <p className="text-sm text-muted-foreground">Add technical specifications for your product.</p>
+                <h4 className="text-sm font-medium">商品规格</h4>
+                <p className="text-sm text-muted-foreground">添加商品的技术规格。</p>
               </div>
-
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Card>
                   <CardContent className="pt-6">
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <FormLabel htmlFor="spec-key">Specification</FormLabel>
+                          <FormLabel htmlFor="spec-key">规格项</FormLabel>
                           <Input
                             id="spec-key"
-                            placeholder="e.g., Material"
                             value={newSpecKey}
                             onChange={(e) => setNewSpecKey(e.target.value)}
+                            disabled={isSubmitting}
                           />
                         </div>
                         <div className="space-y-2">
-                          <FormLabel htmlFor="spec-value">Value</FormLabel>
+                          <FormLabel htmlFor="spec-value">规格值</FormLabel>
                           <div className="flex space-x-2">
                             <Input
                               id="spec-value"
-                              placeholder="e.g., Cotton"
                               value={newSpecValue}
                               onChange={(e) => setNewSpecValue(e.target.value)}
+                              disabled={isSubmitting}
                             />
                             <Button
                               type="button"
                               size="icon"
                               onClick={addSpecification}
-                              disabled={!newSpecKey.trim() || !newSpecValue.trim()}
+                              disabled={!newSpecKey.trim() || !newSpecValue.trim() || isSubmitting}
                             >
-                              <Plus className="h-4 w-4" />
-                              <span className="sr-only">Add specification</span>
+                              <Plus className="h-4 w-4"/>
+                              <span className="sr-only">添加规格</span>
                             </Button>
                           </div>
                         </div>
@@ -374,17 +569,20 @@ export function ProductForm({ product }: ProductFormProps) {
                     </div>
                   </CardContent>
                 </Card>
-
                 <Card>
                   <CardContent className="pt-6">
                     <div className="space-y-4">
-                      <h5 className="text-sm font-medium">Current Specifications</h5>
+                      <h5 className="text-sm font-medium">当前规格</h5>
                       {Object.keys(specifications).length > 0 ? (
                         <div className="space-y-2">
                           {Object.entries(specifications).map(([key, value]) => (
-                            <div key={key} className="flex items-center justify-between rounded-md border px-3 py-2">
+                            <div
+                              key={key}
+                              className="flex items-center justify-between rounded-md border px-3 py-2"
+                            >
                               <div>
-                                <span className="font-medium">{key}:</span> {value}
+                                <span className="font-medium">{key}:</span>{" "}
+                                {value}
                               </div>
                               <Button
                                 type="button"
@@ -392,15 +590,86 @@ export function ProductForm({ product }: ProductFormProps) {
                                 size="icon"
                                 className="h-7 w-7 text-muted-foreground hover:text-destructive"
                                 onClick={() => removeSpecification(key)}
+                                disabled={isSubmitting}
                               >
-                                <Trash2 className="h-4 w-4" />
-                                <span className="sr-only">Remove {key}</span>
+                                <Trash2 className="h-4 w-4"/>
+                                <span className="sr-only">移除 {key}</span>
                               </Button>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-sm text-muted-foreground">No specifications added yet.</p>
+                        <p className="text-sm text-muted-foreground">暂无规格项。</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+            <Separator className="my-6"/>
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-medium">商品特性</h4>
+                <p className="text-sm text-muted-foreground">添加商品的特性或卖点。</p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="space-y-4">
+                      <h5 className="text-sm font-medium">添加新特性</h5>
+                      <div className="space-y-2">
+                        <FormLabel htmlFor="feature-value">特性值</FormLabel>
+                        <div className="flex space-x-2">
+                          <Input
+                            id="feature-value"
+                            value={newFeature}
+                            onChange={(e) => setNewFeature(e.target.value)}
+                            disabled={isSubmitting}
+                          />
+                          <Button
+                            type="button"
+                            size="icon"
+                            onClick={addFeature}
+                            disabled={!newFeature.trim() || features.includes(newFeature.trim()) || isSubmitting}
+                          >
+                            <Plus className="h-4 w-4"/>
+                            <span className="sr-only">添加特性</span>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="space-y-4">
+                      <h5 className="text-sm font-medium">当前特性</h5>
+                      {features.length > 0 ? (
+                        <div className="space-y-2">
+                          {features.map((feature, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center justify-between rounded-md border px-3 py-2"
+                            >
+                              <div>
+                                {feature}
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => removeFeature(index)}
+                                disabled={isSubmitting}
+                              >
+                                <Trash2 className="h-4 w-4"/>
+                                <span className="sr-only">移除 {feature}</span>
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">暂无特性项。</p>
                       )}
                     </div>
                   </CardContent>
@@ -408,30 +677,106 @@ export function ProductForm({ product }: ProductFormProps) {
               </div>
             </div>
           </TabsContent>
-
           <TabsContent value="variants" className="space-y-6">
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-medium">商品图片</h4>
+                <p className="text-sm text-muted-foreground">为每个颜色上传图片。</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+                {colors.map((color) => {
+                  const imageUrl = colorImageUrls[color];
+                  const isUploadDisabled = isSubmitting;
+                  return (
+                    <div
+                      key={color}
+                      className="group relative aspect-square overflow-hidden rounded-md border"
+                    >
+                      {imageUrl ? (
+                        <>
+                          <Image
+                            src={imageUrl}
+                            alt={`商品图片 - ${color}`}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            unoptimized={imageUrl.startsWith('blob:')}
+                          />
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            type="button"
+                            className="absolute right-1 top-1 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100 z-10"
+                            onClick={() => removeImage(color)}
+                            disabled={isUploadDisabled}
+                          >
+                            <X className="h-4 w-4"/>
+                            <span className="sr-only">移除图片 {color}</span>
+                          </Button>
+                          <Badge className="absolute left-1 top-1 z-10">{color}</Badge>
+                        </>
+                      ) : (
+                        <label
+                          htmlFor={`image-upload-${color}`}
+                          className={`flex aspect-square cursor-pointer flex-col items-center justify-center rounded-md border border-dashed text-muted-foreground hover:bg-accent hover:text-accent-foreground ${isUploadDisabled ? 'cursor-not-allowed opacity-50 hover:bg-transparent hover:text-muted-foreground' : ''}`}
+                        >
+                          <Upload className="mb-2 h-6 w-6"/>
+                          <span className="text-xs">上传 {color}</span>
+                          <Input
+                            id={`image-upload-${color}`}
+                            type="file"
+                            accept="image/*"
+                            multiple={false}
+                            className="hidden"
+                            onChange={(e) => handleImageUpload(e, color)}
+                            disabled={isUploadDisabled}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  );
+                })}
+                {colors.length === 0 && (
+                  <div
+                    className="aspect-square rounded-md border border-dashed flex flex-col items-center justify-center text-muted-foreground opacity-50">
+                    <Upload className="mb-2 h-6 w-6"/>
+                    <span className="text-xs text-center">请添加颜色以上传图片</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                支持格式：JPEG, PNG, WebP。最大文件大小：5MB。 每种颜色仅保存一张图片。
+              </p>
+            </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-sm font-medium">Colors</h4>
-                  <p className="text-sm text-muted-foreground">Add available colors for your product.</p>
+                  <h4 className="text-sm font-medium">颜色</h4>
+                  <p className="text-sm text-muted-foreground">添加商品的可选颜色。</p>
                 </div>
-
                 <div className="flex space-x-2">
-                  <Input placeholder="e.g., Red" value={newColor} onChange={(e) => setNewColor(e.target.value)} />
+                  <Input
+                    value={newColor}
+                    onChange={(e) => setNewColor(e.target.value)}
+                    disabled={isSubmitting}
+                    placeholder="输入颜色，如：红色"
+                  />
                   <Button
                     type="button"
                     onClick={addColor}
-                    disabled={!newColor.trim() || colors.includes(newColor.trim())}
+                    disabled={!newColor.trim() || colors.includes(newColor.trim()) || isSubmitting}
                   >
-                    Add
+                    添加
                   </Button>
                 </div>
-
                 <div className="flex flex-wrap gap-2">
                   {colors.length > 0 ? (
                     colors.map((color) => (
-                      <Badge key={color} variant="secondary" className="flex items-center gap-1 pr-1">
+                      <Badge
+                        key={color}
+                        variant="secondary"
+                        className="flex items-center gap-1 pr-1"
+                      >
                         {color}
                         <Button
                           type="button"
@@ -439,35 +784,46 @@ export function ProductForm({ product }: ProductFormProps) {
                           size="icon"
                           className="h-4 w-4 rounded-full p-0 hover:bg-destructive/20 hover:text-destructive"
                           onClick={() => removeColor(color)}
+                          disabled={isSubmitting}
                         >
-                          <X className="h-3 w-3" />
-                          <span className="sr-only">Remove {color}</span>
+                          <X className="h-3 w-3"/>
+                          <span className="sr-only">移除 {color}</span>
                         </Button>
                       </Badge>
                     ))
                   ) : (
-                    <p className="text-sm text-muted-foreground">No colors added yet.</p>
+                    <p className="text-sm text-muted-foreground">暂无颜色添加。</p>
                   )}
                 </div>
               </div>
-
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-sm font-medium">Sizes</h4>
-                  <p className="text-sm text-muted-foreground">Add available sizes for your product.</p>
+                  <h4 className="text-sm font-medium">尺寸</h4>
+                  <p className="text-sm text-muted-foreground">添加商品的可选尺寸。</p>
                 </div>
-
                 <div className="flex space-x-2">
-                  <Input placeholder="e.g., XL" value={newSize} onChange={(e) => setNewSize(e.target.value)} />
-                  <Button type="button" onClick={addSize} disabled={!newSize.trim() || sizes.includes(newSize.trim())}>
-                    Add
+                  <Input
+                    value={newSize}
+                    onChange={(e) => setNewSize(e.target.value)}
+                    disabled={isSubmitting}
+                    placeholder="输入尺寸，如：M、大号"
+                  />
+                  <Button
+                    type="button"
+                    onClick={addSize}
+                    disabled={!newSize.trim() || sizes.includes(newSize.trim()) || isSubmitting}
+                  >
+                    添加
                   </Button>
                 </div>
-
                 <div className="flex flex-wrap gap-2">
                   {sizes.length > 0 ? (
                     sizes.map((size) => (
-                      <Badge key={size} variant="secondary" className="flex items-center gap-1 pr-1">
+                      <Badge
+                        key={size}
+                        variant="secondary"
+                        className="flex items-center gap-1 pr-1"
+                      >
                         {size}
                         <Button
                           type="button"
@@ -475,22 +831,115 @@ export function ProductForm({ product }: ProductFormProps) {
                           size="icon"
                           className="h-4 w-4 rounded-full p-0 hover:bg-destructive/20 hover:text-destructive"
                           onClick={() => removeSize(size)}
+                          disabled={isSubmitting}
                         >
-                          <X className="h-3 w-3" />
-                          <span className="sr-only">Remove {size}</span>
+                          <X className="h-3 w-3"/>
+                          <span className="sr-only">移除 {size}</span>
                         </Button>
                       </Badge>
                     ))
                   ) : (
-                    <p className="text-sm text-muted-foreground">No sizes added yet.</p>
+                    <p className="text-sm text-muted-foreground">暂无尺寸添加。</p>
                   )}
                 </div>
               </div>
             </div>
+            <Separator className="my-6"/>
+            <div className="space-y-4">
+              {(colors && colors.length > 0) && (sizes && sizes.length > 0) ? (
+                <>
+                  <div>
+                    <h4 className="text-sm font-medium">组合配置</h4>
+                    <p className="text-sm text-muted-foreground">
+                      为每个颜色和尺寸的组合配置具体的价格和库存。
+                    </p>
+                  </div>
+                  <div className="border rounded-md overflow-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50 sticky top-0 z-10">
+                      <tr>
+                        <th scope="col"
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">颜色
+                        </th>
+                        <th scope="col"
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">尺寸
+                        </th>
+                        <th scope="col"
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">价格
+                        </th>
+                        <th scope="col"
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">库存
+                        </th>
+                      </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                      {/* Sort variants for stable display order, preserving original objects */}
+                      {variants.slice().sort((a, b) => {
+                        const colorComparison = a.color.localeCompare(b.color);
+                        if (colorComparison !== 0) return colorComparison;
+                        return a.size.localeCompare(b.size);
+                      }).map((variant) => {
+                        const key = variant.id || `${variant.color}_${variant.size}`;
+                        return (
+                          <tr key={key}>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{variant.color}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{variant.size}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                              <Input
+                                type="number"
+                                placeholder="价格"
+                                value={variant.price}
+                                onChange={(e) => {
+                                  const newPrice = parseFloat(e.target.value) || 0;
+                                  setVariants((prevVariants) =>
+                                    prevVariants.map((v) =>
+                                      v.color === variant.color && v.size === variant.size
+                                        ? {...v, price: newPrice}
+                                        : v
+                                    )
+                                  );
+                                }}
+                                className="w-full text-sm"
+                                disabled={isSubmitting}
+                              />
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                              <Input
+                                type="number"
+                                placeholder="库存"
+                                value={variant.stockQuantity}
+                                onChange={(e) => {
+                                  const newStock = parseInt(e.target.value, 10) || 0;
+                                  setVariants((prevVariants) =>
+                                    prevVariants.map((v) =>
+                                      v.color === variant.color && v.size === variant.size
+                                        ? {...v, stockQuantity: newStock}
+                                        : v
+                                    )
+                                  );
+                                }}
+                                className="w-full text-sm"
+                                disabled={isSubmitting}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <h4 className="text-sm font-medium">款式组合配置</h4>
+                  <p className="text-sm text-muted-foreground">
+                    请先添加颜色和尺寸，然后在此配置每种款式的价格和库存。
+                  </p>
+                </div>
+              )}
+            </div>
           </TabsContent>
-
-          <Separator />
-
+          <Separator/>
           <div className="flex justify-end space-x-4">
             <Button
               type="button"
@@ -498,23 +947,23 @@ export function ProductForm({ product }: ProductFormProps) {
               onClick={() => router.push("/account/merchant/products")}
               disabled={isSubmitting}
             >
-              Cancel
+              取消
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {product ? "Updating..." : "Creating..."}
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
+                  {param ? "更新中..." : "创建中..."}
                 </>
-              ) : product ? (
-                "Update Product"
+              ) : param ? (
+                "更新商品"
               ) : (
-                "Create Product"
+                "创建商品"
               )}
             </Button>
           </div>
         </form>
       </Form>
     </Tabs>
-  )
+  );
 }

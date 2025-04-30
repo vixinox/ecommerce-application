@@ -5,7 +5,7 @@ export interface ProductSpecifications {
   value: string;
 }
 
-export function ProductSpecifications({ specifications }: { specifications: ProductSpecifications[] }) {
+export function ProductSpecifications({specifications}: { specifications: ProductSpecifications[] }) {
   return (
     <Table>
       <TableHeader>

@@ -14,10 +14,8 @@ export default function SpendingReportPage() {
         <h3 className="text-lg font-medium">消费报告</h3>
         <p className="text-sm text-muted-foreground">查看您的消费报告</p>
       </div>
-      <Separator />
-
-      <SpendingReportDashboard />
-
+      <Separator/>
+      <SpendingReportDashboard/>
     </div>
   );
 }

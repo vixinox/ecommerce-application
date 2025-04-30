@@ -97,7 +97,7 @@ public interface OrderDAO {
 
 
     /**
-     * 获取用户消费最多的商品/变体 (按消费金额，最多显示前10条)
+     * 获取用户消费最多的商品/款式 (按消费金额，最多显示前10条)
      */
     @Select("SELECT " +
             "   oi.snapshot_product_name AS name, " +

@@ -1,7 +1,8 @@
 "use client";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, SubmitHandler } from "react-hook-form";
+import { SubmitHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -31,7 +32,6 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       const hashedPassword = await sha256(data.password);
-      console.log(hashedPassword);
       const response = await fetch(`${API_URL}/api/user/login`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},

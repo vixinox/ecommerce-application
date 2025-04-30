@@ -2,8 +2,13 @@ package com.example.commerce.controller;
 
 import com.example.commerce.dto.ProductDTO;
 import com.example.commerce.dto.ProductDetailDTO;
+import com.example.commerce.dto.ProductEditResponseDTO;
+import com.example.commerce.dto.UploadProductDTO;
+import com.example.commerce.model.Product;
+import com.example.commerce.model.User;
 import com.example.commerce.service.ProductService;
 
+import com.example.commerce.service.UserService;
 import com.github.pagehelper.PageInfo;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -19,10 +25,12 @@ import java.util.Optional;
 public class ProductController {
 
     private final ProductService productService;
+    private final UserService userService;
 
     @Autowired
-    public ProductController(ProductService productService) {
+    public ProductController(ProductService productService, UserService userService) {
         this.productService = productService;
+        this.userService = userService;
     }
 
     /**
@@ -42,14 +50,12 @@ public class ProductController {
             @RequestParam(value = "category", required = false) String category,
             @RequestParam(value = "keyword", required = false) String keyword) {
         PageInfo<ProductDTO> productPageInfo = productService.listProducts(pageNum, pageSize, category, keyword);
-
         return ResponseEntity.ok(productPageInfo);
     }
 
     @GetMapping("/{productId}")
     public ResponseEntity<ProductDetailDTO> getProductDetail(@PathVariable Long productId) {
         Optional<ProductDetailDTO> productDetail = productService.getProductDetail(productId);
-
         return productDetail.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
@@ -60,4 +66,67 @@ public class ProductController {
         List<ProductDTO> randomProducts = productService.getRandomProducts(size);
         return ResponseEntity.ok(randomProducts);
     }
+
+    @GetMapping("/manage")
+    public ResponseEntity<?> getProductManagement(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            User user = userService.checkMerchant(authHeader);
+            List<Product> productManagementList = productService.getProductByOwner(user);
+            return ResponseEntity.ok(productManagementList);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(e.getMessage());
+        }
+    }
+
+    @PostMapping(value = "/add", consumes = "multipart/form-data")
+    public ResponseEntity<?> addProduct(
+            @ModelAttribute UploadProductDTO newProduct,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            if (newProduct != null && newProduct.getColorImages() != null)
+                newProduct.getColorImages().forEach((color, file) -> {
+                    if (file != null && !file.isEmpty())
+                        System.out.println("收到款式颜色: " + color + ", 图片: " + file.getOriginalFilename());
+                });
+
+            User user = userService.checkAuthorization(authHeader);
+            productService.addProduct(newProduct, user);
+
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/edit/{productId}")
+    public ResponseEntity<?> editProduct(
+            @PathVariable Long productId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            userService.checkMerchant(authHeader);
+            Optional<ProductEditResponseDTO> productForEditOpt = productService.getProductForEdit(productId);
+            return ResponseEntity.ok(productForEditOpt);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/edit/{productId}")
+    public ResponseEntity<?> updateProduct(
+            @PathVariable Long productId,
+            @ModelAttribute UploadProductDTO updatedProductDTO,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            User currentUser = userService.checkMerchant(authHeader);
+            productService.editProduct(productId, updatedProductDTO, currentUser);
+            return ResponseEntity.ok().body(Map.of("message", "商品更新成功"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "商品更新失败: " + e.getMessage()));
+        }
+    }
+
 }

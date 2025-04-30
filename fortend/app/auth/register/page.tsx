@@ -15,7 +15,7 @@ export default function RegisterPage() {
         <h1 className="text-3xl font-bold">注册</h1>
         <p className="text-muted-foreground">输入你的邮箱地址和密码</p>
       </div>
-      <RegisterForm />
+      <RegisterForm/>
       <div className="text-center text-sm">
         <p className="text-muted-foreground">
           已有账户？{" "}

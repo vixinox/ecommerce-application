@@ -15,8 +15,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Autowired
     private AuthInterceptor jwtInterceptor;
 
-    @Value("${file.upload-dir}")
-    private String uploadDir;
+    @Value("${file.avatar-upload-dir}")
+    private String avatarUploadDir;
+    @Value("${file.product-upload-dir}")
+    private String productUploadDir;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -25,16 +27,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                     "/api/user/login",
                     "/api/user/register",
-                    "/api/image/avatar/**",
+                    "/api/image/**",
                     "/api/user/check/**",
                     "/api/products/**"
                 );
-    }
-
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/avatars/**")
-                .addResourceLocations("file:" + uploadDir);
     }
 
     @Override

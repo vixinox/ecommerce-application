@@ -1,276 +1,554 @@
 package com.example.commerce.service.impl;
 
-import com.example.commerce.dao.CartDAO;
 import com.example.commerce.dao.ProductDAO;
-import com.example.commerce.dto.CartItemDTO;
 import com.example.commerce.dto.ProductDTO;
 import com.example.commerce.dto.ProductDetailDTO;
-import com.example.commerce.model.CartItem;
+import com.example.commerce.dto.ProductEditResponseDTO;
+import com.example.commerce.dto.UploadProductDTO;
 import com.example.commerce.model.Product;
 import com.example.commerce.model.ProductVariant;
+import com.example.commerce.model.User;
+import com.example.commerce.service.ImageService;
 import com.example.commerce.service.ProductService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static java.util.Collections.emptyList;
 
 @Service
 public class ProductServiceImpl implements ProductService {
 
-    private final CartDAO cartDAO;
+    private static final Logger logger = LoggerFactory.getLogger(ProductServiceImpl.class);
+
+    private final ImageService imageService;
     private final ProductDAO productDAO;
-    private final ObjectMapper objectMapper;
 
     @Autowired
-    public ProductServiceImpl(CartDAO cartDAO, ProductDAO productDAO, ObjectMapper objectMapper) {
-        this.cartDAO = cartDAO;
+    public ProductServiceImpl(ImageService imageService, ProductDAO productDAO) {
+        this.imageService = imageService;
         this.productDAO = productDAO;
-        this.objectMapper = objectMapper;
     }
 
-    @Override
-    public Optional<ProductDetailDTO> getProductDetail(Long productId) {
-        Product product = productDAO.getProductById(productId);
-        if (product == null) return Optional.empty();
-
-        List<ProductVariant> variants = productDAO.findVariantsByProductId(productId);
-
-        List<String> images = parseJsonList(product.getImagesJson(), new TypeReference<>() {
-        });
-        List<String> features = parseJsonList(product.getFeaturesJson(), new TypeReference<>() {
-        });
-        List<ProductDetailDTO.ProductSpecifications> specifications = parseJsonList(product.getSpecificationsJson(), new TypeReference<>() {
-        });
-
-        ProductDetailDTO dto = new ProductDetailDTO(product.getId(), product.getName(), product.getDescription(),
-                product.getCategory(), variants.getFirst().getPrice(), images, features, specifications);
-
-        if (!variants.isEmpty()) {
-            List<ProductVariant> variantDTOs = variants.stream().map(variant -> {
-                ProductVariant v = new ProductVariant();
-                v.setId(variant.getId());
-                v.setColor(variant.getColor());
-                v.setSize(variant.getSize());
-                v.setImage(variant.getImage());
-                v.setStockQuantity(Objects.requireNonNullElse(variant.getStockQuantity(), 0));
-                v.setInStock(v.getStockQuantity() > 0);
-                return v;
-            }).collect(Collectors.toList());
-
-            dto.setVariants(variantDTOs);
-        }
-
-        return Optional.of(dto);
-    }
-
-
-    /**
-     * 获取商品列表，支持分页、分类过滤和关键词搜索。
-     * 返回类型改为 PageInfo<ProductDTO>，包含分页信息和当前页数据 Converting to DTO in Service.
-     */
     @Override
     public PageInfo<ProductDTO> listProducts(int pageNum, int pageSize, String category, String keyword) {
         PageHelper.startPage(pageNum, pageSize);
-        List<Product> productEntities = productDAO.findProducts(category, keyword);
-        PageInfo<Product> pageInfo = new PageInfo<>(productEntities);
-
-        if (productEntities.isEmpty()) {
-            return new PageInfo<>(Collections.emptyList());
-        }
-
-        Set<Long> productIds = productEntities.stream()
-                .map(Product::getId)
-                .collect(Collectors.toSet());
-
-        List<ProductVariant> variants = productDAO.findVariantsByProductIds(productIds);
-
-        Map<Long, BigDecimal> minPricesMap = calculateMinPrices(variants);
-
-        List<ProductDTO> productDTOs = productEntities.stream()
-                .map(product -> convertToProductDTO(product, minPricesMap.get(product.getId())))
-                .collect(Collectors.toList());
-
-        PageInfo<ProductDTO> resultPageInfo = new PageInfo<>();
-        resultPageInfo.setPageNum(pageInfo.getPageNum());
-        resultPageInfo.setPageSize(pageInfo.getPageSize());
-        resultPageInfo.setTotal(pageInfo.getTotal());
-        resultPageInfo.setPages(pageInfo.getPages());
-        resultPageInfo.setList(productDTOs);
-        resultPageInfo.setIsFirstPage(pageInfo.isIsFirstPage());
-        resultPageInfo.setIsLastPage(pageInfo.isIsLastPage());
-        resultPageInfo.setHasNextPage(pageInfo.isHasNextPage());
-        resultPageInfo.setHasPreviousPage(pageInfo.isHasPreviousPage());
-        resultPageInfo.setNavigatePages(pageInfo.getNavigatePages());
-        resultPageInfo.setNavigatepageNums(pageInfo.getNavigatepageNums());
-        resultPageInfo.setNavigateFirstPage(pageInfo.getNavigateFirstPage());
-        resultPageInfo.setNavigateLastPage(pageInfo.getNavigateLastPage());
-
-        return resultPageInfo;
+        return new PageInfo<>(productDAO.searchProducts(category, keyword));
     }
 
     @Override
     public List<ProductDTO> getRandomProducts(int size) {
         if (size <= 0)
-            return Collections.emptyList();
-        int maxSize = Math.min(size, 50);
-
-        List<Product> randomProducts = productDAO.findRandomProducts(maxSize);
-
-        if (randomProducts.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        Set<Long> productIds = randomProducts.stream()
-                .map(Product::getId)
-                .collect(Collectors.toSet());
-
-        List<ProductVariant> variants = productDAO.findVariantsByProductIds(productIds);
-        Map<Long, BigDecimal> minPricesMap = calculateMinPrices(variants);
-
-        return randomProducts.stream()
-                .map(product -> convertToProductDTO(product, minPricesMap.get(product.getId())))
-                .collect(Collectors.toList());
+            return emptyList();
+        return productDAO.getRandomProducts(Math.min(size, 20));
     }
 
     @Override
-    public List<CartItemDTO> getCartItem(Long userId) {
-        List<CartItem> cartItems = cartDAO.getCartItemByUserId(userId);
-        List<CartItemDTO> cartItemDTOs = new ArrayList<>();
-
-        if (cartItems == null || cartItems.isEmpty()) return cartItemDTOs;
-
-        for (CartItem cartItem : cartItems) {
-            Long productVariantId = cartItem.getProductVariantId();
-            if (productVariantId == null) {
-                System.err.println("Warning: Cart item ID " + cartItem.getId() + " for user " + userId + " has no product variant ID.");
-                continue;
-            }
-            ProductVariant productVariant = productDAO.getVariantById(productVariantId);
-            if (productVariant == null) {
-                System.err.println("Warning: Product variant ID " + productVariantId + " linked from cart item ID " + cartItem.getId() + " not found.");
-                continue;
-            }
-
-            Long productId = productVariant.getProductId();
-            if (productId == null) {
-                System.err.println("Warning: Product variant ID " + productVariant.getId() + " has no product ID.");
-                continue;
-            }
-
-            Product product = productDAO.getProductById(productId);
-
-            if (product == null) {
-                System.err.println("Warning: Product ID " + productId + " linked from variant ID " + productVariant.getId() + " not found.");
-                continue;
-            }
-
-            CartItemDTO cartItemDTO = new CartItemDTO(cartItem.getId(), product.getName(), product.getCategory(), productVariant, cartItem.getQuantity());
-            cartItemDTOs.add(cartItemDTO);
-        }
-        return cartItemDTOs;
+    public Optional<ProductDetailDTO> getProductDetail(Long productId) {
+        return productDAO.getProductDetailWithVariants(productId);
     }
 
     @Override
-    public void addToCart(Long userId, Long productVariantId, Long quantity) {
-        ProductVariant variant = productDAO.getVariantById(productVariantId);
-        if (variant == null)
-            throw new IllegalArgumentException("无效的商品款式" + productVariantId);
-        if (quantity > variant.getStockQuantity())
-            throw new IllegalArgumentException("库存不足，剩余库存：" + variant.getStockQuantity());
-
-        CartItem cartItem = cartDAO.findCartItemByVariantId(userId, productVariantId);
-
-        if (cartItem == null) {
-            cartDAO.addCardItem(userId, productVariantId, quantity);
-        } else {
-            if (quantity + cartItem.getQuantity() > variant.getStockQuantity())
-                throw new IllegalArgumentException("库存不足，剩余库存：" + variant.getStockQuantity());
-            cartDAO.updateCardItem(cartItem.getId(), cartItem.getQuantity() + quantity);
-        }
+    public List<Product> getProductByOwner(User user) {
+        return productDAO.getProductByOwner(user.getId());
     }
 
     @Override
-    public void updateCart(Long userId, Long cartId, Long variantId, Long quantity) {
-        ProductVariant variant = productDAO.getVariantById(variantId);
-        CartItem cartItem = cartDAO.findCartItemByCartId(cartId);
+    @Transactional
+    public void addProduct(UploadProductDTO newProductDTO, User user) throws Exception {
+        if (newProductDTO == null)
+            throw new IllegalArgumentException("产品数据不能为空。");
+        if (user == null || user.getId() == null)
+            throw new IllegalArgumentException("用户必须已认证且拥有有效的ID。");
+        if (!Objects.equals(user.getRole(), "MERCHANT"))
+            throw new IllegalArgumentException("你没有权限创建商品。");
+        if (newProductDTO.getName() == null || newProductDTO.getName().trim().isEmpty())
+            throw new IllegalArgumentException("产品名称不能为空。");
+        if (newProductDTO.getVariants() == null || newProductDTO.getVariants().isEmpty())
+            throw new IllegalArgumentException("产品必须至少包含一个款式。");
 
-        if (variant == null)
-            throw new IllegalArgumentException("无效的商品款式");
-        if (quantity > variant.getStockQuantity())
-            throw new IllegalArgumentException("库存不足，剩余库存：" + variant.getStockQuantity());
-        if (!Objects.equals(cartItem.getUserId(), userId))
-            throw new IllegalArgumentException("非法操作");
-
-        cartDAO.updateCardItem(cartItem.getId(), quantity);
-    }
-
-    @Override
-    public void removeFromCart(Long userId, Long cartId) {
-        CartItem cartItem = cartDAO.findCartItemByCartId(cartId);
-        if (cartItem == null) throw new IllegalArgumentException("无效的购物车项");
-        if (!Objects.equals(cartItem.getUserId(), userId)) throw new IllegalArgumentException("非法操作");
-
-        cartDAO.removeCardItem(userId, cartId);
-    }
-
-    @Override
-    public void clearCart(Long userId) {
-        cartDAO.clearCart(userId);
-    }
-
-    /**
-     * 辅助方法：将 Product Entity 转换为用于列表展示的 ProductDTO
-     */
-    private ProductDTO convertToProductDTO(Product product, BigDecimal price) {
-        ProductDTO dto = new ProductDTO();
-        dto.setId(product.getId());
-        dto.setName(product.getName());
-        dto.setCategory(product.getCategory());
-        dto.setPrice(price);
-        // TODO: 图片
-
-        return dto;
-    }
-
-    /**
-     * 辅助方法：计算每个商品的最低价格。
-     *
-     * @param variants 变体列表
-     * @return Map，键是 productId，值是对应的最低价格
-     */
-    private Map<Long, BigDecimal> calculateMinPrices(List<ProductVariant> variants) {
-        if (variants == null || variants.isEmpty()) {
-            return Collections.emptyMap();
+        Set<String> variantColorsInUse = new HashSet<>();
+        for (UploadProductDTO.UploadVariantDTO variantDTO : newProductDTO.getVariants()) {
+            if (variantDTO.getStockQuantity() == null || variantDTO.getStockQuantity() < 0)
+                throw new IllegalArgumentException("库存数量不能为负数。");
+            if (variantDTO.getPrice() == null || variantDTO.getPrice().compareTo(BigDecimal.ZERO) < 0)
+                throw new IllegalArgumentException("款式价格不能为负数。");
+            if (variantDTO.getColor() != null && !variantDTO.getColor().trim().isEmpty())
+                variantColorsInUse.add(variantDTO.getColor().trim());
+        }
+        if (newProductDTO.getColorImages() != null) {
+            Set<String> uploadedColors = newProductDTO.getColorImages().keySet();
+            for (String uploadedColor : uploadedColors)
+                if (!variantColorsInUse.contains(uploadedColor))
+                    logger.warn("警告: 上传了颜色 '{}' 的图片，但在任何变体中未使用此颜色。", uploadedColor);
+            for (String variantColor : variantColorsInUse)
+                if (!uploadedColors.contains(variantColor))
+                    logger.warn("警告: 变体使用了颜色 '{}' 但未上传对应的图片。", variantColor);
         }
 
-        return variants.stream()
-                .filter(variant -> variant.getPrice() != null)
-                .collect(Collectors.groupingBy(
-                        ProductVariant::getProductId,
-                        Collectors.collectingAndThen(
-                                Collectors.minBy(java.util.Comparator.comparing(ProductVariant::getPrice)),
-                                optionalVariant -> optionalVariant.map(ProductVariant::getPrice).orElse(null)
-                        )
-                ));
-    }
-
-    private <T> List<T> parseJsonList(String jsonString, TypeReference<List<T>> typeRef) {
-        if (jsonString == null || jsonString.trim().isEmpty()) {
-            return Collections.emptyList();
-        }
+        Map<String, ImageServiceImpl.TempFileUploadResult> uploadedImageResults = new HashMap<>();
+        List<Path> successfulTempFiles = new ArrayList<>();
         try {
-            return objectMapper.readValue(jsonString, typeRef);
-        } catch (JsonProcessingException e) {
-            System.err.println("解析JSON发送错误: " + jsonString);
-            e.printStackTrace();
-            return Collections.emptyList();
+            if (newProductDTO.getColorImages() != null && !newProductDTO.getColorImages().isEmpty()) {
+                for (Map.Entry<String, MultipartFile> entry : newProductDTO.getColorImages().entrySet()) {
+                    String color = entry.getKey();
+                    MultipartFile file = entry.getValue();
+                    if (file != null && !file.isEmpty()) {
+                        ImageServiceImpl.TempFileUploadResult result = imageService.saveFileToTemp(file, ImageServiceImpl.PRODUCTS_SUBDIR_NAME);
+                        uploadedImageResults.put(color, result);
+                        successfulTempFiles.add(result.tempPath());
+                    }
+                }
+            }
+        } catch (IOException | IllegalArgumentException e) {
+            logger.error("处理上传图片失败，立即清理已暂存文件。", e);
+            for (Path tempFile : successfulTempFiles) {
+                try {
+                    imageService.deleteTempFile(tempFile);
+                } catch (Exception cleanupEx) {
+                    logger.error("清理临时文件 {} 失败。", tempFile, cleanupEx);
+                }
+            }
+            throw new Exception("图片上传预处理失败。", e);
+        }
+
+        try {
+            Product product = new Product();
+            product.setOwnerId(user.getId());
+            product.setName(newProductDTO.getName());
+            product.setDescription(newProductDTO.getDescription());
+            product.setCategory(newProductDTO.getCategory());
+            product.setFeatures(newProductDTO.getFeaturesJson());
+            product.setSpecifications(newProductDTO.getSpecificationsJson());
+            productDAO.insertProduct(product);
+
+            Long productId = product.getId();
+            if (productId == null)
+                throw new RuntimeException("Failed to get generated product ID after insertion.");
+            List<ProductVariant> variantsToSave = new ArrayList<>();
+            if (newProductDTO.getVariants() != null) {
+                for (UploadProductDTO.UploadVariantDTO variantDTO : newProductDTO.getVariants()) {
+                    ProductVariant variant = new ProductVariant();
+                    variant.setProductId(productId);
+                    variant.setColor(variantDTO.getColor());
+                    variant.setSize(variantDTO.getSize());
+                    variant.setPrice(variantDTO.getPrice());
+                    variant.setStockQuantity(variantDTO.getStockQuantity());
+                    ImageServiceImpl.TempFileUploadResult imageResult = uploadedImageResults.get(variantDTO.getColor());
+
+                    if (imageResult != null)
+                        variant.setImage(imageResult.finalDbPath());
+                    else
+                        variant.setImage(null);
+
+                    variantsToSave.add(variant);
+                }
+            }
+            if (!variantsToSave.isEmpty()) {
+                logger.info("开始保存产品变体: '{}' ", variantsToSave);
+                productDAO.insertProductVariants(variantsToSave);
+            }
+
+            if (!uploadedImageResults.isEmpty()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        logger.info("事务提交成功，开始移动临时文件。");
+                        for (ImageServiceImpl.TempFileUploadResult result : uploadedImageResults.values()) {
+                            try {
+                                imageService.moveFileFromTempToFinal(result.tempPath(), result.finalDbPath());
+                            } catch (IOException e) {
+                                logger.error("严重错误: 事务提交后移动文件 {} 到 {} 失败！DB记录已存在，文件丢失！", result.tempPath(), result.finalDbPath(), e);
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void afterCompletion(int status) {
+                        if (status == TransactionSynchronization.STATUS_ROLLED_BACK) {
+                            logger.warn("事务回滚，执行临时文件清理。");
+                            for (ImageServiceImpl.TempFileUploadResult result : uploadedImageResults.values()) {
+                                try {
+                                    imageService.deleteTempFile(result.tempPath());
+                                } catch (Exception cleanupEx) {
+                                    logger.error("回滚后清理临时文件 {} 失败。", result.tempPath(), cleanupEx);
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            logger.info("产品及其变体数据库记录已成功准备，等待事务提交并移动文件。");
+        } catch (Exception dbException) {
+            logger.error("数据库操作失败，事务将回滚，开始清理已暂存文件。", dbException);
+            for (ImageServiceImpl.TempFileUploadResult result : uploadedImageResults.values()) {
+                try {
+                    imageService.deleteTempFile(result.tempPath());
+                } catch (Exception cleanupEx) {
+                    logger.error("清理临时文件 {} 失败。", result.tempPath(), cleanupEx);
+                }
+            }
+            throw dbException;
+        }
+    }
+
+    @Override
+    public Optional<ProductEditResponseDTO> getProductForEdit(Long productId) {
+        Optional<Product> productOpt = productDAO.findProductById(productId);
+        if (productOpt.isEmpty())
+            return Optional.empty();
+
+        Product product = productOpt.get();
+        List<ProductVariant> variants = productDAO.getVariantsByProductId(productId);
+        List<ProductEditResponseDTO.VariantForEditDTO> variantDtos = variants.stream()
+                .map(pv -> new ProductEditResponseDTO.VariantForEditDTO(
+                        pv.getId(), pv.getColor(), pv.getSize(), pv.getPrice(), pv.getStockQuantity()
+                ))
+                .collect(Collectors.toList());
+
+        Map<String, String> colorImageUrls = new HashMap<>();
+        Map<String, ProductVariant> variantsByColor = new HashMap<>();
+        for (ProductVariant pv : variants) {
+            if (pv.getImage() != null && !pv.getImage().trim().isEmpty())
+                variantsByColor.putIfAbsent(pv.getColor(), pv);
+        }
+
+        for(Map.Entry<String, ProductVariant> entry : variantsByColor.entrySet()){
+            try {
+                String imageUrl = imageService.generateImageUrl(entry.getValue().getImage());
+                colorImageUrls.put(entry.getKey(), imageUrl);
+            } catch (Exception e) {
+                logger.error("生成颜色 '{}' 的图片URL失败: {}", entry.getKey(), entry.getValue().getImage(), e);
+            }
+        }
+
+        ProductEditResponseDTO responseDTO = new ProductEditResponseDTO(
+                product.getId(),
+                product.getName(),
+                product.getCategory(),
+                product.getDescription(),
+                product.getFeatures(),
+                product.getSpecifications(),
+                variantDtos,
+                colorImageUrls,
+                product.getStatus()
+        );
+        return Optional.of(responseDTO);
+    }
+
+    @Override
+    @Transactional
+    public void editProduct(Long productId, UploadProductDTO updatedProductDTO, User user) throws Exception {
+        if (productId == null || updatedProductDTO == null)
+            throw new IllegalArgumentException("商品ID和更新数据不能为空。");
+        if (user == null || user.getId() == null)
+            throw new IllegalArgumentException("用户必须已认证且拥有有效的ID。");
+
+        Optional<Product> existingProductOpt = productDAO.findProductById(productId);
+        if (existingProductOpt.isEmpty())
+            throw new NoSuchElementException("商品不存在，ID: " + productId);
+
+        Product existingProduct = existingProductOpt.get();
+        if (!existingProduct.getOwnerId().equals(user.getId()))
+            throw new IllegalArgumentException("你没有权限编辑此商品。");
+        if (!Objects.equals(user.getRole(), "MERCHANT"))
+            throw new IllegalArgumentException("你没有权限编辑商品。");
+        if (updatedProductDTO.getName() == null || updatedProductDTO.getName().trim().isEmpty())
+            throw new IllegalArgumentException("产品名称不能为空。");
+        if (updatedProductDTO.getVariants() == null || updatedProductDTO.getVariants().isEmpty())
+            throw new IllegalArgumentException("产品必须至少包含一个款式。");
+
+        Set<String> variantColorsInUse = new HashSet<>();
+        for (UploadProductDTO.UploadVariantDTO variantDTO : updatedProductDTO.getVariants()) {
+            if (variantDTO.getStockQuantity() == null || variantDTO.getStockQuantity() < 0)
+                throw new IllegalArgumentException("库存数量不能为负数。");
+            if (variantDTO.getPrice() == null || variantDTO.getPrice().compareTo(BigDecimal.ZERO) < 0)
+                throw new IllegalArgumentException("款式价格不能为负数。");
+            if (variantDTO.getColor() != null && !variantDTO.getColor().trim().isEmpty())
+                variantColorsInUse.add(variantDTO.getColor().trim());
+        }
+
+        if (updatedProductDTO.getColorImages() != null) {
+            Set<String> uploadedColors = updatedProductDTO.getColorImages().keySet();
+            for (String uploadedColor : uploadedColors)
+                if (!variantColorsInUse.contains(uploadedColor))
+                    logger.warn("警告: 编辑时上传了颜色 '{}' 的图片，但在任何当前提交的变体中未使用此颜色。", uploadedColor);
+        }
+
+        List<ProductVariant> currentVariants = productDAO.getVariantsByProductId(productId);
+        Map<String, String> currentColorImagePaths = currentVariants.stream()
+                .filter(pv -> pv.getImage() != null && !pv.getImage().trim().isEmpty())
+                .collect(Collectors.toMap(ProductVariant::getColor, ProductVariant::getImage, (existing, replacement) -> existing)); // Handle potential duplicate colors by keeping the first one
+
+        List<String> deletedFilePaths = new ArrayList<>();
+        if (updatedProductDTO.getDeletedColors() != null && !updatedProductDTO.getDeletedColors().isEmpty()) {
+            logger.info("开始处理商品 {} 的图片删除指令，颜色列表: {}", productId, updatedProductDTO.getDeletedColors());
+            for (String colorToDelete : updatedProductDTO.getDeletedColors()) {
+                String imagePathToDelete = currentColorImagePaths.get(colorToDelete);
+                if (imagePathToDelete != null) {
+                    deletedFilePaths.add(imagePathToDelete);
+                    currentColorImagePaths.remove(colorToDelete);
+                }
+            }
+
+            productDAO.clearVariantImagesByProductAndColors(productId, updatedProductDTO.getDeletedColors());
+            logger.info("已在数据库中清空商品 {} 对应颜色图片的引用。", productId);
+        }
+
+        Map<String, ImageServiceImpl.TempFileUploadResult> uploadedImageResults = new HashMap<>();
+        List<Path> successfulTempFiles = new ArrayList<>();
+        Set<String> colorsWithNewImages = new HashSet<>();
+
+        try {
+            if (updatedProductDTO.getColorImages() != null && !updatedProductDTO.getColorImages().isEmpty()) {
+                logger.info("开始处理商品 {} 的图片上传。", productId);
+                for (Map.Entry<String, MultipartFile> entry : updatedProductDTO.getColorImages().entrySet()) {
+                    String color = entry.getKey();
+                    MultipartFile file = entry.getValue();
+                    if (file != null && !file.isEmpty()) {
+                        ImageServiceImpl.TempFileUploadResult result = imageService.saveFileToTemp(file, ImageServiceImpl.PRODUCTS_SUBDIR_NAME);
+                        uploadedImageResults.put(color, result);
+                        successfulTempFiles.add(result.tempPath());
+                        colorsWithNewImages.add(color);
+                    }
+                }
+                logger.info("已完成商品 {} 图片上传至临时目录，共 {} 张。", productId, uploadedImageResults.size());
+            }
+        } catch (IOException | IllegalArgumentException e) {
+            logger.error("处理上传图片失败，立即清理已暂存文件。", e);
+            for (Path tempFile : successfulTempFiles) {
+                try {
+                    imageService.deleteTempFile(tempFile);
+                } catch (Exception cleanupEx) {
+                    logger.error("清理临时文件 {} 失败。", tempFile, cleanupEx);
+                }
+            }
+            throw new Exception("图片上传预处理失败。", e);
+        }
+
+        try {
+            Product productToUpdate = new Product();
+            productToUpdate.setId(productId);
+            productToUpdate.setName(updatedProductDTO.getName());
+            productToUpdate.setDescription(updatedProductDTO.getDescription());
+            productToUpdate.setCategory(updatedProductDTO.getCategory());
+            productToUpdate.setFeatures(updatedProductDTO.getFeaturesJson());
+            productToUpdate.setSpecifications(updatedProductDTO.getSpecificationsJson());
+
+            productDAO.updateProduct(productToUpdate);
+            logger.info("商品 {} 基本信息更新成功。", productId);
+
+            List<UploadProductDTO.UploadVariantDTO> incomingVariants = updatedProductDTO.getVariants();
+            Set<Long> incomingExistingVariantIds = incomingVariants.stream()
+                    .filter(v -> v.getId() != null && !v.getId().trim().isEmpty())
+                    .map(v -> {
+                        try {
+                            return Long.parseLong(v.getId());
+                        } catch (NumberFormatException e) {
+                            logger.error("Invalid variant ID received: {}", v.getId(), e);
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            List<Long> currentVariantIds = productDAO.getVariantIdsByProductId(productId);
+            List<Long> variantIdsToDelete = currentVariantIds.stream()
+                    .filter(currentId -> !incomingExistingVariantIds.contains(currentId))
+                    .collect(Collectors.toList());
+
+            if (!variantIdsToDelete.isEmpty()) {
+                logger.info("开始删除商品 {} 的变体，IDs: {}", productId, variantIdsToDelete);
+                productDAO.deleteVariantsByIds(variantIdsToDelete);
+                logger.info("商品 {} 的变体删除成功。", productId);
+            }
+
+            for (UploadProductDTO.UploadVariantDTO variantDTO : incomingVariants) {
+                ProductVariant variant = new ProductVariant();
+                variant.setProductId(productId);
+                variant.setColor(variantDTO.getColor());
+                variant.setSize(variantDTO.getSize());
+                variant.setPrice(variantDTO.getPrice());
+                variant.setStockQuantity(variantDTO.getStockQuantity());
+
+                if (variantDTO.getId() != null && !variantDTO.getId().trim().isEmpty()) {
+                    try {
+                        variant.setId(Long.parseLong(variantDTO.getId()));
+                    } catch (NumberFormatException e) {
+                        logger.error("Invalid variant ID during upsert prep: {}", variantDTO.getId(), e);
+                        logger.warn("Failed to parse variant ID {}, treating as new variant insert.", variantDTO.getId(), e);
+                        variant.setId(null);
+                    }
+                }
+
+                if (colorsWithNewImages.contains(variantDTO.getColor())) {
+                    ImageServiceImpl.TempFileUploadResult result = uploadedImageResults.get(variantDTO.getColor());
+                    if (result != null) {
+                        variant.setImage(result.finalDbPath());
+                    } else {
+                        logger.error("Color '{}' in colorsWithNewImages but no result in uploadedImageResults for product {}.", variantDTO.getColor(), productId);
+                        String currentImagePath = null;
+                        if (variant.getId() != null) {
+                            currentImagePath = currentVariants.stream()
+                                    .filter(v -> v.getId().equals(variant.getId()))
+                                    .findFirst()
+                                    .map(ProductVariant::getImage)
+                                    .orElse(null);
+                        }
+                        variant.setImage(currentImagePath);
+                    }
+                } else {
+                    if (variant.getId() != null) {
+                        currentVariants.stream()
+                                .filter(v -> v.getId().equals(variant.getId()))
+                                .findFirst()
+                                .map(ProductVariant::getImage);
+                    }
+                    if (colorsWithNewImages.contains(variantDTO.getColor())) {
+                        ImageServiceImpl.TempFileUploadResult result = uploadedImageResults.get(variantDTO.getColor());
+                        if (result != null) {
+                            variant.setImage(result.finalDbPath());
+                        }
+                    }
+                }
+            }
+
+            List<ProductVariant> currentVariantsWithData = productDAO.getVariantsByProductId(productId);
+            List<ProductVariant> variantsToInsert = new ArrayList<>();
+            List<ProductVariant> variantsToUpdate = new ArrayList<>();
+            Set<Long> currentVariantIdsSet = currentVariantsWithData.stream().map(ProductVariant::getId).collect(Collectors.toSet());
+
+            for (UploadProductDTO.UploadVariantDTO incomingVariantDTO : incomingVariants) {
+                ProductVariant pv = new ProductVariant();
+                pv.setProductId(productId);
+                pv.setColor(incomingVariantDTO.getColor());
+                pv.setSize(incomingVariantDTO.getSize());
+                pv.setPrice(incomingVariantDTO.getPrice());
+                pv.setStockQuantity(incomingVariantDTO.getStockQuantity());
+
+                Long incomingId = null;
+                if (incomingVariantDTO.getId() != null && !incomingVariantDTO.getId().trim().isEmpty()) {
+                    try {
+                        incomingId = Long.parseLong(incomingVariantDTO.getId());
+                    } catch (NumberFormatException e) {
+                        logger.error("Invalid variant ID during processing: {}", incomingVariantDTO.getId(), e);
+                    }
+                }
+
+                if (incomingId != null && currentVariantIdsSet.contains(incomingId)) {
+                    pv.setId(incomingId);
+                    if (colorsWithNewImages.contains(pv.getColor())) {
+                        ImageServiceImpl.TempFileUploadResult result = uploadedImageResults.get(pv.getColor());
+                        if (result != null) {
+                            pv.setImage(result.finalDbPath());
+                        } else {
+                            Long finalIncomingId1 = incomingId;
+                            String oldImagePath = currentVariantsWithData.stream()
+                                    .filter(v -> v.getId().equals(finalIncomingId1))
+                                    .findFirst().map(ProductVariant::getImage).orElse(null);
+                            pv.setImage(oldImagePath);
+                            logger.warn("Logic mismatch: Color '{}' in colorsWithNewImages but no result in uploadedImageResults. Keeping old image path {}.", pv.getColor(), oldImagePath);
+                        }
+                    } else {
+                        Long finalIncomingId = incomingId;
+                        String oldImagePath = currentVariantsWithData.stream()
+                                .filter(v -> v.getId().equals(finalIncomingId))
+                                .findFirst().map(ProductVariant::getImage).orElse(null);
+                        pv.setImage(oldImagePath);
+                    }
+                    variantsToUpdate.add(pv);
+                } else {
+                    pv.setId(null);
+                    if (colorsWithNewImages.contains(pv.getColor())) {
+                        ImageServiceImpl.TempFileUploadResult result = uploadedImageResults.get(pv.getColor());
+                        if (result != null) {
+                            pv.setImage(result.finalDbPath());
+                        } else {
+                            logger.error("Logic error: New variant with color '{}' in colorsWithNewImages but no result in uploadedImageResults for product {}.", pv.getColor(), productId);
+                            pv.setImage(null);
+                        }
+                    } else {
+                        pv.setImage(null);
+                    }
+                    variantsToInsert.add(pv);
+                }
+            }
+
+            if (!variantsToUpdate.isEmpty()) {
+                logger.info("开始更新商品 {} 的变体，共 {} 条。", productId, variantsToUpdate.size());
+                productDAO.updateProductVariants(variantsToUpdate);
+                logger.info("商品 {} 的变体更新成功。", productId);
+            }
+            if (!variantsToInsert.isEmpty()) {
+                logger.info("开始插入商品 {} 的新变体，共 {} 条。", productId, variantsToInsert.size());
+                productDAO.insertProductVariants(variantsToInsert);
+                logger.info("商品 {} 的新变体插入成功。", productId);
+            }
+
+
+            if (!uploadedImageResults.isEmpty() || !deletedFilePaths.isEmpty()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        logger.info("事务提交成功，开始移动或删除图片文件。");
+                        for (ImageServiceImpl.TempFileUploadResult result : uploadedImageResults.values()) {
+                            try {
+                                imageService.moveFileFromTempToFinal(result.tempPath(), result.finalDbPath());
+                            } catch (IOException e) {
+                                logger.error("严重错误: 事务提交后移动文件 {} 到 {} 失败！DB记录已存在，文件丢失！", result.tempPath(), result.finalDbPath(), e);
+                            }
+                        }
+                        for (String filePath : deletedFilePaths) {
+                            try {
+                                imageService.deleteFile(filePath);
+                                logger.info("成功删除文件: {}", filePath);
+                            } catch (Exception e) {
+                                logger.error("事务提交后删除旧文件 {} 失败。", filePath, e);
+                            }
+                        }
+                        logger.info("图片文件后处理完成（移动/删除）。");
+                    }
+
+                    @Override
+                    public void afterCompletion(int status) {
+                        if (status == TransactionSynchronization.STATUS_ROLLED_BACK) {
+                            logger.warn("事务回滚，执行临时文件清理。");
+                            for (ImageServiceImpl.TempFileUploadResult result : uploadedImageResults.values()) {
+                                try {
+                                    imageService.deleteTempFile(result.tempPath());
+                                } catch (Exception cleanupEx) {
+                                    logger.error("回滚后清理临时文件 {} 失败。", result.tempPath(), cleanupEx);
+                                }
+                            }
+                            logger.info("事务回滚后临时文件清理完成。");
+                        }
+                    }
+                });
+            }
+            logger.info("商品 {} 及其变体数据库记录已成功更新，等待事务提交并处理文件。", productId);
+        } catch (Exception dbException) {
+            logger.error("数据库操作失败，事务将回滚，开始清理已暂存文件。", dbException);
+            for (ImageServiceImpl.TempFileUploadResult result : uploadedImageResults.values()) {
+                try {
+                    imageService.deleteTempFile(result.tempPath());
+                } catch (Exception cleanupEx) {
+                    logger.error("清理临时文件 {} 失败。", result.tempPath(), cleanupEx);
+                }
+            }
+            throw dbException;
         }
     }
 }

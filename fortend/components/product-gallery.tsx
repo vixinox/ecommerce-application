@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import Image from "next/image"
 import { Expand, X } from "lucide-react"
@@ -10,15 +9,12 @@ import { AnimatePresence, motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
+import { API_URL } from "@/lib/api";
 
-interface ProductGalleryProps {
-  images: string[]
-}
-
-export function ProductGallery({ images }: ProductGalleryProps) {
+export function ProductGallery({images}: { images: string[] }) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isZoomed, setIsZoomed] = useState(false)
-  const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 })
+  const [zoomPosition, setZoomPosition] = useState({x: 0, y: 0})
   const [isFullscreen, setIsFullscreen] = useState(false)
 
   const handleZoom = () => {
@@ -28,11 +24,11 @@ export function ProductGallery({ images }: ProductGalleryProps) {
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isZoomed) return
 
-    const { left, top, width, height } = e.currentTarget.getBoundingClientRect()
+    const {left, top, width, height} = e.currentTarget.getBoundingClientRect()
     const x = ((e.clientX - left) / width) * 100
     const y = ((e.clientY - top) / height) * 100
 
-    setZoomPosition({ x, y })
+    setZoomPosition({x, y})
   }
 
   const handleFullscreen = () => {
@@ -58,15 +54,15 @@ export function ProductGallery({ images }: ProductGalleryProps) {
           onMouseLeave={() => isZoomed && setIsZoomed(false)}
         >
           <Image
-            src={images[currentIndex] || "/placeholder.svg"}
+            src={`${API_URL}/api/image${images[currentIndex]}` || "/placeholder.svg"}
             alt="Product image"
             fill
             className={cn("object-cover transition-transform", isZoomed && "scale-150")}
             style={
               isZoomed
                 ? {
-                    transformOrigin: `${zoomPosition.x}% ${zoomPosition.y}%`,
-                  }
+                  transformOrigin: `${zoomPosition.x}% ${zoomPosition.y}%`,
+                }
                 : undefined
             }
           />
@@ -79,12 +75,12 @@ export function ProductGallery({ images }: ProductGalleryProps) {
               handleFullscreen()
             }}
           >
-            <Expand className="h-5 w-5" />
+            <Expand className="h-5 w-5"/>
             <span className="sr-only">View fullscreen</span>
           </Button>
         </div>
 
-        <div className="flex gap-2 overflow-auto pb-1">
+        <div className="flex gap-2 pb-1">
           {images.map((image, index) => (
             <button
               key={index}
@@ -95,7 +91,7 @@ export function ProductGallery({ images }: ProductGalleryProps) {
               onClick={() => handleThumbnailClick(index)}
             >
               <Image
-                src={image || "/placeholder.svg"}
+                src={`${API_URL}/api/image${image}` || "/placeholder.svg"}
                 alt={`Product thumbnail ${index + 1}`}
                 fill
                 className="object-cover"
@@ -108,9 +104,9 @@ export function ProductGallery({ images }: ProductGalleryProps) {
       <AnimatePresence>
         {isFullscreen && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{opacity: 0}}
+            animate={{opacity: 1}}
+            exit={{opacity: 0}}
             className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
           >
             <Button
@@ -119,7 +115,7 @@ export function ProductGallery({ images }: ProductGalleryProps) {
               className="absolute right-4 top-4 z-50 rounded-full bg-background/80 backdrop-blur-sm"
               onClick={handleFullscreen}
             >
-              <X className="h-6 w-6" />
+              <X className="h-6 w-6"/>
               <span className="sr-only">Close fullscreen</span>
             </Button>
 
@@ -129,7 +125,7 @@ export function ProductGallery({ images }: ProductGalleryProps) {
                   <CarouselItem key={index}>
                     <div className="relative aspect-square overflow-hidden rounded-lg">
                       <Image
-                        src={image || "/placeholder.svg"}
+                        src={`${API_URL}/api/image${images[currentIndex]}` || "/placeholder.svg"}
                         alt={`Product image ${index + 1}`}
                         fill
                         className="object-contain"
@@ -138,8 +134,8 @@ export function ProductGallery({ images }: ProductGalleryProps) {
                   </CarouselItem>
                 ))}
               </CarouselContent>
-              <CarouselPrevious />
-              <CarouselNext />
+              <CarouselPrevious/>
+              <CarouselNext/>
             </Carousel>
 
             <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2">

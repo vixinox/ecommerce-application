@@ -1,32 +1,25 @@
 "use client";
-
 import * as React from "react";
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CreditCard } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, } from "@/components/ui/table";
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent, } from "@/components/ui/chart";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from "recharts";
 import { useAuth } from "@/components/auth-provider";
 import { API_URL } from "@/lib/api";
 import { toast } from "sonner";
@@ -67,15 +60,6 @@ const monthlySpendChartConfig = {
   }
 } satisfies ChartConfig;
 
-const categorySpendChartConfig = {
-  amount: {
-    label: "消费金额",
-  },
-  category: {
-    label: "分类"
-  }
-} satisfies ChartConfig;
-
 const PIE_CHART_COLORS = [
   "hsl(var(--chart-1))",
   "hsl(var(--chart-2))",
@@ -85,9 +69,8 @@ const PIE_CHART_COLORS = [
   "hsl(var(--chart-6))",
 ];
 
-
 export default function SpendingReportDashboard() {
-  const { token } = useAuth();
+  const {token} = useAuth();
   const [reportData, setReportData] = useState<SpendingReportDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -98,7 +81,6 @@ export default function SpendingReportDashboard() {
         setLoading(false);
         return;
       }
-
       setLoading(true);
       setError(null);
 
@@ -109,51 +91,74 @@ export default function SpendingReportDashboard() {
         });
 
         if (!response.ok) {
-          toast.error(response.text());
+          const errorText = await response.text();
+          try {
+            const errorJson = JSON.parse(errorText);
+            toast.error(errorJson.message || response.statusText);
+            setError(errorJson.message || `Error: ${response.statusText}`);
+          } catch {
+            toast.error(errorText || response.statusText);
+            setError(errorText || `Error: ${response.statusText}`);
+          }
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-
         const data: SpendingReportDTO = await response.json();
         setReportData(data);
-
       } catch (err: any) {
         console.error("Error fetching spending report:", err);
-        setError(err.message || "An error occurred while fetching the report.");
       } finally {
         setLoading(false);
       }
     };
 
     fetchReport();
-  }, [token]); // effect 依赖于 token
+  }, []);
+  const monthlySpendDataForChart = useMemo(() => {
+    const today = new Date();
+    const last12MonthsData: TimeBasedSpend[] = [];
+    const fetchedDataMap = reportData?.monthlySpendTrend
+      ? new Map(reportData.monthlySpendTrend.map(item => [item.period, item]))
+      : new Map();
 
-  // 判断是否有实际的消费数据（不仅仅是DTO结构存在，而是里面的列表是否有数据）
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const period = `${year}-${month}`;
+
+      const dataPoint = fetchedDataMap.get(period);
+
+      last12MonthsData.push({
+        period: period,
+        amount: dataPoint ? dataPoint.amount : 0,
+      });
+    }
+    return last12MonthsData;
+  }, [reportData?.monthlySpendTrend]);
+
+
   const hasConsumptionData = useMemo(() => {
     return reportData &&
-      (reportData.totalSpend > 0 ||
-        (reportData.monthlySpendTrend && reportData.monthlySpendTrend.length > 0) ||
-        (reportData.categorySpend && reportData.categorySpend.length > 0) ||
-        (reportData.topItemSpend && reportData.topItemSpend.length > 0));
+           (reportData.totalSpend > 0 ||
+            (reportData.monthlySpendTrend && reportData.monthlySpendTrend.length > 0) ||
+            (reportData.categorySpend && reportData.categorySpend.length > 0) ||
+            (reportData.topItemSpend && reportData.topItemSpend.length > 0));
   }, [reportData]);
 
-
-  // Helper function to format currency
   const formatCurrency = (amount: number) => {
-    // 你可以根据需要调整本地化和货币符号
     return new Intl.NumberFormat('zh-CN', {
       style: 'currency',
-      currency: 'CNY', // 或者 USD, EUR 等
+      currency: 'CNY',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount);
   };
 
-  // Helper function to format month string for display
   const formatMonth = (period: string) => {
     try {
-      // period is like "YYYY-MM"
       const [year, month] = period.split('-');
-      const date = new Date(parseInt(year), parseInt(month) - 1, 1); // Month is 0-indexed
-      return date.toLocaleDateString('zh-CN', { month: 'short', year: '2-digit' }); // 例如 "1月23"
+      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+      return date.toLocaleDateString('zh-CN', {month: 'short', year: '2-digit'});
     } catch (e) {
       return period;
     }
@@ -161,31 +166,41 @@ export default function SpendingReportDashboard() {
 
   if (loading) {
     return (
-      <div className="flex h-[400px] flex-col items-center justify-center rounded-md border border-dashed p-8 text-center">
-        <Progress value={50} className="w-1/2" />
-        <p className="mt-4 text-sm text-muted-foreground">正在加载消费报告...</p>
-      </div>
+      <Card className="flex h-[400px] flex-col items-center justify-center text-center">
+        <CardHeader>
+          <CardTitle>加载中...</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center w-full px-8">
+          <Progress value={null} className="w-full max-w-sm"/>
+          <p className="mt-4 text-sm text-muted-foreground">正在加载消费报告...</p>
+        </CardContent>
+      </Card>
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-[400px] flex-col items-center justify-center rounded-md border border-dashed p-8 text-center text-destructive">
-        <p className="text-lg font-semibold">加载失败</p>
-        <p className="mb-4 mt-2 text-sm">{error}</p>
-        <p className="text-xs text-muted-foreground">请稍后再试。</p>
-      </div>
+      <Card className="flex h-[400px] flex-col items-center justify-center text-center border-destructive">
+        <CardHeader>
+          <CardTitle className="text-destructive">加载失败</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center w-full px-8">
+          <p className="mb-4 mt-2 text-sm text-destructive">{error}</p>
+          <p className="text-xs text-muted-foreground">请稍后再试。</p>
+        </CardContent>
+      </Card>
     );
   }
 
   if (!hasConsumptionData) {
     return (
-      <div className="flex h-[400px] flex-col items-center justify-center rounded-md border border-dashed p-8 text-center">
+      <div
+        className="flex h-[400px] flex-col items-center justify-center rounded-md border border-dashed p-8 text-center">
         <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
-          <CreditCard className="h-10 w-10 text-muted-foreground" />
+          <CreditCard className="h-10 w-10 text-muted-foreground"/>
           <h3 className="mt-4 text-lg font-semibold">没有消费记录</h3>
           <p className="mb-4 mt-2 text-sm text-muted-foreground">
-            你还没有消费记录
+            您还没有消费记录。完成一笔订单后，您的消费报告将在此显示。
           </p>
         </div>
       </div>
@@ -202,60 +217,63 @@ export default function SpendingReportDashboard() {
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="flex flex-col items-center p-4 border rounded-md">
             <span className="text-sm text-muted-foreground">总消费金额</span>
-            <span className="text-2xl font-bold mt-1">{formatCurrency(reportData.totalSpend ?? 0)}</span>
+            <span className="text-2xl font-bold mt-1">{formatCurrency(reportData?.totalSpend ?? 0)}</span>
           </div>
           <div className="flex flex-col items-center p-4 border rounded-md">
             <span className="text-sm text-muted-foreground">总订单数</span>
-            <span className="text-2xl font-bold mt-1">{reportData.totalOrders ?? 0}</span>
+            <span className="text-2xl font-bold mt-1">{reportData?.totalOrders ?? 0}</span>
           </div>
           <div className="flex flex-col items-center p-4 border rounded-md">
             <span className="text-sm text-muted-foreground">平均单笔金额</span>
-            <span className="text-2xl font-bold mt-1">{formatCurrency(reportData.averageOrderValue ?? 0)}</span>
+            <span className="text-2xl font-bold mt-1">{formatCurrency(reportData?.averageOrderValue ?? 0)}</span>
           </div>
         </CardContent>
       </Card>
 
-      <Separator />
+      <Separator/>
 
-      {reportData.monthlySpendTrend && reportData.monthlySpendTrend.length > 0 && (
+      {monthlySpendDataForChart.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>月消费趋势</CardTitle>
-            <CardDescription>显示您按月的消费金额变化。</CardDescription>
+            <CardDescription>显示您最近12个月的消费金额变化。</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={monthlySpendChartConfig} className="aspect-auto h-[300px] w-full">
-              <BarChart data={reportData.monthlySpendTrend}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="period" tickLine={false} axisLine={false} tickMargin={8}
-                       tickFormatter={(value) => formatMonth(value)}
+              <BarChart data={monthlySpendDataForChart}>
+                <CartesianGrid vertical={false}/>
+                <XAxis
+                  dataKey="period"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  tickFormatter={(value) => formatMonth(value)}
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
                   tickMargin={8}
-                  tickFormatter={(value) => formatCurrency(value)}
+                  tickFormatter={(value: number) => formatCurrency(value)}
                 />
                 <ChartTooltip
                   cursor={false}
                   content={
                     <ChartTooltipContent
                       labelFormatter={(value) => formatMonth(value)}
-                      formatter={(value: number, name: string) => [formatCurrency(value), monthlySpendChartConfig.amount.label]}
                       className="w-[150px]"
                     />
                   }
                 />
-                <Bar dataKey="amount" fill="var(--color-amount)" radius={4} />
+                <Bar dataKey="amount" fill="var(--color-amount)" radius={4}/>
               </BarChart>
             </ChartContainer>
           </CardContent>
         </Card>
       )}
 
-      <Separator />
+      <Separator/>
 
-      {reportData.categorySpend && reportData.categorySpend.length > 0 && (
+      {reportData?.categorySpend && reportData.categorySpend.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>消费分类构成</CardTitle>
@@ -274,32 +292,32 @@ export default function SpendingReportDashboard() {
                   fill="#8884d8"
                   label={(entry) => entry.category}
                 >
-                  {reportData.categorySpend.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={PIE_CHART_COLORS[index % PIE_CHART_COLORS.length]} />
+                  {reportData.categorySpend.map((_entry, index) => (
+                    <Cell key={`cell-${index}`} fill={PIE_CHART_COLORS[index % PIE_CHART_COLORS.length]}/>
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: number, name: string) => [formatCurrency(value), name]} /> {/* Tooltip显示金额和分类名 */}
-                <Legend />
+                <Tooltip formatter={(value: number, name: string) => [formatCurrency(value), name]}/>
+                <Legend/>
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       )}
 
-      <Separator />
+      <Separator/>
 
-      {reportData.topItemSpend && reportData.topItemSpend.length > 0 && (
+      {reportData?.topItemSpend && reportData.topItemSpend.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>常购商品</CardTitle>
-            <CardDescription>您购买金额最高的前 {reportData.topItemSpend.length} 个商品或变体。</CardDescription>
+            <CardDescription>您购买金额最高的前 {reportData.topItemSpend.length} 个商品或特定款式。</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>商品名称</TableHead>
-                  <TableHead>变体</TableHead>
+                  <TableHead>款式</TableHead>
                   <TableHead className="text-right">消费金额</TableHead>
                   <TableHead className="text-right">购买数量</TableHead>
                 </TableRow>

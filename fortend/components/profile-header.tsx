@@ -1,9 +1,11 @@
 "use client"
+
 import type React from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Search, User, LogOut } from "lucide-react"
 import { useEffect, useState } from "react"
+import Link from "next/link"
+import { useTheme } from 'next-themes'
+import { useRouter } from "next/navigation"
+import { LogOut, Search, SunMoon, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/components/auth-provider"
@@ -22,6 +24,7 @@ import NavLinks from "@/components/nav-links";
 
 export default function ProfileHeader() {
   const router = useRouter()
+  const {setTheme, theme} = useTheme()
   const {user, logout} = useAuth()
   const [isScrolled, setIsScrolled] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -66,7 +69,7 @@ export default function ProfileHeader() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="ml-auto h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={`${API_URL}/api/image/avatar/${user?.username}`} alt={user?.username || "?"}
+                    <AvatarImage src={`${API_URL}/api/image${user?.avatar}`} alt={user?.username || "?"}
                                  className="object-cover"/>
                     <AvatarFallback>{user.nickname?.[0] || user.username[0].toUpperCase()}</AvatarFallback>
                   </Avatar>
@@ -99,6 +102,16 @@ export default function ProfileHeader() {
               </Link>
             </Button>
           )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative h-8 w-8"
+            aria-label="切换主题模式"
+            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+          >
+            <SunMoon className="h-5 w-5"/>
+            <span className="sr-only">切换主题模式</span>
+          </Button>
         </div>
       </div>
     </header>

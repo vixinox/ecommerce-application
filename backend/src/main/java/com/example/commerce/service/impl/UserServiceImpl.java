@@ -16,40 +16,44 @@ import java.util.regex.Pattern;
 public class UserServiceImpl implements UserService {
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+$");
 
+    private final UserDAO userDAO;
+    
     @Autowired
-    private UserDAO userDao;
+    public UserServiceImpl(UserDAO userDAO) {
+        this.userDAO = userDAO;
+    }
 
     @Override
     public User login(String email, String password) {
-        return userDao.findByEmailAndPassword(email, password);
+        return userDAO.findByEmailAndPassword(email, password);
     }
 
     @Override
     public void register(User user) {
-        if (userDao.findByName(user.getUsername()) != null)
+        if (userDAO.findByName(user.getUsername()) != null)
             throw new RuntimeException("用户名已被使用");
 
-        if (userDao.findByEmail(user.getEmail()) != null)
+        if (userDAO.findByEmail(user.getEmail()) != null)
             throw new RuntimeException("该电子邮件地址已经与另一个用户绑定");
 
         if (user.getNickname() == null || user.getNickname().trim().isEmpty())
             user.setNickname(user.getUsername());
 
-        userDao.insertUser(user);
+        userDAO.insertUser(user);
     }
 
     @Override
     public User findByName(String username) {
-        return userDao.findByName(username);
+        return userDAO.findByName(username);
     }
 
     @Override
     public User findByEmail(String email) {
-        return userDao.findByEmail(email);
+        return userDAO.findByEmail(email);
     }
 
     @Override
-    public void updateUserInfo(User user, String email, String nickname) {
+    public User updateUserInfo(User user, String email, String nickname) {
         String newNickname = Optional.ofNullable(nickname)
                 .filter(StringUtils::hasText)
                 .orElse(user.getNickname());
@@ -58,17 +62,19 @@ public class UserServiceImpl implements UserService {
         String username = user.getUsername();
 
         if (StringUtils.hasText(email) && !Objects.equals(email, user.getEmail())) {
-            if (userDao.existsByEmailAndExcludeUsername(email, username))
+            if (userDAO.existsByEmailAndExcludeUsername(email, username))
                 throw new RuntimeException("该邮箱已与另一个账户绑定");
             newEmail = email;
         }
 
-        userDao.updateUser(username, newNickname, newEmail);
+        userDAO.updateUser(username, newNickname, newEmail);
+
+        return userDAO.findByName(username);
     }
 
     @Override
     public void deleteUser(String username) {
-        userDao.deleteByUsername(username);
+        userDAO.deleteByUsername(username);
     }
 
     @Override
@@ -79,7 +85,7 @@ public class UserServiceImpl implements UserService {
         if (Objects.equals(user.getPassword(), newPassword))
             throw new RuntimeException("新密码不能与旧密码相同");
 
-        userDao.updatePassword(user.getUsername(), newPassword);
+        userDAO.updatePassword(user.getUsername(), newPassword);
     }
 
     @Override
@@ -127,10 +133,39 @@ public class UserServiceImpl implements UserService {
         if (!JwtUtil.isTokenValid(token))
             throw new RuntimeException("认证过期");
 
-        User user = userDao.findByName(username);
+        User user = userDAO.findByName(username);
         if (user == null)
             throw new RuntimeException("用户不存在");
 
+        user.setPassword(null);
         return user;
+    }
+
+    @Override
+    public User checkMerchant(String authHeader) {
+        try {
+            User user = checkAuthorization(authHeader);
+            if (!Objects.equals(user.getRole(), "MERCHANT"))
+                throw new RuntimeException("无权限访问该资源");
+
+            user.setPassword(null);
+            return user;
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    @Override
+    public User checkAdmin(String authHeader) {
+        try {
+            User user = checkAuthorization(authHeader);
+            if (!Objects.equals(user.getRole(), "ADMIN"))
+                throw new RuntimeException("无权限访问该资源");
+
+            user.setPassword(null);
+            return user;
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage());
+        }
     }
 }

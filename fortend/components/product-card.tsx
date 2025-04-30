@@ -8,14 +8,15 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { useAuth } from "@/components/auth-provider"
-import type { Product } from "@/lib/products"
+import type { Product } from "@/lib/types"
 import { formatPrice } from "@/lib/utils"
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { API_URL } from "@/lib/api";
 
 const MotionButton = motion.create(Button);
 
-export function ProductCard({product}: {product: Product}) {
+export function ProductCard({product}: { product: Product }) {
   const router = useRouter();
   const {user, token} = useAuth()
   const [isWishlisted, setIsWishlisted] = useState(false)
@@ -54,7 +55,7 @@ export function ProductCard({product}: {product: Product}) {
         }}
       >
         <Image
-          src={product.image || "/placeholder.svg"}
+          src={product.defaultImage ? `${API_URL}/api/image${product.defaultImage}` : "/placeholder.svg"}
           alt={product.name}
           fill
           className="object-cover transition-transform group-hover:scale-105"
@@ -73,7 +74,6 @@ export function ProductCard({product}: {product: Product}) {
           whileHover={{scale: 1.1}}
           whileTap={{scale: 0.9}}
         >
-          {}
           <Heart className={`h-5 w-5 ${isWishlisted ? "fill-current" : ""}`}/>
           <span className="sr-only">Add to wishlist</span>
         </MotionButton>
@@ -92,7 +92,7 @@ export function ProductCard({product}: {product: Product}) {
         <p className="text-sm text-muted-foreground">{product.category}</p>
       </CardContent>
       <CardFooter className="flex items-center justify-between p-4 pt-0">
-        <div className="font-semibold">{formatPrice(product.price)}</div>
+        <div className="font-semibold">{formatPrice(product.minPrice)}</div>
         <MotionButton
           size="sm"
           className="rounded-full"

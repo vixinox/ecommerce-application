@@ -11,10 +11,10 @@ public interface UserDAO {
     @Select("SELECT email FROM users WHERE email = #{email}")
     User findByEmail(@Param("email") String email);
 
-    @Select("SELECT username, nickname, email, password FROM users WHERE email = #{email} AND password = #{password}")
+    @Select("SELECT username, nickname, email, password, avatar FROM users WHERE email = #{email} AND password = #{password}")
     User findByEmailAndPassword(@Param("email") String email, @Param("password") String password);
 
-    @Select("SELECT EXISTS (SELECT 1 FROM users WHERE email = #{email} AND username != #{username} LIMIT 1)")
+    @Select("SELECT EXISTS (SELECT 1 FROM users WHERE email = #{email} AND username != #{username})")
     boolean existsByEmailAndExcludeUsername(@Param("email") String email, @Param("username") String username);
 
     @Update("UPDATE users SET nickname = #{nickname}, email = #{email} WHERE username = #{username}")
@@ -31,4 +31,7 @@ public interface UserDAO {
 
     @Delete("DELETE FROM users WHERE username = #{username}")
     void deleteByUsername(@Param("username") String username);
+
+    @Update("UPDATE product_variants SET image = #{path} WHERE id = #{productVariantId}")
+    void uploadProductImageById(Long productVariantId, String path);
 }

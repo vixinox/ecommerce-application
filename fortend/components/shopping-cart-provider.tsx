@@ -1,11 +1,11 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode, useEffect } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 import { API_URL } from "@/lib/api";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
-import { CartItem } from "@/lib/products";
+import { CartItem } from "@/lib/types";
 
 interface ShoppingCartContext {
   cartItems: CartItem[];
@@ -25,9 +25,9 @@ export function useShoppingCart() {
   return context;
 }
 
-export function ShoppingCartProvider({ children }: { children: ReactNode }) {
+export function ShoppingCartProvider({children}: { children: ReactNode }) {
   const router = useRouter();
-  const { user, token } = useAuth();
+  const {user, token} = useAuth();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const getCartItems = async () => {
     try {
@@ -47,7 +47,7 @@ export function ShoppingCartProvider({ children }: { children: ReactNode }) {
           toast.error("请登录后操作");
           router.push("/auth/login");
         } else {
-          toast.error("获取购物车失败", { description: res.text() });
+          toast.error("获取购物车失败", {description: res.text()});
         }
       } else {
         const data: CartItem[] = await res.json();
@@ -59,7 +59,7 @@ export function ShoppingCartProvider({ children }: { children: ReactNode }) {
         setCartItems(processedData);
       }
     } catch (e: any) {
-      toast.error("获取购物车发生意外错误", { description: e.message });
+      toast.error("获取购物车发生意外错误", {description: e.message});
       setCartItems([]);
     }
   };
@@ -87,13 +87,13 @@ export function ShoppingCartProvider({ children }: { children: ReactNode }) {
           toast.error("请登录后操作");
           router.push("/auth/login");
         } else {
-          toast.error("添加购物车失败", { description: res.text() });
+          toast.error("添加购物车失败", {description: res.text()});
         }
       } else {
         getCartItems();
       }
     } catch (e: any) {
-      toast.error("添加购物车发生意外错误", { description: e.message });
+      toast.error("添加购物车发生意外错误", {description: e.message});
     }
   };
 
@@ -112,7 +112,7 @@ export function ShoppingCartProvider({ children }: { children: ReactNode }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ cartId: itemToRemove.cartId }),
+        body: JSON.stringify({cartId: itemToRemove.cartId}),
       });
 
       if (!res.ok) {
@@ -120,13 +120,13 @@ export function ShoppingCartProvider({ children }: { children: ReactNode }) {
           toast.error("请登录后操作");
           router.push("/auth/login");
         } else {
-          toast.error("移除购物车商品失败", { description: res.text() });
+          toast.error("移除购物车商品失败", {description: res.text()});
         }
       } else {
         getCartItems();
       }
     } catch (e: any) {
-      toast.error("移除购物车商品发生意外错误", { description: e.message });
+      toast.error("移除购物车商品发生意外错误", {description: e.message});
     }
   };
   const updateQuantity = async (variantId: number, quantity: number) => {
@@ -160,14 +160,14 @@ export function ShoppingCartProvider({ children }: { children: ReactNode }) {
           toast.error("请登录后操作");
           router.push("/auth/login");
         } else {
-          toast.error("更新商品数量失败", { description: res.text() });
+          toast.error("更新商品数量失败", {description: res.text()});
         }
       } else {
         toast.success("商品数量已更新");
         getCartItems();
       }
     } catch (e: any) {
-      toast.error("更新商品数量发生意外错误", { description: e.message });
+      toast.error("更新商品数量发生意外错误", {description: e.message});
     }
   };
 
@@ -186,14 +186,14 @@ export function ShoppingCartProvider({ children }: { children: ReactNode }) {
           toast.error("请登录后操作");
           router.push("/auth/login");
         } else {
-          toast.error("清空购物车失败", { description: res.text() });
+          toast.error("清空购物车失败", {description: res.text()});
         }
       } else {
         toast.success("购物车已清空");
         setCartItems([]);
       }
     } catch (e: any) {
-      toast.error("清空购物车发生意外错误", { description: e.message });
+      toast.error("清空购物车发生意外错误", {description: e.message});
     }
   };
 
@@ -213,13 +213,13 @@ export function ShoppingCartProvider({ children }: { children: ReactNode }) {
           toast.error("请登陆后操作");
           router.push("/auth/login");
         } else {
-          toast.error("创建订单失败", { description: res.text() });
+          toast.error("创建订单失败", {description: res.text()});
         }
       } else {
         toast.success("下单成功");
       }
     } catch (e: any) {
-      toast.error("创建订单发生意外错误", { description: e.message });
+      toast.error("创建订单发生意外错误", {description: e.message});
     }
   };
 

@@ -14,8 +14,8 @@ export default function OrdersPage() {
         <h3 className="text-lg font-medium">订单</h3>
         <p className="text-sm text-muted-foreground">查看您的历史订单</p>
       </div>
-      <Separator />
-      <OrderList />
+      <Separator/>
+      <OrderList/>
     </div>
   )
 }

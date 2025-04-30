@@ -95,8 +95,7 @@ public class OrderServiceImpl implements OrderService {
 
         for (OrderItem item : orderItemsToCreate)
             if (productDao.deductStock(item.getProductVariantId(), item.getQuantity()) == 0)
-                throw new RuntimeException("库存扣减失败，商品变体ID: " + item.getProductVariantId() +
-                        "，可能是并发导致库存不足。");
+                throw new RuntimeException("库存扣减失败，商品库存不足。");
 
         for (CartItemDTO item : items)
             cartDao.removeCardItem(user.getId(), item.getCartId());

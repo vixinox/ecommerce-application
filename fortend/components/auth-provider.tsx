@@ -1,17 +1,16 @@
 "use client";
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  type ReactNode,
-} from "react";
+
+import { createContext, type ReactNode, useContext, useEffect, useState, } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { API_URL } from "@/lib/api";
-import { User } from "@/lib/auth";
 
-type StoredUser = Omit<User, "password">;
+interface StoredUser {
+  username: string;
+  nickname: string;
+  email: string;
+  avatar: string;
+}
 
 interface AuthContextType {
   user: StoredUser | null;
@@ -31,7 +30,7 @@ export function useAuth() {
   return context;
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({children}: { children: ReactNode }) {
   const [user, setUser] = useState<StoredUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -123,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{user, token, isLoading, login, logout}}>
       {children}
     </AuthContext.Provider>
   );

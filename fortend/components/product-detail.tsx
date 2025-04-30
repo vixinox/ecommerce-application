@@ -1,7 +1,7 @@
 "use client"
 
-import { useMemo, useState, useEffect } from "react";
-import { ChevronLeft, ShoppingCart, Heart } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, Heart, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useShoppingCart } from "@/components/shopping-cart-provider";
@@ -12,13 +12,10 @@ import { ProductSpecifications } from "@/components/product-specifications";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import type { ProductDetails } from "@/lib/products";
+import type { ProductDetails } from "@/lib/types";
 import { useRouter } from "next/navigation";
 
 export function ProductDetail({productDetail}: { productDetail: ProductDetails }) {
-  console.log("获取到的商品详情")
-  console.log(productDetail);
-
   const router = useRouter();
   const {addToCart} = useShoppingCart();
   const {user} = useAuth();
@@ -27,6 +24,10 @@ export function ProductDetail({productDetail}: { productDetail: ProductDetails }
   const [selectedSize, setSelectedSize] = useState<string>(initialVariant?.size || '');
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
+
+  const images: string[] = Array.from(new Set(
+    productDetail.variants.map(variant => variant.image).filter((image): image is string => image !== null)
+  ));
 
   const availableColors = useMemo(() => {
     if (!productDetail.variants) return [];
@@ -66,6 +67,7 @@ export function ProductDetail({productDetail}: { productDetail: ProductDetails }
     }
     return true;
   };
+
   const handleAddToCart = () => {
     if (!checkLogin()) return;
 
@@ -112,7 +114,7 @@ export function ProductDetail({productDetail}: { productDetail: ProductDetails }
         </Button>
       </div>
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-        <ProductGallery images={productDetail.images || []}/>
+        <ProductGallery images={images || []}/>
         <div className="flex flex-col gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -132,7 +134,7 @@ export function ProductDetail({productDetail}: { productDetail: ProductDetails }
             </div>
             <h1 className="text-3xl font-bold">{productDetail.name}</h1>
             <div className="text-2xl font-semibold">
-              {formatPrice(selectedVariant?.price ?? productDetail.basePrice)}
+              {formatPrice(selectedVariant?.price ?? productDetail.minPrice)}
             </div>
             <p className="text-muted-foreground">{productDetail.description}</p>
           </div>
@@ -217,11 +219,11 @@ export function ProductDetail({productDetail}: { productDetail: ProductDetails }
               <TabsTrigger value="shipping">配送</TabsTrigger>
             </TabsList>
             <TabsContent value="specifications" className="mt-4">
-              <ProductSpecifications specifications={productDetail.specifications}/>
+              <ProductSpecifications specifications={JSON.parse(productDetail.specifications)}/>
             </TabsContent>
             <TabsContent value="features" className="mt-4">
               <ul className="list-inside list-disc space-y-2">
-                {productDetail.features.map((feature, index) => (
+                {JSON.parse(productDetail.features).map((feature: string, index: string) => (
                   <li key={index}>{feature}</li>
                 ))}
               </ul>

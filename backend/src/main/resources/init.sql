@@ -24,17 +24,19 @@ CREATE TABLE IF NOT EXISTS users
 
 CREATE TABLE IF NOT EXISTS products
 (
-    id                  BIGINT PRIMARY KEY AUTO_INCREMENT,
-    owner_id            BIGINT         NOT NULL,
-    name                VARCHAR(255)   NOT NULL,
-    description         TEXT,
-    category            VARCHAR(100),
-    price               DECIMAL(10, 2) NOT NULL,
-    images_json         JSON,
-    features_json       JSON,
-    specifications_json JSON,
-    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    id             BIGINT PRIMARY KEY AUTO_INCREMENT,
+    owner_id       BIGINT       NOT NULL,
+    name           VARCHAR(255) NOT NULL,
+    description    TEXT,
+    category       VARCHAR(100),
+    default_image  VARCHAR(255),
+    min_price      DECIMAL(10, 2),
+    total_stock    INT                   DEFAULT 0,
+    features       JSON,
+    specifications JSON,
+    status         VARCHAR(50)  NOT NULL DEFAULT 'ACTIVE',
+    created_at     TIMESTAMP             DEFAULT CURRENT_TIMESTAMP,
+    updated_at     TIMESTAMP             DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_products_owner FOREIGN KEY (owner_id) REFERENCES users (id) ON DELETE RESTRICT,
     INDEX idx_products_category (category),
     INDEX idx_products_owner_user_id (owner_id)
@@ -120,3 +122,70 @@ CREATE TABLE IF NOT EXISTS wishlist_items
 );
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+DELIMITER //
+
+-- 触发器：在 product_variants 插入数据后
+-- 更新对应商品的 default_image, min_price 和 total_stock_quantity
+CREATE TRIGGER after_product_variant_insert
+    AFTER INSERT
+    ON product_variants
+    FOR EACH ROW
+BEGIN
+    UPDATE products
+    SET default_image = IFNULL(
+            (SELECT image FROM product_variants WHERE product_id = NEW.product_id ORDER BY id LIMIT 1), ''),
+        min_price     = IFNULL((SELECT MIN(price) FROM product_variants WHERE product_id = NEW.product_id), 0),
+        total_stock   = IFNULL((SELECT SUM(stock_quantity) FROM product_variants WHERE product_id = NEW.product_id), 0)
+    WHERE id = NEW.product_id;
+END//
+
+-- 触发器：在 product_variants 更新数据后
+-- 更新对应商品的 min_price (如果价格变动), default_image (如果第一变体图片变动), 和 total_stock_quantity (如果库存变动)
+CREATE TRIGGER after_product_variant_update
+    AFTER UPDATE
+    ON product_variants
+    FOR EACH ROW
+BEGIN
+    -- 更新 min_price 如果价格变动
+    IF NEW.price <> OLD.price THEN
+        UPDATE products
+        SET min_price = IFNULL((SELECT MIN(price) FROM product_variants WHERE product_id = NEW.product_id), 0)
+        WHERE id = NEW.product_id;
+    END IF;
+
+    -- 更新 default_image 如果更新的是该商品第一个变体且图片变动
+    IF (SELECT id FROM product_variants WHERE product_id = NEW.product_id ORDER BY id LIMIT 1) = NEW.id AND
+       NEW.image <> OLD.image THEN
+        UPDATE products
+        SET default_image = NEW.image
+        WHERE id = NEW.product_id;
+    END IF;
+
+    IF NEW.stock_quantity <> OLD.stock_quantity THEN
+        UPDATE products
+        SET total_stock = IFNULL((SELECT SUM(stock_quantity) FROM product_variants WHERE product_id = NEW.product_id),
+                                 0)
+        WHERE id = NEW.product_id;
+    END IF;
+END//
+
+-- 触发器：在 product_variants 删除数据后
+-- 更新对应商品的 default_image, min_price 和 total_stock_quantity
+CREATE TRIGGER after_product_variant_delete
+    AFTER DELETE
+    ON product_variants
+    FOR EACH ROW
+BEGIN
+    UPDATE products
+    SET default_image = IFNULL(
+            (SELECT image FROM product_variants WHERE product_id = OLD.product_id ORDER BY id LIMIT 1), ''),
+        min_price     = IFNULL((SELECT MIN(price) FROM product_variants WHERE product_id = OLD.product_id), 0),
+        total_stock   = IFNULL((SELECT SUM(stock_quantity) FROM product_variants WHERE product_id = OLD.product_id), 0)
+    WHERE id = OLD.product_id;
+END//
+
+DELIMITER ;
+
+INSERT INTO users (username, email, password, nickname, avatar, role)
+VALUES ('123', 'aa@aa.aa', '96cae35ce8a9b0244178bf28e4966c2ce1b8385723a96a6b838858cdd6ca0a1e', 'aa', '', 'MERCHANT');

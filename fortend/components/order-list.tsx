@@ -1,28 +1,16 @@
 'use client';
-import { useState, useEffect } from 'react';
+
+import { useEffect, useState } from 'react';
 import { useAuth } from "@/components/auth-provider";
 import { API_URL } from "@/lib/api";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Package, Loader2, XCircle } from "lucide-react";
-import { OrderDTO } from "@/lib/products";
+import { Loader2, Package, XCircle } from "lucide-react";
+import { OrderDTO } from "@/lib/types";
 
 export default function OrderList() {
-  const { token } = useAuth();
+  const {token} = useAuth();
   const [orders, setOrders] = useState<OrderDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +27,7 @@ export default function OrderList() {
       try {
         const res = await fetch(`${API_URL}/api/order/get`, {
           method: "GET",
-          headers: { "Authorization": `Bearer ${token}` },
+          headers: {"Authorization": `Bearer ${token}`},
         });
         if (!res.ok) {
           const errorBody = await res.text();
@@ -54,6 +42,7 @@ export default function OrderList() {
         setLoading(false);
       }
     }
+
     if (token) {
       fetchOrders();
     } else {
@@ -65,7 +54,7 @@ export default function OrderList() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-[400px] text-center text-muted-foreground">
-        <Loader2 className="h-10 w-10 animate-spin mb-3" />
+        <Loader2 className="h-10 w-10 animate-spin mb-3"/>
         <p className="text-lg font-medium">加载订单中...</p>
         <p className="text-sm">请稍候</p>
       </div>
@@ -75,7 +64,7 @@ export default function OrderList() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-[400px] text-center text-red-500">
-        <XCircle className="h-10 w-10 mb-3" />
+        <XCircle className="h-10 w-10 mb-3"/>
         <p className="text-lg font-semibold">无法加载订单</p>
         <p className="text-sm text-muted-foreground">{error}</p>
       </div>
@@ -84,9 +73,10 @@ export default function OrderList() {
 
   if (orders.length === 0) {
     return (
-      <div className="flex h-[400px] flex-col items-center justify-center rounded-md border border-dashed p-8 text-center">
+      <div
+        className="flex h-[400px] flex-col items-center justify-center rounded-md border border-dashed p-8 text-center">
         <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
-          <Package className="h-10 w-10 text-muted-foreground" />
+          <Package className="h-10 w-10 text-muted-foreground"/>
           <h3 className="mt-4 text-lg font-semibold">还没有订单记录</h3>
           <p className="mb-4 mt-2 text-sm text-muted-foreground">
             暂时还没有订单记录，您的订单会记录到这里
@@ -139,9 +129,7 @@ export default function OrderList() {
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.snapshotProductName}</TableCell>
                       <TableCell>
-                        {[item.snapshotVariantColor, item.snapshotVariantSize]
-                        .filter(Boolean)
-                        .join(" / ") || "默认"}
+                        {[item.snapshotVariantColor, item.snapshotVariantSize].filter(Boolean).join(" / ") || "默认"}
                       </TableCell>
                       <TableCell className="text-right">{item.quantity}</TableCell>
                       <TableCell className="text-right">{formatCurrency(item.purchasedPrice)}</TableCell>
@@ -208,10 +196,15 @@ function getOrderStatusBadgeVariant(status: string): 'default' | 'secondary' | '
 function getOrderStatusText(status: string): string {
   const lowerStatus = status.toLowerCase();
   switch (lowerStatus) {
-    case '待发货': return '待发货';
-    case '待收货': return '待收货';
-    case '已完成': return '已完成';
-    case '已取消': return '已取消';
-    default: return status;
+    case '待发货':
+      return '待发货';
+    case '待收货':
+      return '待收货';
+    case '已完成':
+      return '已完成';
+    case '已取消':
+      return '已取消';
+    default:
+      return status;
   }
 }

@@ -16,7 +16,7 @@ interface SearchPageProps {
   };
 }
 
-export default function SearchPage({ searchParams }: SearchPageProps) {
+export default function SearchPage({searchParams}: SearchPageProps) {
   const query = searchParams.q || "";
   const category = searchParams.category || "全部";
   const minPrice = searchParams.minPrice ? Number.parseFloat(searchParams.minPrice) : undefined;
@@ -28,7 +28,7 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
   return (
     <ShoppingCartProvider>
       <div className="flex min-h-screen flex-col">
-        <SiteHeader />
+        <SiteHeader/>
         <main className="flex-1 w-full max-w-7xl mx-auto">
           <div className="container py-6 md:py-10">
             <h1 className="text-3xl font-bold tracking-tight mb-6">
@@ -47,7 +47,7 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
             </Suspense>
           </div>
         </main>
-        <SiteFooter />
+        <SiteFooter/>
       </div>
     </ShoppingCartProvider>
   );

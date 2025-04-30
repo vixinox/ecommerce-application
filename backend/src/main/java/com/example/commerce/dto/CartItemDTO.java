@@ -10,6 +10,7 @@ public class CartItemDTO {
     private Long cartId;
     private String productName;
     private String productCategory;
+    private String image;
 
     private ProductVariant productVariant;
     private Integer quantity;

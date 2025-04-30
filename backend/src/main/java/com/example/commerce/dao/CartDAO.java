@@ -14,7 +14,6 @@ public interface CartDAO {
     @Delete("DELETE FROM cart_items WHERE user_id = #{userId} AND id = #{cartId}")
     void removeCardItem(Long userId, Long cartId);
 
-
     @Results({
             @Result(column = "user_id", property = "userId"),
             @Result(column = "product_variant_id", property = "productVariantId"),

@@ -1,9 +1,11 @@
 export interface Product {
   id: string;
   name: string;
-  price: number;
-  image: string;
   category: string;
+  defaultImage: string;
+  minPrice: number;
+  status: string;
+  totalStock: number;
 }
 
 export interface Variant {
@@ -19,22 +21,17 @@ export interface Variant {
 export interface ProductDetails {
   id: number;
   name: string;
-  description: string;
   category: string;
-  basePrice: number;
-  images: string[];
-  features: string[];
-  specifications: ProductSpecifications[];
+  minPrice: number;
+  description: string;
+  features: string;
+  specifications: string;
   variants: Variant[];
   overallInStock: boolean;
 }
 
-export interface ProductSpecifications {
-  key: string;
-  value: string;
-}
-
 export interface CartItem {
+  image: any;
   cartId: number;
   productName: string;
   productCategory: string;

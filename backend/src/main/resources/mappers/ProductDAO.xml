@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.commerce.dao.ProductDAO">
+
+    <resultMap id="ProductDetailResultMap" type="com.example.commerce.dto.ProductDetailDTO">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="category" column="category"/>
+        <result property="minPrice" column="min_price"/>
+        <result property="description" column="description"/>
+        <result column="features" property="features"/>
+        <result column="specifications" property="specifications"/>
+        <collection property="variants" ofType="com.example.commerce.model.ProductVariant">
+            <id property="id" column="variant_id"/>
+            <result property="productId" column="variant_product_id"/>
+            <result property="color" column="variant_color"/>
+            <result property="size" column="variant_size"/>
+            <result property="price" column="variant_price"/>
+            <result property="image" column="variant_image"/>
+            <result property="stockQuantity" column="variant_stock_quantity"/>
+            <result property="inStock" column="variant_in_stock"/>
+        </collection>
+    </resultMap>
+
+    <select id="findVariantsByProductIds" resultType="com.example.commerce.model.ProductVariant">
+        SELECT id, product_id, color, size, price, image, stock_quantity, in_stock
+        FROM product_variants
+        WHERE product_id IN
+        <foreach item="productId" collection="productIds" open="(" separator="," close=")">
+            #{productId}
+        </foreach>
+    </select>
+
+    <select id="findProducts" resultType="com.example.commerce.model.Product">
+        SELECT id, name, category
+        FROM products
+        <where>
+            <if test="category != null and category != ''">
+                AND category = #{category}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (name LIKE CONCAT('%', #{keyword}, '%') OR description LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </select>
+
+    <insert id="insertProductVariants" parameterType="java.util.List">
+        INSERT INTO product_variants (product_id, color, size, price, image, stock_quantity, created_at, updated_at)
+        VALUES
+        <foreach item="variant" collection="variants" separator=",">
+            (#{variant.productId}, #{variant.color}, #{variant.size}, #{variant.price}, #{variant.image},
+            #{variant.stockQuantity}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        </foreach>
+    </insert>
+
+    <select id="getVariantById" resultType="com.example.commerce.model.ProductVariant">
+        SELECT id,
+               product_id,
+               color,
+               size,
+               price,
+               image,
+               stock_quantity,
+               in_stock
+        FROM product_variants
+        WHERE id = #{id}
+    </select>
+
+    <select id="searchProducts" resultType="com.example.commerce.dto.ProductDTO">
+        SELECT
+        id,
+        name,
+        category,
+        default_image AS defaultImage,
+        min_price AS minPrice
+        FROM
+        products
+        WHERE 1=1
+        <if test="category != null and category != ''">
+            AND category = #{category}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+    </select>
+
+    <select id="getRandomProducts" resultType="com.example.commerce.dto.ProductDTO">
+        SELECT id,
+               name,
+               category,
+               default_image AS defaultImage,
+               min_price     AS minPrice
+        FROM products
+        ORDER BY RAND()
+        LIMIT #{size}
+    </select>
+
+    <select id="getProductDetailWithVariants" resultMap="ProductDetailResultMap">
+        SELECT
+            p.id,
+            p.name,
+            p.description,
+            p.category,
+            p.min_price,
+            p.features,
+            p.specifications,
+            pv.id AS variant_id,
+            pv.product_id AS variant_product_id,
+            pv.color AS variant_color,
+            pv.size AS variant_size,
+            pv.price AS variant_price,
+            pv.image AS variant_image,
+            pv.stock_quantity AS variant_stock_quantity,
+            pv.in_stock AS variant_in_stock
+        FROM products p
+                 LEFT JOIN product_variants pv
+                           ON p.id = pv.product_id
+        WHERE p.id = #{productId}
+        ORDER BY pv.id
+    </select>
+
+    <select id="getProductByOwner" resultType="com.example.commerce.model.Product">
+        SELECT id,
+               default_image,
+               name,
+               category,
+               status,
+               min_price,
+               total_stock
+        FROM products
+        WHERE owner_id = #{id}
+    </select>
+
+    <delete id="deleteVariantsByIds">
+        DELETE FROM product_variants
+        WHERE id IN
+        <foreach item="variantId" collection="list" open="(" separator="," close=")">
+            #{variantId}
+        </foreach>
+    </delete>
+
+    <update id="updateProduct" parameterType="com.example.commerce.model.Product">
+        UPDATE products
+        <set>
+            <if test="name != null and name != ''">
+                name = #{name},
+            </if>
+            <if test="description != null">
+                description = #{description},
+            </if>
+            <if test="category != null and category != ''">
+                category = #{category},
+            </if>
+            <if test="features != null">
+                features = #{features},
+            </if>
+            <if test="specifications != null">
+                specifications = #{specifications},
+            </if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateProductVariants" parameterType="java.util.List">
+        <foreach collection="list" item="variant" separator=";">
+            UPDATE product_variants
+            <set>
+                product_id = #{variant.productId},
+                color = #{variant.color},
+                size = #{variant.size},
+                price = #{variant.price},
+                stock_quantity = #{variant.stockQuantity},
+                image = #{variant.image}
+            </set>
+            WHERE id = #{variant.id}
+        </foreach>
+    </update>
+
+    <update id="clearVariantImagesByProductAndColors">
+        UPDATE product_variants
+        SET image = NULL
+        WHERE product_id = #{productId}
+        AND color IN
+        <foreach collection="colors" item="color" open="(" separator="," close=")">
+            #{color}
+        </foreach>
+    </update>
+
+</mapper>

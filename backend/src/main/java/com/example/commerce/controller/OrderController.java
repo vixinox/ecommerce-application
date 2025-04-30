@@ -17,10 +17,14 @@ import java.util.List;
 @RequestMapping("/api/order")
 public class OrderController {
 
+    private final OrderService orderService;
+    private final UserService userService;
+
     @Autowired
-    private UserService userService;
-    @Autowired
-    private OrderService orderService;
+    public OrderController(OrderService orderService, UserService userService) {
+        this.orderService = orderService;
+        this.userService = userService;
+    }
 
     @PostMapping()
     public ResponseEntity<?> createOrder(

@@ -14,7 +14,7 @@ export interface MockProduct {
   sizes?: string[]
 }
 
-export const mockProducts: MockProduct[] = Array.from({ length: 24 }, (_, i) => ({
+export const mockProducts: MockProduct[] = Array.from({length: 24}, (_, i) => ({
   id: `prod_${i + 1}`,
   name: `Product ${i + 1}`,
   description: `This is a detailed description for Product ${i + 1}. It includes information about the product's features, materials, and usage.`,

@@ -15,7 +15,7 @@ export default function LoginPage() {
         <h1 className="text-3xl font-bold">欢迎回来</h1>
         <p className="text-muted-foreground">请登录您的账号</p>
       </div>
-      <LoginForm />
+      <LoginForm/>
       <div className="text-center text-sm">
         <p className="text-muted-foreground">
           还没有账号？{" "}

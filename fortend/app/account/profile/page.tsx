@@ -17,8 +17,8 @@ export default function ProfilePage() {
           管理您的个人信息，包括您的姓名、电子邮件地址、密码等
         </p>
       </div>
-      <Separator />
-      <ProfileForm />
+      <Separator/>
+      <ProfileForm/>
     </div>
   )
 }

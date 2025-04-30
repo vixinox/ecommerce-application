@@ -2,7 +2,7 @@ package com.example.commerce.controller;
 
 import com.example.commerce.dto.CartItemDTO;
 import com.example.commerce.model.User;
-import com.example.commerce.service.ProductService;
+import com.example.commerce.service.CartService;
 import com.example.commerce.service.UserService;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,10 +16,14 @@ import java.util.List;
 @RequestMapping("/api/cart")
 public class CartController {
 
+    private final UserService userService;
+    private final CartService cartService;
+
     @Autowired
-    private UserService userService;
-    @Autowired
-    private ProductService productService;
+    public CartController(CartService cartService, UserService userService) {
+        this.cartService = cartService;
+        this.userService = userService;
+    }
 
     @Data
     private static class AddToCartRequest {
@@ -44,7 +48,7 @@ public class CartController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             User user = userService.checkAuthorization(authHeader);
-            List<CartItemDTO> cartItemDTO = productService.getCartItem(user.getId());
+            List<CartItemDTO> cartItemDTO = cartService.getCartItem(user.getId());
             return ResponseEntity.status(HttpStatus.OK)
                    .body(cartItemDTO);
         } catch (Exception e) {
@@ -59,7 +63,7 @@ public class CartController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             User user = userService.checkAuthorization(authHeader);
-            productService.addToCart(user.getId(), request.getVariantId(), request.getQuantity());
+            cartService.addToCart(user.getId(), request.getVariantId(), request.getQuantity());
             return ResponseEntity.status(HttpStatus.OK).body("success");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -73,7 +77,7 @@ public class CartController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             User user = userService.checkAuthorization(authHeader);
-            productService.updateCart(user.getId(), request.getCartId(), request.getVariantId(), request.getQuantity());
+            cartService.updateCart(user.getId(), request.getCartId(), request.getVariantId(), request.getQuantity());
             return ResponseEntity.status(HttpStatus.OK).body("success");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -87,7 +91,7 @@ public class CartController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             User user = userService.checkAuthorization(authHeader);
-            productService.removeFromCart(user.getId(), request.getCartId());
+            cartService.removeFromCart(user.getId(), request.getCartId());
             return ResponseEntity.status(HttpStatus.OK).body("success");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -100,7 +104,7 @@ public class CartController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             User user = userService.checkAuthorization(authHeader);
-            productService.clearCart(user.getId());
+            cartService.clearCart(user.getId());
             return ResponseEntity.status(HttpStatus.OK).body("success");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

@@ -1,8 +1,9 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+
+import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { SlidersHorizontal, Loader2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Loader2, SlidersHorizontal } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +22,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { API_URL } from "@/lib/api";
-import { Product } from "@/lib/products";
+import { Product } from "@/lib/types";
 
 interface PageInfo<T> {
   pageNum: number;
@@ -45,7 +46,7 @@ const DEFAULT_SLIDER_MAX_PRICE = 100000;
 const MAX_PRICE_INPUT_STEP = 1;
 
 const containerVariants = {
-  hidden: { opacity: 0 },
+  hidden: {opacity: 0},
   visible: {
     opacity: 1,
     transition: {
@@ -55,9 +56,9 @@ const containerVariants = {
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: 20, transition: { duration: 0.2 } },
+  hidden: {opacity: 0, y: 20},
+  visible: {opacity: 1, y: 0},
+  exit: {opacity: 0, y: 20, transition: {duration: 0.2}},
 };
 
 export function SearchResults({
@@ -105,20 +106,18 @@ export function SearchResults({
         params.set("page", String(appliedPage));
         params.set("size", String(appliedSize));
         const url = `${API_URL}/api/products?${params.toString()}`;
-        const response = await fetch(url, { signal });
+        const response = await fetch(url, {signal});
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ message: '未知错误' }));
+          const errorData = await response.json().catch(() => ({message: '未知错误'}));
           throw new Error(`API Error: ${response.status} ${response.statusText}${errorData.message ? ' - ' + errorData.message : ''}`);
         }
         const data: PageInfo<Product> = await response.json();
         setProducts(data.list);
         setTotalItems(data.total);
-        // 更新分类列表，确保去重
         const uniqueCategories = Array.from(new Set(data.list.map(p => p.category)));
         setCategories(["全部", ...uniqueCategories]);
       } catch (err: any) {
         if (err.name === 'AbortError') {
-          // 忽略中止错误
         } else {
           console.error("Error fetching products:", err);
           setError(`Failed to load products: ${err.message}`);
@@ -133,7 +132,7 @@ export function SearchResults({
     return () => {
       controller.abort();
     };
-  }, [query, appliedPriceRange, appliedSort, appliedPage, appliedSize]); // 移除 appliedCategory 依赖
+  }, [query, appliedPriceRange, appliedSort, appliedPage, appliedSize]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -159,9 +158,9 @@ export function SearchResults({
     const currentParamsString = searchParams.toString();
     const nextParamsString = params.toString();
     if (currentParamsString !== nextParamsString) {
-      router.replace(`/search?${params.toString()}`, { scroll: false });
+      router.replace(`/search?${params.toString()}`, {scroll: false});
     }
-  }, [query, appliedPriceRange, appliedSort, appliedPage, appliedSize, router, searchParams, initialSize]); // 移除 appliedCategory
+  }, [query, appliedPriceRange, appliedSort, appliedPage, appliedSize, router, searchParams, initialSize]);
 
   const handleCategoryChange = useCallback((cat: string) => {
     setAppliedCategory(cat);
@@ -187,7 +186,7 @@ export function SearchResults({
     const totalPages = Math.ceil(totalItems / appliedSize);
     if (page >= 1 && page <= totalPages) {
       setAppliedPage(page);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({top: 0, behavior: 'smooth'});
     }
   }, [totalItems, appliedSize, setAppliedPage]);
 
@@ -228,7 +227,6 @@ export function SearchResults({
     });
   }, [inputMaxPrice, setSliderDisplayMaxPrice, setSliderPriceRange, setAppliedPriceRange, setAppliedPage]);
 
-  // 本地过滤产品
   const filteredProducts = appliedCategory === "全部"
     ? products
     : products.filter(product => product.category === appliedCategory);
@@ -247,16 +245,16 @@ export function SearchResults({
     <div className="flex flex-col md:flex-row gap-6">
       <motion.div
         className="hidden md:block w-64 shrink-0 space-y-6"
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.1 }}
+        initial={{opacity: 0, x: -20}}
+        animate={{opacity: 1, x: 0}}
+        transition={{delay: 0.1}}
       >
         <div>
           <h3 className="font-semibold mb-3 flex items-center gap-2">
-            <SlidersHorizontal className="h-4 w-4" />
+            <SlidersHorizontal className="h-4 w-4"/>
             筛选
           </h3>
-          <Separator className="mb-4" />
+          <Separator className="mb-4"/>
           <div className="space-y-6">
             <div>
               <h4 className="font-medium mb-3">分类</h4>
@@ -332,7 +330,7 @@ export function SearchResults({
         <div className="mb-4 flex justify-between items-center flex-wrap gap-2">
           {isLoading && (
             <div className="flex items-center text-sm text-muted-foreground">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
               加载中...
             </div>
           )}
@@ -347,7 +345,7 @@ export function SearchResults({
           <div className="hidden md:block">
             <Select value={appliedSort} onValueChange={handleSortChange}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="排序方式" />
+                <SelectValue placeholder="排序方式"/>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="relevance">相关性</SelectItem>
@@ -361,13 +359,13 @@ export function SearchResults({
         </div>
         <AnimatePresence mode="wait">
           {isLoading ? (
-            <motion.div key="loading-message" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            <motion.div key="loading-message" initial={{opacity: 0}} animate={{opacity: 1}} exit={{opacity: 0}}
                         className="flex items-center justify-center py-12 text-lg">
-              <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+              <Loader2 className="mr-2 h-6 w-6 animate-spin"/>
               加载中...
             </motion.div>
           ) : error ? (
-            <motion.div key="error-message" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            <motion.div key="error-message" initial={{opacity: 0}} animate={{opacity: 1}} exit={{opacity: 0}}
                         className="flex flex-col items-center justify-center py-12 text-destructive">
               <p className="text-lg font-medium">加载失败</p>
               <p className="text-sm text-muted-foreground mt-1">{error}</p>
@@ -375,9 +373,9 @@ export function SearchResults({
           ) : filteredProducts.length === 0 ? (
             <motion.div
               key="no-products-message"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
+              initial={{opacity: 0, y: 20}}
+              animate={{opacity: 1, y: 0}}
+              exit={{opacity: 0, y: 20}}
               className="flex flex-col items-center justify-center py-12"
             >
               <p className="text-lg font-medium">未找到商品</p>
@@ -400,7 +398,7 @@ export function SearchResults({
                       exit="exit"
                       layout
                     >
-                      <ProductCard product={product} />
+                      <ProductCard product={product}/>
                     </motion.div>
                   ))}
                 </AnimatePresence>
@@ -423,9 +421,7 @@ export function SearchResults({
                       {appliedPage > 4 && (
                         <PaginationItem><span className="px-2">...</span></PaginationItem>
                       )}
-                      {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter(page => page >= Math.max(1, appliedPage - 2) && page <= Math.min(totalPages, appliedPage + 2))
-                      .map(page => (
+                      {Array.from({length: totalPages}, (_, i) => i + 1).filter(page => page >= Math.max(1, appliedPage - 2) && page <= Math.min(totalPages, appliedPage + 2)).map(page => (
                         <PaginationItem key={page}>
                           <PaginationLink onClick={() => handlePageChange(page)} isActive={appliedPage === page}>
                             {page}

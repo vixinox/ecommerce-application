@@ -1,14 +1,10 @@
 "use client"
-
-import type React from "react"
-
 import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Edit, Eye, MoreHorizontal, Trash2 } from "lucide-react"
 import { toast } from "sonner"
-
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -32,174 +28,180 @@ import {
 import { Input } from "@/components/ui/input"
 import { formatPrice } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
-import { Pagination } from "@/components/ui/pagination"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Product } from "@/lib/types";
+import { API_URL } from "@/lib/api";
 
-const mockProducts = Array.from({ length: 24 }, (_, i) => ({
-  id: `prod_${i + 1}`,
-  name: `Product ${i + 1}`,
-  image: `/placeholder.svg?height=50&width=50&text=P${i + 1}`,
-  price: Math.floor(Math.random() * 200) + 10,
-  category: ["Clothing", "Electronics", "Accessories", "Footwear", "Home"][Math.floor(Math.random() * 5)],
-  stock: Math.floor(Math.random() * 100),
-  status: Math.random() > 0.2 ? "active" : "draft",
-}))
+interface ProductsTableProps {
+  products: Product[];
+  isLoading: boolean;
+}
 
-export function ProductsTable() {
-  const router = useRouter()
-  const [products, setProducts] = useState(mockProducts)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [productToDelete, setProductToDelete] = useState<string | null>(null)
-
-  const productsPerPage = 8
-
+export function ProductsTable({products, isLoading}: ProductsTableProps) {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const filteredProducts = products.filter(
     (product) =>
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.category.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
-
-  const totalPages = Math.ceil(filteredProducts.length / productsPerPage)
-  const startIndex = (currentPage - 1) * productsPerPage
-  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + productsPerPage)
+  );
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value)
-    setCurrentPage(1)
-  }
+    setSearchQuery(e.target.value);
+  };
 
   const handleDeleteClick = (productId: string) => {
-    setProductToDelete(productId)
-    setDeleteDialogOpen(true)
-  }
+    setProductToDelete(productId);
+    setDeleteDialogOpen(true);
+  };
 
   const handleDeleteConfirm = () => {
     if (productToDelete) {
-      setProducts(products.filter((product) => product.id !== productToDelete))
-      toast.success("Product deleted successfully")
-      setDeleteDialogOpen(false)
-      setProductToDelete(null)
-
-      if (paginatedProducts.length === 1 && currentPage > 1) {
-        setCurrentPage(currentPage - 1)
-      }
+      // TODO: 调用删除 API
+      // 注意：实际删除应向上层传递 productToDelete 并由父组件触发 API 调用和数据更新
+      // 这里仅模拟 UI 反馈和对话框关闭
+      toast.success("产品删除请求已发送 (实际删除需调用 API)");
+      setDeleteDialogOpen(false);
+      setProductToDelete(null);
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <Input placeholder="Search products..." className="max-w-sm" value={searchQuery} onChange={handleSearch} />
+        <Input
+          placeholder="搜索产品..."
+          className="max-w-sm"
+          value={searchQuery}
+          onChange={handleSearch}
+          disabled={isLoading}
+        />
       </div>
-
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[80px]">Image</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Price</TableHead>
-              <TableHead className="text-right">Stock</TableHead>
-              <TableHead className="w-[100px] text-right">Actions</TableHead>
+              <TableHead className="w-[80px]">图片</TableHead>
+              <TableHead>名称</TableHead>
+              <TableHead>类别</TableHead>
+              <TableHead>状态</TableHead>
+              <TableHead className="text-right">价格</TableHead>
+              <TableHead className="text-right">库存</TableHead>
+              <TableHead className="w-[100px] text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedProducts.length > 0 ? (
-              paginatedProducts.map((product) => (
-                <TableRow key={product.id}>
+            {isLoading ? (
+              Array.from({length: 5}).map((_, index) => (
+                <TableRow key={index}>
                   <TableCell>
-                    <div className="relative h-10 w-10 overflow-hidden rounded-md">
-                      <Image
-                        src={product.image || "/placeholder.svg"}
-                        alt={product.name}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
+                    <Skeleton className="h-10 w-10 rounded-md"/>
                   </TableCell>
-                  <TableCell className="font-medium">{product.name}</TableCell>
-                  <TableCell>{product.category}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={product.status === "active" ? "default" : "secondary"}
-                      className={
-                        product.status === "active"
-                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                          : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100"
-                      }
-                    >
-                      {product.status === "active" ? "Active" : "Draft"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">{formatPrice(product.price)}</TableCell>
-                  <TableCell className="text-right">
-                    <span className={product.stock === 0 ? "text-red-500" : ""}>{product.stock}</span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Actions</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/product/${product.id}`}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => router.push(`/account/merchant/products/${product.id}`)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-red-600 focus:text-red-600"
-                          onClick={() => handleDeleteClick(product.id)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+                  <TableCell className="font-medium"><Skeleton className="h-4 w-[150px]"/></TableCell>
+                  <TableCell><Skeleton className="h-4 w-[100px]"/></TableCell>
+                  <TableCell><Skeleton className="h-6 w-[80px]"/></TableCell>
+                  <TableCell className="text-right"><Skeleton className="h-4 w-[80px] float-right"/></TableCell>
+                  <TableCell className="text-right"><Skeleton className="h-4 w-[50px] float-right"/></TableCell>
+                  <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto"/></TableCell>
                 </TableRow>
               ))
             ) : (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
-                  No products found.
-                </TableCell>
-              </TableRow>
+              filteredProducts.length > 0 ? (
+                filteredProducts.map((product) => (
+                  <TableRow key={product.id}>
+                    <TableCell>
+                      <div className="relative h-10 w-10 overflow-hidden rounded-md">
+                        <Image
+                          src={`${API_URL}/api/image${product.defaultImage}` || "/placeholder.svg"}
+                          alt={product.name}
+                          fill
+                          className="object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = "/placeholder.svg";
+                          }}
+                        />
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">{product.name}</TableCell>
+                    <TableCell>{product.category}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={product.status === "ACTIVE" ? "default" : "secondary"}
+                        className={
+                          product.status === "ACTIVE"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 hover:text-green-200"
+                            : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100 hover:text-green-200"
+                        }
+                      >
+                        {product.status === "ACTIVE" ? "上架" : "下架"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">{formatPrice(product.minPrice)}</TableCell>
+                    <TableCell className="text-right">
+                      <span className={product.totalStock === 0 ? "text-red-500" : ""}>{product.totalStock}</span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4"/>
+                            <span className="sr-only">操作</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>操作</DropdownMenuLabel>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/product/${product.id}`}>
+                              <Eye className="mr-2 h-4 w-4"/>
+                              查看
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/account/merchant/products/${product.id}`)}>
+                            <Edit className="mr-2 h-4 w-4"/>
+                            编辑
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator/>
+                          <DropdownMenuItem
+                            className="text-red-600 focus:text-red-600"
+                            onClick={() => handleDeleteClick(product.id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4"/>
+                            删除
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center">
+                    {searchQuery ? "未找到匹配的产品。" : "未找到产品。"}
+                  </TableCell>
+                </TableRow>
+              )
             )}
           </TableBody>
         </Table>
       </div>
-
-      {totalPages > 1 && <Pagination />}
-
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>确定要删除吗？</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the product from your store.
+              此操作无法撤销，将永久从您的商店中删除该产品。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-600 hover:bg-red-700">
-              Delete
+              删除
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }
