@@ -41,4 +41,11 @@ public interface OrderService {
      * @return 更新成功返回 true，失败（如无权限、状态无效）返回 false 或抛出异常
      */
     boolean updateOrderStatusByMerchant(User merchant, Long orderId, String newStatus);
+
+    // 添加管理员获取所有订单列表的方法 (分页)
+    PageInfo<OrderDTO> getAllOrdersAdmin(int pageNum, int pageSize, String statusFilter);
+
+    void updateOrderStatusAdmin(Long orderId, String newStatus);
+
+    OrderDTO getOrderDetailsAdmin(Long orderId);
 }

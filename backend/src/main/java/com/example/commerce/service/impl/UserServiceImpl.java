@@ -4,17 +4,32 @@ import com.example.commerce.dao.UserDAO;
 import com.example.commerce.model.User;
 import com.example.commerce.service.UserService;
 import com.example.commerce.util.JwtUtil;
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import java.util.Set;
 
 @Service
 public class UserServiceImpl implements UserService {
+    private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+$");
+    private static final Set<String> VALID_ROLES = Set.of("USER", "MERCHANT", "ADMIN");
+
+    // 定义用户状态常量和有效状态集
+    public static final String STATUS_ACTIVE = "ACTIVE";
+    public static final String STATUS_SUSPENDED = "SUSPENDED";
+    public static final String STATUS_DELETED = "DELETED";
+    private static final Set<String> VALID_USER_STATUSES = Set.of(STATUS_ACTIVE, STATUS_SUSPENDED, STATUS_DELETED);
 
     private final UserDAO userDAO;
     
@@ -159,5 +174,77 @@ public class UserServiceImpl implements UserService {
 
         user.setPassword(null);
         return user;
+    }
+
+    @Override
+    public PageInfo<User> getAllUsers(int pageNum, int pageSize, String statusFilter) {
+        PageHelper.startPage(pageNum, pageSize);
+        List<User> users = userDAO.findAllUsers(statusFilter);
+        users.forEach(user -> user.setPassword(null));
+        return new PageInfo<>(users);
+    }
+
+    @Override
+    @Transactional
+    public void updateUserStatus(String username, String status) {
+        // 1. 校验状态值
+        if (!VALID_USER_STATUSES.contains(status)) {
+            throw new IllegalArgumentException("无效的用户状态: " + status + ". 合法状态为: " + VALID_USER_STATUSES);
+        }
+
+        User user = userDAO.findByName(username);
+        if (user == null) {
+            throw new RuntimeException("用户不存在: " + username);
+        }
+        String oldStatus = user.getStatus();
+        userDAO.updateUserStatus(username, status);
+        logger.info("管理员更新了用户 '{}' 的状态: {} -> {}", username, oldStatus, status);
+    }
+
+    @Override
+    public User findUserById(Long userId) {
+        if (userId == null) {
+            return null; // 或者抛出异常
+        }
+        User user = userDAO.findById(userId);
+        if (user != null) {
+            user.setPassword(null); // 确保不返回密码
+        }
+        return user;
+    }
+
+    @Override
+    @Transactional
+    public void updateUserRoleAdmin(String username, String newRole) {
+        if (!VALID_ROLES.contains(newRole)) {
+            throw new IllegalArgumentException("无效的用户角色: " + newRole + ". 合法角色为: " + VALID_ROLES);
+        }
+
+        User user = userDAO.findByName(username);
+        if (user == null) {
+            throw new RuntimeException("用户不存在: " + username);
+        }
+        String oldRole = user.getRole();
+
+        // 3. (可选) 检查是否尝试修改自己的角色 ...
+
+        // 4. (可选) 检查是否尝试修改其他 ADMIN 的角色 (防止误操作) - 暂时注释掉，因为缺少当前管理员信息
+        // 使用行注释确保不会出错
+        // if ("ADMIN".equals(user.getRole()) && !username.equals(/* 当前管理员用户名 */)) {
+        //    // 可能需要一个更高权限或特定流程来修改其他管理员角色
+        //    // throw new RuntimeException("不允许直接修改其他管理员的角色。");
+        // }
+
+        // 5. 更新角色
+        userDAO.updateUserRole(username, newRole);
+        logger.info("管理员更新了用户 '{}' 的角色: {} -> {}", username, oldRole, newRole);
+    }
+
+    // 新增 softDeleteUser 实现
+    @Override
+    @Transactional
+    public void softDeleteUser(String username) {
+        updateUserStatus(username, STATUS_DELETED);
+        logger.info("管理员软删除了用户 '{}'", username);
     }
 }

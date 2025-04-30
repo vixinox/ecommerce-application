@@ -40,6 +40,8 @@ public class ProductController {
      * @param pageSize 每页数量 (默认为 10)
      * @param category 分类名称 (可选)
      * @param keyword 搜索关键词 (可选)
+     * @param minPrice 最低价格 (可选)
+     * @param maxPrice 最高价格 (可选)
      * TODO: 增加排序功能(相关性, 价格, 字母等)
      * TODO: 增加价格范围搜索
      * @return ResponseEntity 包含商品列表的 PageInfo 对象和状态码
@@ -49,8 +51,10 @@ public class ProductController {
             @RequestParam(value = "page", defaultValue = "1") int pageNum,
             @RequestParam(value = "size", defaultValue = "10") int pageSize,
             @RequestParam(value = "category", required = false) String category,
-            @RequestParam(value = "keyword", required = false) String keyword) {
-        PageInfo<ProductDTO> productPageInfo = productService.listProducts(pageNum, pageSize, category, keyword);
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "minPrice", required = false) Double minPrice,
+            @RequestParam(value = "maxPrice", required = false) Double maxPrice) {
+        PageInfo<ProductDTO> productPageInfo = productService.listProducts(pageNum, pageSize, category, keyword, minPrice, maxPrice);
         return ResponseEntity.ok(productPageInfo);
     }
 

@@ -13,4 +13,5 @@ public class User {
     private String nickname;
     private String avatar;
     private String role;
+    private String status;
 }

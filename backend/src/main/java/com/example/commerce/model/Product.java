@@ -19,4 +19,6 @@ public class Product {
 
     private String status;
     private Integer totalStock;
+
+    private String ownerUsername;
 }

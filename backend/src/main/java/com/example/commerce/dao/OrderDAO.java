@@ -217,4 +217,24 @@ public interface OrderDAO {
      */
     @SelectProvider(type = OrderSqlProvider.class, method = "calculateTotalMerchantSales")
     BigDecimal calculateTotalMerchantSales(@Param("merchantId") Long merchantId);
+
+    // 添加此方法声明 (将在 XML 或 Provider 中实现)
+    List<Order> findAllOrdersAdmin(@Param("statusFilter") String statusFilter);
+
+    // 添加管理员更新订单状态的方法
+    @UpdateProvider(type = OrderSqlProvider.class, method = "updateOrderStatusAdmin")
+    int updateOrderStatusAdmin(@Param("orderId") Long orderId, @Param("status") String status);
+
+    // 添加统计总订单数的方法
+    @Select("SELECT COUNT(*) FROM orders")
+    Long countTotalOrders();
+
+    // 添加按状态统计订单数的方法 (复用商家统计的Provider，只是不传 merchantId)
+    // 或者直接用注解实现更简单
+    @Select("SELECT COUNT(*) FROM orders WHERE status = #{status}")
+    Long countOrdersByStatus(@Param("status") String status);
+
+    // 添加计算总销售额的方法
+    @Select("SELECT SUM(total_amount) FROM orders")
+    BigDecimal calculateTotalRevenue();
 }

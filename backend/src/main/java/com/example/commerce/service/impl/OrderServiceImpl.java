@@ -11,8 +11,11 @@ import com.example.commerce.model.OrderItem;
 import com.example.commerce.model.ProductVariant;
 import com.example.commerce.model.User;
 import com.example.commerce.service.OrderService;
+import com.example.commerce.service.UserService;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +26,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class OrderServiceImpl implements OrderService {
+
+    private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);
 
     // --- 订单状态常量 ---
     // 与 init.sql 中 orders.status 的默认值 '待发货' 保持一致
@@ -38,6 +43,9 @@ public class OrderServiceImpl implements OrderService {
             STATUS_COMPLETED,
             STATUS_CANCELLED
     );
+
+    @Autowired
+    private UserService userService;
 
     @Autowired
     private OrderDAO orderDao;
@@ -325,6 +333,100 @@ public class OrderServiceImpl implements OrderService {
             // throw new RuntimeException("订单状态更新失败，可能由于并发修改或数据不一致。");
             return false;
         }
+    }
+
+    // 新增 getAllOrdersAdmin 实现
+    @Override
+    public PageInfo<OrderDTO> getAllOrdersAdmin(int pageNum, int pageSize, String statusFilter) {
+        // 1. 使用 PageHelper 进行分页
+        PageHelper.startPage(pageNum, pageSize);
+
+        // 2. 调用 DAO 获取所有订单（根据状态过滤）
+        List<Order> orders = orderDao.findAllOrdersAdmin(statusFilter);
+
+        // 如果没有订单，直接返回空的分页信息
+        if (orders == null || orders.isEmpty()) {
+            return new PageInfo<>(Collections.emptyList());
+        }
+        PageInfo<Order> orderPageInfo = new PageInfo<>(orders);
+
+        // 3. 获取这些订单的所有订单项
+        List<Long> orderIds = orders.stream().map(Order::getId).collect(Collectors.toList());
+        List<OrderItem> allItems = orderDao.getOrderItemsByOrderIds(orderIds);
+        Map<Long, List<OrderItem>> itemsByOrderId = allItems.stream()
+                .collect(Collectors.groupingBy(OrderItem::getOrderId));
+
+        // 4. 组装成 OrderDTO
+        List<OrderDTO> orderDTOs = orders.stream()
+                .map(order -> {
+                    List<OrderItem> orderItems = itemsByOrderId.getOrDefault(order.getId(), Collections.emptyList());
+                    return new OrderDTO(order, orderItems);
+                })
+                .collect(Collectors.toList());
+
+        // 5. 使用 PageInfo 包装 DTO 列表，并设置分页信息
+        PageInfo<OrderDTO> resultPageInfo = new PageInfo<>(orderDTOs);
+        resultPageInfo.setTotal(orderPageInfo.getTotal());
+        resultPageInfo.setPageNum(orderPageInfo.getPageNum());
+        resultPageInfo.setPageSize(orderPageInfo.getPageSize());
+        resultPageInfo.setPages(orderPageInfo.getPages());
+
+        return resultPageInfo;
+    }
+
+    // 新增 updateOrderStatusAdmin 实现
+    @Override
+    @Transactional // 状态更新需要事务
+    public void updateOrderStatusAdmin(Long orderId, String newStatus) {
+        // 1. 校验状态是否合法
+        if (!VALID_ORDER_STATUSES.contains(newStatus)) {
+            throw new IllegalArgumentException("无效的订单状态: " + newStatus + ". 合法状态为: " + VALID_ORDER_STATUSES);
+        }
+
+        // 2. 检查订单是否存在
+        Order order = orderDao.getOrderById(orderId);
+        if (order == null) {
+            throw new RuntimeException("订单不存在: " + orderId);
+        }
+
+        // 3. 更新状态
+        // TODO: 考虑状态流转逻辑，例如不能从已完成变回待发货？目前允许任意合法状态变更。
+        String oldStatus = order.getStatus(); // 获取旧状态
+        int updatedRows = orderDao.updateOrderStatusAdmin(orderId, newStatus);
+        if (updatedRows == 0) {
+            // 理论上在检查订单存在后不应该发生，除非并发问题
+            throw new RuntimeException("更新订单 " + orderId + " 状态失败，可能订单已被删除。" );
+        }
+        logger.info("管理员更新了订单 {} 的状态: {} -> {}", orderId, oldStatus, newStatus); // 添加日志
+    }
+
+    // 新增 getOrderDetailsAdmin 实现
+    @Override
+    public OrderDTO getOrderDetailsAdmin(Long orderId) {
+        // 1. 获取订单基本信息
+        Order order = orderDao.getOrderById(orderId);
+        if (order == null) {
+            throw new RuntimeException("订单不存在: " + orderId);
+        }
+
+        // 2. 获取订单项
+        List<OrderItem> items = orderDao.getOrderItemsByOrderIds(Collections.singletonList(orderId));
+        if (items == null) {
+            items = Collections.emptyList(); // 保证 items 不为 null
+        }
+
+        // 3. 获取购买者信息
+        User buyerInfo = userService.findUserById(order.getUserId());
+        // buyerInfo 可能为 null 如果用户已被删除，根据业务需求决定如何处理
+        // 这里暂时允许 buyerInfo 为 null
+
+        // 4. 组装 DTO
+        OrderDTO orderDTO = new OrderDTO();
+        orderDTO.setOrder(order);
+        orderDTO.setItems(items);
+        orderDTO.setBuyerInfo(buyerInfo);
+
+        return orderDTO;
     }
 
     private OrderItem getOrderItem(CartItemDTO item, Long orderId) {

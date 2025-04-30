@@ -3,6 +3,8 @@ package com.example.commerce.dao;
 import com.example.commerce.model.User;
 import org.apache.ibatis.annotations.*;
 
+import java.util.List;
+
 @Mapper
 public interface UserDAO {
     @Select("SELECT * FROM users WHERE username = #{username}")
@@ -32,6 +34,24 @@ public interface UserDAO {
     @Delete("DELETE FROM users WHERE username = #{username}")
     void deleteByUsername(@Param("username") String username);
 
+    @SelectProvider(type = UserSqlProvider.class, method = "findAllUsersFiltered")
+    List<User> findAllUsers(@Param("statusFilter") String statusFilter);
+
+    @Update("UPDATE users SET status = #{status} WHERE username = #{username}")
+    void updateUserStatus(@Param("username") String username, @Param("status") String status);
+
     @Update("UPDATE product_variants SET image = #{path} WHERE id = #{productVariantId}")
     void uploadProductImageById(Long productVariantId, String path);
+
+    @Select("SELECT id, username, email, nickname, avatar, role, status FROM users WHERE id = #{id}")
+    User findById(@Param("id") Long id);
+
+    @Select("SELECT COUNT(*) FROM users")
+    Long countTotalUsers();
+
+    @Update("UPDATE users SET role = #{role} WHERE username = #{username}")
+    void updateUserRole(@Param("username") String username, @Param("role") String role);
+
+    @Select("SELECT COUNT(*) FROM users WHERE DATE(created_at) = CURDATE()")
+    Long countNewUsersToday();
 }

@@ -15,7 +15,7 @@ import java.util.Optional;
 public interface ProductService {
     Optional<ProductDetailDTO> getProductDetail(Long productId);
 
-    PageInfo<ProductDTO> listProducts(int pageNum, int pageSize, String category, String keyword);
+    PageInfo<ProductDTO> listProducts(int pageNum, int pageSize, String category, String keyword, Double minPrice, Double maxPrice);
 
     List<ProductDTO> getRandomProducts(int size);
 
@@ -28,4 +28,12 @@ public interface ProductService {
     void editProduct(Long productId, UploadProductDTO updatedProductDTO, User user) throws Exception;
 
     void deleteProduct(Long productId, User user);
+
+    PageInfo<Product> getAllProductsAdmin(int pageNum, int pageSize, String statusFilter);
+
+    void updateProductStatus(Long productId, String status);
+
+    Optional<ProductEditResponseDTO> getProductDetailsAdmin(Long productId);
+
+    void softDeleteProduct(Long productId);
 }
