@@ -5,12 +5,15 @@ import com.example.commerce.dao.ProductDAO;
 import com.example.commerce.dao.UserDAO;
 import com.example.commerce.dto.AdminDashboardDTO;
 import com.example.commerce.dto.MerchantDashboardDTO;
+import com.example.commerce.dto.CategoryCountDTO;
 import com.example.commerce.model.User;
 import com.example.commerce.service.DashboardService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -60,14 +63,15 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     public AdminDashboardDTO getAdminDashboardData() {
-        // 1. 获取用户总数
+        // 1. 获取用户统计
         Long totalUsers = Optional.ofNullable(userDAO.countTotalUsers()).orElse(0L);
+        Long newUsersToday = Optional.ofNullable(userDAO.countNewUsersToday()).orElse(0L);
 
         // 2. 获取商品统计
         Long totalProducts = Optional.ofNullable(productDAO.countTotalProducts()).orElse(0L);
-        // 使用 ProductServiceImpl 定义的常量
         Long pendingApprovalProducts = Optional.ofNullable(productDAO.countProductsByStatus(ProductServiceImpl.PRODUCT_STATUS_PENDING)).orElse(0L);
         Long lowStockVariants = Optional.ofNullable(productDAO.countLowStockVariants(DEFAULT_LOW_STOCK_THRESHOLD)).orElse(0L);
+        List<CategoryCountDTO> productCountByCategory = Optional.ofNullable(productDAO.getProductCountByCategory()).orElse(Collections.emptyList());
 
         // 3. 获取订单统计
         Long pendingShipmentOrders = Optional.ofNullable(orderDAO.countOrdersByStatus(PENDING_SHIPMENT_STATUS)).orElse(0L);
@@ -81,8 +85,10 @@ public class DashboardServiceImpl implements DashboardService {
         dto.setPendingShipmentOrders(pendingShipmentOrders);
         dto.setTotalOrders(totalOrders);
         dto.setTotalRevenue(totalRevenue);
-        dto.setProductsPendingApproval(pendingApprovalProducts); // 设置新字段
-        dto.setLowStockVariantsCount(lowStockVariants); // 设置新字段
+        dto.setProductsPendingApproval(pendingApprovalProducts);
+        dto.setLowStockVariantsCount(lowStockVariants);
+        dto.setNewUsersToday(newUsersToday);
+        dto.setProductCountByCategory(productCountByCategory);
 
         return dto;
     }

@@ -26,7 +26,6 @@ export default function OrderList() {
       setError(null);
       try {
         const res = await fetch(`${API_URL}/api/orders/my`, {
-        const res = await fetch(`${API_URL}/api/order/get`, {
           method: "GET",
           headers: {"Authorization": `Bearer ${token}`},
         });

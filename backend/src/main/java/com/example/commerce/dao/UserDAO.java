@@ -51,4 +51,7 @@ public interface UserDAO {
 
     @Update("UPDATE users SET role = #{role} WHERE username = #{username}")
     void updateUserRole(@Param("username") String username, @Param("role") String role);
+
+    @Select("SELECT COUNT(*) FROM users WHERE DATE(created_at) = CURDATE()")
+    Long countNewUsersToday();
 }

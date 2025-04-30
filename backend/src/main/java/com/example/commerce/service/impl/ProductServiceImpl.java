@@ -63,9 +63,9 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public PageInfo<ProductDTO> listProducts(int pageNum, int pageSize, String category, String keyword) {
+    public PageInfo<ProductDTO> listProducts(int pageNum, int pageSize, String category, String keyword, Double minPrice, Double maxPrice) {
         PageHelper.startPage(pageNum, pageSize);
-        return new PageInfo<>(productDAO.searchProducts(category, keyword));
+        return new PageInfo<>(productDAO.searchProducts(category, keyword, minPrice, maxPrice));
     }
 
     @Override

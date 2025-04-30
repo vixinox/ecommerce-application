@@ -1,5 +1,6 @@
 package com.example.commerce.dao;
 
+import com.example.commerce.dto.CategoryCountDTO;
 import com.example.commerce.dto.ProductDTO;
 import com.example.commerce.dto.ProductDetailDTO;
 import com.example.commerce.model.Product;
@@ -96,7 +97,7 @@ public interface ProductDAO {
      * @param keyword  关键词
      * @return 商品 DTO 列表
      */
-    List<ProductDTO> searchProducts(@Param("category") String category, @Param("keyword") String keyword);
+    List<ProductDTO> searchProducts(@Param("category") String category, @Param("keyword") String keyword, @Param("minPrice") Double minPrice, @Param("maxPrice") Double maxPrice);
 
     /**
      * 根据ID获取商品
@@ -166,4 +167,8 @@ public interface ProductDAO {
     // 添加统计低库存变体数的方法
     @Select("SELECT COUNT(*) FROM product_variants WHERE stock_quantity < #{threshold}")
     Long countLowStockVariants(@Param("threshold") int threshold);
+
+    // 添加按分类统计商品数量的方法 (排除 DELETED)
+    @Select("SELECT category, COUNT(*) as count FROM products WHERE status != 'DELETED' GROUP BY category ORDER BY count DESC")
+    List<CategoryCountDTO> getProductCountByCategory();
 }

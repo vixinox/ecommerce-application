@@ -77,12 +77,18 @@
         min_price AS minPrice
         FROM
         products
-        WHERE 1=1
-        <if test="category != null and category != ''">
+        WHERE status = 'ACTIVE'
+        <if test="category != null and category != '' and category != '全部'">
             AND category = #{category}
         </if>
         <if test="keyword != null and keyword != ''">
             AND name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        <if test="minPrice != null">
+            AND min_price &gt;= #{minPrice}
+        </if>
+        <if test="maxPrice != null">
+            AND min_price &lt;= #{maxPrice}
         </if>
     </select>
 

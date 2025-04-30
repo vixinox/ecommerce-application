@@ -15,7 +15,7 @@ import java.util.Optional;
 public interface ProductService {
     Optional<ProductDetailDTO> getProductDetail(Long productId);
 
-    PageInfo<ProductDTO> listProducts(int pageNum, int pageSize, String category, String keyword);
+    PageInfo<ProductDTO> listProducts(int pageNum, int pageSize, String category, String keyword, Double minPrice, Double maxPrice);
 
     List<ProductDTO> getRandomProducts(int size);
 
