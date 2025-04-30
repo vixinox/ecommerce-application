@@ -199,7 +199,7 @@ export function ShoppingCartProvider({children}: { children: ReactNode }) {
 
   const createOrder = async (items: CartItem[]) => {
     try {
-      const res = await fetch(`${API_URL}/api/order`, {
+      const res = await fetch(`${API_URL}/api/orders`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

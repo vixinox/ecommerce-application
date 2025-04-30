@@ -5,6 +5,7 @@ import com.example.commerce.model.Order;
 import com.example.commerce.model.OrderItem;
 import org.apache.ibatis.annotations.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -115,4 +116,105 @@ public interface OrderDAO {
             "ORDER BY spend DESC, quantity DESC " +
             "LIMIT 10")
     List<SpendingReportDTO.ItemSpend> getUserTopItemSpend(@Param("userId") Long userId);
+
+    /**
+     * 查询与指定商家相关的订单ID列表 (分页)
+     * 注意: 这里只查询订单ID，是为了方便后续加载订单详情和订单项，避免在分页查询中进行过多JOIN。
+     * @param merchantId 商家用户ID
+     * @param status 订单状态过滤 (可选)
+     * @return 相关订单ID列表
+     */
+    @SelectProvider(type = OrderSqlProvider.class, method = "getMerchantOrderIds")
+    List<Long> getMerchantOrderIds(@Param("merchantId") Long merchantId, @Param("status") String status);
+
+
+    /**
+     * 根据订单ID列表查询订单基本信息
+     * @param orderIds 订单ID列表
+     * @return 订单列表
+     */
+    @SelectProvider(type = OrderSqlProvider.class, method = "getOrdersByIds")
+    @Results({
+            @Result(property = "userId", column = "user_id"),
+            @Result(property = "totalAmount", column = "total_amount"),
+            @Result(property = "createdAt", column = "created_at"),
+            @Result(property = "updatedAt", column = "updated_at")
+            // 可以补充其他需要的字段映射
+    })
+    List<Order> getOrdersByIds(@Param("orderIds") List<Long> orderIds);
+
+
+    /**
+     * 根据订单ID列表和商家ID查询相关的订单项
+     * @param orderIds 订单ID列表
+     * @param merchantId 商家用户ID
+     * @return 相关订单项列表
+     */
+    @SelectProvider(type = OrderSqlProvider.class, method = "getMerchantOrderItems")
+    @Results({
+            @Result(property = "orderId", column = "order_id"),
+            @Result(property = "productId", column = "product_id"),
+            @Result(property = "productVariantId", column = "product_variant_id"),
+            @Result(property = "purchasedPrice", column = "purchased_price"),
+            @Result(property = "snapshotProductName", column = "snapshot_product_name"),
+            @Result(property = "snapshotVariantColor", column = "snapshot_variant_color"),
+            @Result(property = "snapshotVariantSize", column = "snapshot_variant_size"),
+            @Result(property = "snapshotVariantImage", column = "snapshot_variant_image"),
+            @Result(property = "createdAt", column = "created_at"),
+            @Result(property = "updatedAt", column = "updated_at")
+            // 可以补充其他需要的字段映射
+    })
+    List<OrderItem> getMerchantOrderItems(@Param("orderIds") List<Long> orderIds, @Param("merchantId") Long merchantId);
+
+    /**
+     * 根据订单ID查询订单基本信息
+     * @param orderId 订单ID
+     * @return 订单对象，如果不存在则返回null
+     */
+    @Select("SELECT * FROM orders WHERE id = #{orderId}")
+    @Results({
+            @Result(property = "userId", column = "user_id"),
+            @Result(property = "totalAmount", column = "total_amount"),
+            @Result(property = "createdAt", column = "created_at"),
+            @Result(property = "updatedAt", column = "updated_at")
+    })
+    Order getOrderById(@Param("orderId") Long orderId);
+
+
+    /**
+     * 更新订单状态
+     * @param orderId 订单ID
+     * @param status 新状态
+     * @param merchantId 商家ID (用于校验权限，确保只有该商家相关的订单才能被更新)
+     * @return 更新的行数 (如果订单不属于该商家或不存在，则返回0)
+     */
+     @UpdateProvider(type = OrderSqlProvider.class, method = "updateOrderStatusByMerchant")
+     int updateOrderStatusByMerchant(@Param("orderId") Long orderId, @Param("status") String status, @Param("merchantId") Long merchantId);
+
+    // --- 新增商家仪表盘统计方法 ---
+
+    /**
+     * 统计商家特定状态的订单数量
+     * @param merchantId 商家ID
+     * @param status 订单状态
+     * @return 订单数量
+     */
+    @SelectProvider(type = OrderSqlProvider.class, method = "countMerchantOrdersByStatus")
+    Long countMerchantOrdersByStatus(@Param("merchantId") Long merchantId, @Param("status") String status);
+
+    /**
+     * 统计商家总订单数量 (指包含该商家商品的订单数量，不去重)
+     * @param merchantId 商家ID
+     * @return 订单ID数量 (去重后)
+     */
+    @SelectProvider(type = OrderSqlProvider.class, method = "countTotalMerchantOrders")
+    Long countTotalMerchantOrders(@Param("merchantId") Long merchantId);
+
+    /**
+     * 计算商家的总销售额 (仅计算该商家商品的销售额)
+     * @param merchantId 商家ID
+     * @return 总销售额，如果没有则返回 null 或 0
+     */
+    @SelectProvider(type = OrderSqlProvider.class, method = "calculateTotalMerchantSales")
+    BigDecimal calculateTotalMerchantSales(@Param("merchantId") Long merchantId);
 }
