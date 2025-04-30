@@ -13,8 +13,8 @@ public interface UserService {
     void checkUsername(String username);
     void checkEmail(String email);
     void checkNickname(String nickname);
-    User checkAuthorization(String authHeader) throws Exception;
-    User checkMerchant(String authHeader) throws Exception;
+    User checkAuthorization(String authHeader) throws RuntimeException;
+    User checkMerchant(String authHeader) throws RuntimeException;
 
     User checkAdmin(String authHeader);
 }

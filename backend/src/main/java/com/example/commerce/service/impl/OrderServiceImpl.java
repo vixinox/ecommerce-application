@@ -11,6 +11,8 @@ import com.example.commerce.model.OrderItem;
 import com.example.commerce.model.ProductVariant;
 import com.example.commerce.model.User;
 import com.example.commerce.service.OrderService;
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,21 @@ import java.util.stream.Collectors;
 
 @Service
 public class OrderServiceImpl implements OrderService {
+
+    // --- 订单状态常量 ---
+    // 与 init.sql 中 orders.status 的默认值 '待发货' 保持一致
+    private static final String STATUS_PENDING_SHIPMENT = "待发货";
+    private static final String STATUS_SHIPPED = "已发货";
+    private static final String STATUS_COMPLETED = "已完成"; // 可能由系统自动完成或用户确认收货
+    private static final String STATUS_CANCELLED = "已取消"; // 可能由用户、商家或管理员取消
+
+    // 定义合法的状态集合，方便校验
+    private static final Set<String> VALID_ORDER_STATUSES = Set.of(
+            STATUS_PENDING_SHIPMENT,
+            STATUS_SHIPPED,
+            STATUS_COMPLETED,
+            STATUS_CANCELLED
+    );
 
     @Autowired
     private OrderDAO orderDao;
@@ -164,6 +181,150 @@ public class OrderServiceImpl implements OrderService {
         report.setTopItemSpend(topItemSpend);
 
         return report;
+    }
+
+    @Override
+    public PageInfo<OrderDTO> getMerchantOrders(User merchant, int pageNum, int pageSize, String status) {
+        // 1. 使用 PageHelper 进行分页
+        PageHelper.startPage(pageNum, pageSize);
+
+        // 2. 查询与商家相关的订单ID列表
+        List<Long> merchantOrderIds = orderDao.getMerchantOrderIds(merchant.getId(), status);
+
+        // 如果没有相关订单，直接返回空的分页信息
+        if (merchantOrderIds == null || merchantOrderIds.isEmpty()) {
+            return new PageInfo<>(Collections.emptyList());
+        }
+
+        // 3. 根据订单ID列表查询订单基本信息
+        // 注意：这里直接使用 PageInfo 包装了 ID 列表的结果，它会自动处理分页逻辑
+        PageInfo<Long> orderIdPageInfo = new PageInfo<>(merchantOrderIds);
+        List<Order> orders = orderDao.getOrdersByIds(merchantOrderIds);
+
+        // 如果查询不到订单信息（理论上不应该发生，除非数据不一致），返回空
+        if (orders == null || orders.isEmpty()) {
+            return new PageInfo<>(Collections.emptyList());
+        }
+
+        // 4. 查询这些订单中与该商家相关的订单项
+        List<OrderItem> allRelevantItems = orderDao.getMerchantOrderItems(merchantOrderIds, merchant.getId());
+        Map<Long, List<OrderItem>> itemsByOrderId = allRelevantItems.stream()
+                .collect(Collectors.groupingBy(OrderItem::getOrderId));
+
+        // 5. 将 Order 和 OrderItem 组装成 OrderDTO
+        List<OrderDTO> orderDTOs = orders.stream()
+                .map(order -> {
+                    // 只包含与该商家相关的订单项
+                    List<OrderItem> merchantItems = itemsByOrderId.getOrDefault(order.getId(), Collections.emptyList());
+                    // 注意：这里的 OrderDTO 应该能处理空的 items 列表
+                    // 如果需要，可以调整 OrderDTO 构造函数或创建 MerchantOrderDTO
+                    return new OrderDTO(order, merchantItems);
+                })
+                // 可以在这里添加排序，如果 DAO 查询没有排序的话
+                // .sorted(Comparator.comparing(dto -> dto.getOrder().getCreatedAt(), Comparator.reverseOrder()))
+                .collect(Collectors.toList());
+
+        // 6. 使用 PageInfo 包装最终的 DTO 列表，并设置分页信息
+        PageInfo<OrderDTO> pageInfoResult = new PageInfo<>(orderDTOs);
+        // 从原始的 orderIdPageInfo 复制分页信息到最终结果
+        pageInfoResult.setTotal(orderIdPageInfo.getTotal());
+        pageInfoResult.setPageNum(orderIdPageInfo.getPageNum());
+        pageInfoResult.setPageSize(orderIdPageInfo.getPageSize());
+        pageInfoResult.setPages(orderIdPageInfo.getPages());
+
+        return pageInfoResult;
+    }
+
+    @Override
+    public OrderDTO getMerchantOrderDetail(User merchant, Long orderId) {
+        // 1. 获取订单基本信息
+        Order order = orderDao.getOrderById(orderId);
+        if (order == null) {
+            // 或者抛出 NotFoundException
+            return null;
+        }
+
+        // 2. 获取该订单中与该商家相关的订单项
+        List<OrderItem> merchantItems = orderDao.getMerchantOrderItems(Collections.singletonList(orderId), merchant.getId());
+
+        // 3. 校验：如果订单存在，但没有任何商品属于该商家，则认为无权限查看
+        //    或者根据业务需求，允许查看订单信息但 item 列表为空
+        if (merchantItems == null || merchantItems.isEmpty()) {
+             // 检查订单是否确实没有任何item属于该商家
+             List<Long> ids = orderDao.getMerchantOrderIds(merchant.getId(), null); // 传入null status获取所有
+             if(!ids.contains(orderId)) {
+                // 确认订单不属于该商家
+                 System.err.println("Attempt to access order " + orderId + " by merchant " + merchant.getId() + " who has no items in it.");
+                // 抛出 AccessDeniedException 或返回 null
+                 return null;
+             }
+            // 如果订单属于商家，但 items 为空（可能因为过滤等原因），返回带空列表的 DTO
+             System.out.println("Order " + orderId + " belongs to merchant " + merchant.getId() + " but no items found for merchant (check getMerchantOrderItems logic).");
+        }
+
+        // 4. 组装 DTO 并返回
+        return new OrderDTO(order, merchantItems == null ? Collections.emptyList() : merchantItems);
+    }
+
+    @Override
+    @Transactional // 涉及状态更新，需要事务
+    public boolean updateOrderStatusByMerchant(User merchant, Long orderId, String newStatus) {
+        // 1. 校验新状态是否合法
+        if (!VALID_ORDER_STATUSES.contains(newStatus)) {
+            throw new IllegalArgumentException("无效的订单状态: " + newStatus);
+        }
+
+        // 2. 获取当前订单信息
+        Order order = orderDao.getOrderById(orderId);
+        if (order == null) {
+            // 如果订单不存在，直接返回失败
+             System.err.println("Order " + orderId + " not found for status update.");
+            return false;
+        }
+
+        String currentStatus = order.getStatus();
+
+        // 3. 实现状态转换逻辑 (商家能进行的操作)
+        // 基本规则：
+        // - 商家可以将 '待发货' -> '已发货'
+        // - 商家可以将 '待发货' -> '已取消' (根据业务需求决定是否允许)
+        // - 其他状态转换由商家发起可能不允许，或需要更复杂逻辑 (如退款流程)
+        if (Objects.equals(currentStatus, STATUS_PENDING_SHIPMENT)) {
+            if (!Objects.equals(newStatus, STATUS_SHIPPED) && !Objects.equals(newStatus, STATUS_CANCELLED)) {
+                throw new IllegalStateException("商家只能将 '待发货' 状态的订单更新为 '已发货' 或 '已取消'，而不是 '" + newStatus + "'");
+            }
+        } else if (Objects.equals(currentStatus, STATUS_SHIPPED)) {
+            // 通常商家不能直接将 '已发货' 改为 '已完成' 或 '已取消'
+            // '已完成' 可能需要用户确认收货或物流信息同步
+            // '已取消' 在发货后通常需要走退货流程
+            throw new IllegalStateException("商家不能直接修改 '已发货' 状态订单的状态。");
+        } else if (Objects.equals(currentStatus, STATUS_COMPLETED) || Objects.equals(currentStatus, STATUS_CANCELLED)) {
+            // 终态订单不允许修改
+            throw new IllegalStateException("不能修改已是 '" + currentStatus + "' 状态的订单。");
+        } else {
+            // 处理未知的当前状态
+            System.err.println("订单 " + orderId + " 存在未知的当前状态: " + currentStatus);
+            throw new IllegalStateException("订单当前状态未知或不允许修改。");
+        }
+
+        // 4. 执行数据库更新 (DAO中的SQL已包含商家权限校验)
+        int updatedRows = orderDao.updateOrderStatusByMerchant(orderId, newStatus, merchant.getId());
+
+        // 5. 处理更新结果
+        if (updatedRows == 1) {
+            System.out.println("Order " + orderId + " status updated to '" + newStatus + "' by merchant " + merchant.getId());
+            // TODO: 可能需要在这里触发一些事件，例如发送通知给用户订单已发货/取消
+            return true;
+        } else {
+            // DAO层的权限检查应该会阻止更新非该商家的订单。如果执行到这里 updatedRows == 0，
+            // 且前面的检查都通过了，可能意味着数据库并发问题或其他底层错误。
+            // 但更可能的情况是，在前面的状态检查或获取订单时就应该处理了不存在或无权限的情况。
+            // 这里日志记录一下异常情况。
+            System.err.println("Failed to update status for order " + orderId + " to '" + newStatus + "' by merchant " + merchant.getId() + ". Rows affected: " + updatedRows + ". Check for concurrent modifications or DAO logic issues.");
+            // 可以考虑根据业务需求决定是否抛出异常
+            // throw new RuntimeException("订单状态更新失败，可能由于并发修改或数据不一致。");
+            return false;
+        }
     }
 
     private OrderItem getOrderItem(CartItemDTO item, Long orderId) {

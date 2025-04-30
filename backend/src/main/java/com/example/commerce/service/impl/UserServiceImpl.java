@@ -123,7 +123,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User checkAuthorization(String authHeader) {
+    public User checkAuthorization(String authHeader) throws RuntimeException {
         if (authHeader == null || !authHeader.startsWith("Bearer "))
             throw new RuntimeException("无效的认证请求头");
 
@@ -142,30 +142,22 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User checkMerchant(String authHeader) {
-        try {
-            User user = checkAuthorization(authHeader);
-            if (!Objects.equals(user.getRole(), "MERCHANT"))
-                throw new RuntimeException("无权限访问该资源");
+    public User checkMerchant(String authHeader) throws RuntimeException {
+        User user = checkAuthorization(authHeader);
+        if (!Objects.equals(user.getRole(), "MERCHANT"))
+            throw new RuntimeException("无权限访问该资源");
 
-            user.setPassword(null);
-            return user;
-        } catch (Exception e) {
-            throw new RuntimeException(e.getMessage());
-        }
+        user.setPassword(null);
+        return user;
     }
 
     @Override
-    public User checkAdmin(String authHeader) {
-        try {
-            User user = checkAuthorization(authHeader);
-            if (!Objects.equals(user.getRole(), "ADMIN"))
-                throw new RuntimeException("无权限访问该资源");
+    public User checkAdmin(String authHeader) throws RuntimeException {
+        User user = checkAuthorization(authHeader);
+        if (!Objects.equals(user.getRole(), "ADMIN"))
+            throw new RuntimeException("无权限访问该资源");
 
-            user.setPassword(null);
-            return user;
-        } catch (Exception e) {
-            throw new RuntimeException(e.getMessage());
-        }
+        user.setPassword(null);
+        return user;
     }
 }

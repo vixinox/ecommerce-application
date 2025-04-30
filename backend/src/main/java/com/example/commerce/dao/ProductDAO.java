@@ -128,4 +128,24 @@ public interface ProductDAO {
 
     @Delete("DELETE FROM products WHERE id = #{productId}")
     void deleteProduct(Long productId);
+
+    /**
+     * 统计商家在售商品数量
+     * @param merchantId 商家ID
+     * @param status 商品状态 (例如 "ACTIVE")
+     * @return 商品数量
+     */
+    @Select("SELECT COUNT(*) FROM products WHERE owner_id = #{merchantId} AND status = #{status}")
+    Long countMerchantProductsByStatus(@Param("merchantId") Long merchantId, @Param("status") String status);
+
+    /**
+     * 统计商家库存低于指定阈值的商品变体数量
+     * @param merchantId 商家ID
+     * @param threshold 库存阈值
+     * @return 低库存商品变体数量
+     */
+    @Select("SELECT COUNT(pv.id) FROM product_variants pv " +
+            "JOIN products p ON pv.product_id = p.id " +
+            "WHERE p.owner_id = #{merchantId} AND pv.stock_quantity < #{threshold}")
+    Long countMerchantLowStockVariants(@Param("merchantId") Long merchantId, @Param("threshold") int threshold);
 }
