@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Heart, ShoppingCart } from "lucide-react"
@@ -20,6 +20,32 @@ export function ProductCard({product}: { product: Product }) {
   const router = useRouter();
   const {user, token} = useAuth()
   const [isWishlisted, setIsWishlisted] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+
+  // 当用户登录时，检查商品是否在愿望单中
+  useEffect(() => {
+    if (user && token) {
+      checkInWishlist()
+    }
+  }, [user, token, product.id])
+
+  const checkInWishlist = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/wishlist`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const wishlistItems = await response.json()
+        const isInWishlist = wishlistItems.some((item: any) => item.productId === Number(product.id))
+        setIsWishlisted(isInWishlist)
+      }
+    } catch (error) {
+      console.error("检查愿望单状态失败:", error)
+    }
+  }
 
   const checkLogin = () => {
     if (!user || !token) {
@@ -34,14 +60,51 @@ export function ProductCard({product}: { product: Product }) {
     return true;
   }
 
-  const toggleWishlist = () => {
+  const toggleWishlist = async () => {
     if (!checkLogin()) return;
+    
+    setIsLoading(true)
+    try {
+      // 修改URL和请求方法以匹配后端
+      const url = isWishlisted 
+        ? `${API_URL}/api/wishlist/remove/${product.id}` 
+        : `${API_URL}/api/wishlist/add`;
+      const method = isWishlisted ? "DELETE" : "POST";
+      
+      const requestOptions: RequestInit = {
+        method,
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      };
 
-    setIsWishlisted(!isWishlisted)
-    if (!isWishlisted)
-      toast.success(`${product.name} 已加入愿望单`)
-    else
-      toast(`${product.name} 已从愿望单移除`)
+      // 如果是添加操作，添加请求体
+      if (!isWishlisted) {
+        requestOptions.headers = { 
+          ...requestOptions.headers,
+          'Content-Type': 'application/json'
+        };
+        requestOptions.body = JSON.stringify({ productId: product.id });
+      }
+
+      const response = await fetch(url, requestOptions);
+
+      if (response.ok) {
+        setIsWishlisted(!isWishlisted)
+        if (!isWishlisted)
+          toast.success(`${product.name} 已加入愿望单`)
+        else
+          toast(`${product.name} 已从愿望单移除`)
+      } else {
+        const errorText = await response.text(); // 获取错误信息
+        throw new Error(errorText || "操作失败")
+      }
+    } catch (error) {
+      toast.error((error as Error).message || (isWishlisted ? "移除商品失败" : "添加商品失败"));
+      console.error("愿望单操作失败:", error);
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -73,6 +136,7 @@ export function ProductCard({product}: { product: Product }) {
           }}
           whileHover={{scale: 1.1}}
           whileTap={{scale: 0.9}}
+          disabled={isLoading}
         >
           <Heart className={`h-5 w-5 ${isWishlisted ? "fill-current" : ""}`}/>
           <span className="sr-only">Add to wishlist</span>

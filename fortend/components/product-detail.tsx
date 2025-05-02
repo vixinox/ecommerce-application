@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, Heart, ShoppingCart } from "lucide-react";
+import { ChevronLeft, Heart, Loader2, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useShoppingCart } from "@/components/shopping-cart-provider";
@@ -14,16 +14,18 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { ProductDetails } from "@/lib/types";
 import { useRouter } from "next/navigation";
+import { API_URL } from "@/lib/api";
 
 export function ProductDetail({productDetail}: { productDetail: ProductDetails }) {
   const router = useRouter();
   const {addToCart} = useShoppingCart();
-  const {user} = useAuth();
+  const {user, token} = useAuth();
   const initialVariant = productDetail.variants?.[0];
   const [selectedColor, setSelectedColor] = useState<string>(initialVariant?.color || '');
   const [selectedSize, setSelectedSize] = useState<string>(initialVariant?.size || '');
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [isWishlistLoading, setIsWishlistLoading] = useState(false);
 
   const images: string[] = Array.from(new Set(
     productDetail.variants.map(variant => variant.image).filter((image): image is string => image !== null)
@@ -54,6 +56,31 @@ export function ProductDetail({productDetail}: { productDetail: ProductDetails }
     else if (selectedColor && availableSizesForColor.length > 0 && selectedSize === '')
       setSelectedSize(availableSizesForColor[0]);
   }, [selectedColor, availableSizesForColor, selectedSize]);
+
+  // 当用户登录时，检查商品是否在愿望单中
+  useEffect(() => {
+    if (user && token) {
+      checkInWishlist();
+    }
+  }, [user, token, productDetail.id]);
+
+  const checkInWishlist = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/wishlist`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const wishlistItems = await response.json();
+        const isInWishlist = wishlistItems.some((item: any) => item.productId === productDetail.id);
+        setIsWishlisted(isInWishlist);
+      }
+    } catch (error) {
+      console.error("检查愿望单状态失败:", error);
+    }
+  };
 
   const checkLogin = () => {
     if (!user) {
@@ -93,13 +120,51 @@ export function ProductDetail({productDetail}: { productDetail: ProductDetails }
     });
   };
 
-  const toggleWishlist = () => {
+  const toggleWishlist = async () => {
     if (!checkLogin()) return;
-    setIsWishlisted(!isWishlisted);
-    if (!isWishlisted)
-      toast.success(`${productDetail.name} 已加入收藏`);
-    else
-      toast(`${productDetail.name} 已从收藏移除`);
+    
+    setIsWishlistLoading(true);
+    try {
+      // 修改URL和请求方法以匹配后端
+      const url = isWishlisted 
+        ? `${API_URL}/api/wishlist/remove/${productDetail.id}` 
+        : `${API_URL}/api/wishlist/add`;
+      const method = isWishlisted ? "DELETE" : "POST";
+      
+      const requestOptions: RequestInit = {
+        method,
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      };
+
+      // 如果是添加操作，添加请求体
+      if (!isWishlisted) {
+        requestOptions.headers = { 
+          ...requestOptions.headers,
+          'Content-Type': 'application/json'
+        };
+        requestOptions.body = JSON.stringify({ productId: productDetail.id });
+      }
+
+      const response = await fetch(url, requestOptions);
+
+      if (response.ok) {
+        setIsWishlisted(!isWishlisted);
+        if (!isWishlisted)
+          toast.success(`${productDetail.name} 已加入愿望单`);
+        else
+          toast(`${productDetail.name} 已从愿望单移除`);
+      } else {
+        const errorText = await response.text(); // 获取错误信息
+        throw new Error(errorText || "操作失败");
+      }
+    } catch (error) {
+      toast.error((error as Error).message || (isWishlisted ? "移除商品失败" : "添加商品失败"));
+      console.error("愿望单操作失败:", error);
+    } finally {
+      setIsWishlistLoading(false);
+    }
   };
 
   if (!productDetail.variants || productDetail.variants.length === 0)
@@ -207,9 +272,19 @@ export function ProductDetail({productDetail}: { productDetail: ProductDetails }
               <ShoppingCart className="mr-2 h-5 w-5"/>
               加入购物车
             </Button>
-            <Button variant="outline" size="lg" className={isWishlisted ? "text-red-500" : ""} onClick={toggleWishlist}>
-              <Heart className={`h-5 w-5 ${isWishlisted ? "fill-current" : ""}`}/>
-              <span className="sr-only">添加到收藏夹</span>
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className={isWishlisted ? "text-red-500" : ""} 
+              onClick={toggleWishlist}
+              disabled={isWishlistLoading}
+            >
+              {isWishlistLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Heart className={`h-5 w-5 ${isWishlisted ? "fill-current" : ""}`} />
+              )}
+              <span className="sr-only">添加到愿望单</span>
             </Button>
           </div>
           <Tabs defaultValue="specifications" className="mt-6">
