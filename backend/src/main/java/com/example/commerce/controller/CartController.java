@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/cart")
@@ -26,21 +27,10 @@ public class CartController {
     }
 
     @Data
-    private static class AddToCartRequest {
-        private Long variantId;
-        private Long quantity;
-    }
-
-    @Data
     private static class UpdateCartRequest {
         private Long cartId;
         private Long variantId;
         private Long quantity;
-    }
-
-    @Data
-    private static class RemoveFromCartRequest {
-        private Long cartId;
     }
 
     @GetMapping("/get")
@@ -59,11 +49,13 @@ public class CartController {
 
     @PostMapping("/add")
     public ResponseEntity<?> addToCart(
-            @RequestBody AddToCartRequest request,
+            @RequestBody Map<String, String> request,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             User user = userService.checkAuthorization(authHeader);
-            cartService.addToCart(user.getId(), request.getVariantId(), request.getQuantity());
+            Long variantId = Long.parseLong(request.get("variantId"));
+            Long quantity = Long.parseLong(request.get("quantity"));
+            cartService.addToCart(user.getId(), variantId, quantity);
             return ResponseEntity.status(HttpStatus.OK).body("success");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -87,11 +79,12 @@ public class CartController {
 
     @PostMapping("/remove")
     public ResponseEntity<?> removeFromCart(
-            @RequestBody RemoveFromCartRequest request,
+            @RequestBody Map<String, String> data,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             User user = userService.checkAuthorization(authHeader);
-            cartService.removeFromCart(user.getId(), request.getCartId());
+            Long variantId = Long.parseLong(data.get("cartId"));
+            cartService.removeFromCart(user.getId(), variantId);
             return ResponseEntity.status(HttpStatus.OK).body("success");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

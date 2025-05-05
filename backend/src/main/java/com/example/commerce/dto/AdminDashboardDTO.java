@@ -1,8 +1,8 @@
 package com.example.commerce.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -13,13 +13,39 @@ import java.util.List;
 public class AdminDashboardDTO {
     private Long totalUsers;
     private Long totalProducts;
-    private Long pendingShipmentOrders; // 待发货订单数
     private Long totalOrders;
-    private BigDecimal totalRevenue; // 总销售额
-    private Long productsPendingApproval; // 待审核商品数
-    private Long lowStockVariantsCount; // 低库存变体数
-    private Long newUsersToday; // 今日新增用户数
-    private List<CategoryCountDTO> productCountByCategory; // 按分类统计商品数量
-    // 可以根据需要添加更多字段，例如：
-    // private Long newUsersLast24h;
-} 
+    private BigDecimal totalRevenue;
+
+    private Long pendingShipmentOrders;
+    private Long productsPendingApproval;
+    private Long lowStockVariantsCount;
+    private Long newUsersToday;
+
+    private List<RecentSaleDTO> recentSales;
+    private List<CategoryCountDTO> productCategoryCounts;
+    private List<OrderStatusCountDTO> orderStatusCounts;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RecentSaleDTO {
+        private String date;
+        private BigDecimal amount;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CategoryCountDTO {
+        private String category;
+        private Long count;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class OrderStatusCountDTO {
+        private String status;
+        private Long count;
+    }
+}

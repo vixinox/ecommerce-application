@@ -1,14 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import {Minus, Plus, ShoppingBag, Trash2} from "lucide-react";
+import {toast} from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { useShoppingCart } from "@/components/shopping-cart-provider";
-import { formatPrice } from "@/lib/utils";
-import { API_URL } from "@/lib/api";
+import {Button} from "@/components/ui/button";
+import {Separator} from "@/components/ui/separator";
+import {useShoppingCart} from "@/components/shopping-cart-provider";
+import {formatPrice} from "@/lib/utils";
+import {API_URL} from "@/lib/api";
 
 export default function ShoppingCart() {
   const {cartItems, updateQuantity, removeFromCart, clearCart, createOrder} = useShoppingCart();
@@ -22,18 +22,19 @@ export default function ShoppingCart() {
   const total = subtotal + shipping;
 
   const handleRemoveItem = async (
-    variantId: number,
     productName: string,
     color: string,
-    size: string
+    size: string,
+    cartId: number
   ) => {
-    await removeFromCart(variantId);
+      try {
+          await removeFromCart(cartId);
+          toast.success(`已将 "${productName}" (${color}/${size}) 移除`);
 
-    toast.info(`已将 "${productName}" (${color}/${size}) 移除`);
-  };
+      } catch (error: any) {
+          toast.error(`移除失败`, {description: error.message})
+      }
 
-  const handleClearCart = async () => {
-    await clearCart();
   };
 
   if (cartItems.length === 0) {
@@ -53,7 +54,7 @@ export default function ShoppingCart() {
       <div className="flex items-center justify-between py-4">
         <h2 className="text-lg font-semibold">购物车 ({cartItems.length})</h2>
 
-        <Button variant="ghost" size="sm" onClick={handleClearCart}>
+          <Button variant="ghost" size="sm" onClick={clearCart}>
           清空购物车
         </Button>
       </div>
@@ -133,10 +134,10 @@ export default function ShoppingCart() {
                   className="h-7 w-7 text-muted-foreground hover:text-red-500"
                   onClick={() =>
                     handleRemoveItem(
-                      item.productVariant.id,
                       item.productName,
                       item.productVariant.color,
-                      item.productVariant.size
+                        item.productVariant.size,
+                        item.cartId
                     )
                   }
                 >

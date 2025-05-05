@@ -1,11 +1,12 @@
 export interface Product {
-  id: string;
+    id: number;
   name: string;
   category: string;
   defaultImage: string;
   minPrice: number;
   status: string;
   totalStock: number;
+    wishlisted: boolean;
 }
 
 export interface Variant {
@@ -67,3 +68,28 @@ export interface OrderDTO {
   order: Order;
   items: OrderItem[];
 }
+
+export interface DashboardData {
+    totalUsers: number;
+    totalProducts: number;
+    totalOrders: number;
+    totalRevenue: number;
+    pendingShipmentOrders: number;
+    productsPendingApproval: number;
+    lowStockVariantsCount: number;
+    newUsersToday: number;
+
+    recentSales: Array<{
+        date: string;
+        amount: number;
+    }>;
+    productCategoryCounts: Array<{
+        category: string;
+        count: number;
+    }>;
+    orderStatusCounts: Array<{
+        status: string;
+        count: number;
+    }>;
+}
+

@@ -29,19 +29,17 @@ public class OrderServiceImpl implements OrderService {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);
 
-    // --- 订单状态常量 ---
-    // 与 init.sql 中 orders.status 的默认值 '待发货' 保持一致
-    private static final String STATUS_PENDING_SHIPMENT = "待发货";
-    private static final String STATUS_SHIPPED = "已发货";
-    private static final String STATUS_COMPLETED = "已完成"; // 可能由系统自动完成或用户确认收货
-    private static final String STATUS_CANCELLED = "已取消"; // 可能由用户、商家或管理员取消
+    private static final String ORDER_STATUS_PENDING = "PENDING";
+    private static final String ORDER_STATUS_SHIPPED = "SHIPPED";
+    private static final String ORDER_STATUS_COMPLETED = "COMPLETED";
+    private static final String ORDER_STATUS_CANCELED = "CANCELED";
 
     // 定义合法的状态集合，方便校验
     private static final Set<String> VALID_ORDER_STATUSES = Set.of(
-            STATUS_PENDING_SHIPMENT,
-            STATUS_SHIPPED,
-            STATUS_COMPLETED,
-            STATUS_CANCELLED
+            ORDER_STATUS_PENDING,
+            ORDER_STATUS_SHIPPED,
+            ORDER_STATUS_COMPLETED,
+            ORDER_STATUS_CANCELED
     );
 
     @Autowired
@@ -100,7 +98,7 @@ public class OrderServiceImpl implements OrderService {
         Order newOrder = new Order();
         newOrder.setUserId(user.getId());
         newOrder.setTotalAmount(totalAmount);
-        newOrder.setStatus("待发货");
+        newOrder.setStatus(ORDER_STATUS_PENDING);
 
         int orderCreatedRows = orderDao.createOrder(newOrder);
         if (orderCreatedRows != 1 || newOrder.getId() == null)
@@ -297,16 +295,16 @@ public class OrderServiceImpl implements OrderService {
         // - 商家可以将 '待发货' -> '已发货'
         // - 商家可以将 '待发货' -> '已取消' (根据业务需求决定是否允许)
         // - 其他状态转换由商家发起可能不允许，或需要更复杂逻辑 (如退款流程)
-        if (Objects.equals(currentStatus, STATUS_PENDING_SHIPMENT)) {
-            if (!Objects.equals(newStatus, STATUS_SHIPPED) && !Objects.equals(newStatus, STATUS_CANCELLED)) {
+        if (Objects.equals(currentStatus, ORDER_STATUS_PENDING)) {
+            if (!Objects.equals(newStatus, ORDER_STATUS_SHIPPED) && !Objects.equals(newStatus, ORDER_STATUS_CANCELED)) {
                 throw new IllegalStateException("商家只能将 '待发货' 状态的订单更新为 '已发货' 或 '已取消'，而不是 '" + newStatus + "'");
             }
-        } else if (Objects.equals(currentStatus, STATUS_SHIPPED)) {
+        } else if (Objects.equals(currentStatus, ORDER_STATUS_SHIPPED)) {
             // 通常商家不能直接将 '已发货' 改为 '已完成' 或 '已取消'
             // '已完成' 可能需要用户确认收货或物流信息同步
             // '已取消' 在发货后通常需要走退货流程
             throw new IllegalStateException("商家不能直接修改 '已发货' 状态订单的状态。");
-        } else if (Objects.equals(currentStatus, STATUS_COMPLETED) || Objects.equals(currentStatus, STATUS_CANCELLED)) {
+        } else if (Objects.equals(currentStatus, ORDER_STATUS_COMPLETED) || Objects.equals(currentStatus, ORDER_STATUS_CANCELED)) {
             // 终态订单不允许修改
             throw new IllegalStateException("不能修改已是 '" + currentStatus + "' 状态的订单。");
         } else {
@@ -335,28 +333,22 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    // 新增 getAllOrdersAdmin 实现
     @Override
     public PageInfo<OrderDTO> getAllOrdersAdmin(int pageNum, int pageSize, String statusFilter) {
-        // 1. 使用 PageHelper 进行分页
         PageHelper.startPage(pageNum, pageSize);
+        String filter = Objects.equals(statusFilter, "all") || statusFilter == null ? null : statusFilter;
+        List<Order> orders = orderDao.findAllOrdersAdmin(filter);
 
-        // 2. 调用 DAO 获取所有订单（根据状态过滤）
-        List<Order> orders = orderDao.findAllOrdersAdmin(statusFilter);
-
-        // 如果没有订单，直接返回空的分页信息
-        if (orders == null || orders.isEmpty()) {
+        if (orders == null || orders.isEmpty())
             return new PageInfo<>(Collections.emptyList());
-        }
+
         PageInfo<Order> orderPageInfo = new PageInfo<>(orders);
 
-        // 3. 获取这些订单的所有订单项
         List<Long> orderIds = orders.stream().map(Order::getId).collect(Collectors.toList());
         List<OrderItem> allItems = orderDao.getOrderItemsByOrderIds(orderIds);
         Map<Long, List<OrderItem>> itemsByOrderId = allItems.stream()
                 .collect(Collectors.groupingBy(OrderItem::getOrderId));
 
-        // 4. 组装成 OrderDTO
         List<OrderDTO> orderDTOs = orders.stream()
                 .map(order -> {
                     List<OrderItem> orderItems = itemsByOrderId.getOrDefault(order.getId(), Collections.emptyList());
@@ -364,7 +356,6 @@ public class OrderServiceImpl implements OrderService {
                 })
                 .collect(Collectors.toList());
 
-        // 5. 使用 PageInfo 包装 DTO 列表，并设置分页信息
         PageInfo<OrderDTO> resultPageInfo = new PageInfo<>(orderDTOs);
         resultPageInfo.setTotal(orderPageInfo.getTotal());
         resultPageInfo.setPageNum(orderPageInfo.getPageNum());
@@ -389,8 +380,6 @@ public class OrderServiceImpl implements OrderService {
             throw new RuntimeException("订单不存在: " + orderId);
         }
 
-        // 3. 更新状态
-        // TODO: 考虑状态流转逻辑，例如不能从已完成变回待发货？目前允许任意合法状态变更。
         String oldStatus = order.getStatus(); // 获取旧状态
         int updatedRows = orderDao.updateOrderStatusAdmin(orderId, newStatus);
         if (updatedRows == 0) {

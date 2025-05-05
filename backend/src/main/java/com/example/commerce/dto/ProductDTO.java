@@ -1,7 +1,6 @@
 package com.example.commerce.dto;
 
 import lombok.Data;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 
@@ -12,4 +11,5 @@ public class ProductDTO {
     private String category;
     private String defaultImage;
     private BigDecimal minPrice;
+    private boolean isWishlisted;
 }

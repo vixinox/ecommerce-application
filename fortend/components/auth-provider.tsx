@@ -1,15 +1,16 @@
 "use client";
 
-import { createContext, type ReactNode, useContext, useEffect, useState, } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { API_URL } from "@/lib/api";
+import {createContext, type ReactNode, useContext, useEffect, useState,} from "react";
+import {useRouter} from "next/navigation";
+import {toast} from "sonner";
+import {API_URL} from "@/lib/api";
 
 interface StoredUser {
   username: string;
   nickname: string;
   email: string;
   avatar: string;
+    role: string;
 }
 
 interface AuthContextType {

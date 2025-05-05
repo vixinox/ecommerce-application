@@ -5,7 +5,6 @@ import com.example.commerce.dao.ProductDAO;
 import com.example.commerce.dao.UserDAO;
 import com.example.commerce.dto.AdminDashboardDTO;
 import com.example.commerce.dto.MerchantDashboardDTO;
-import com.example.commerce.dto.CategoryCountDTO;
 import com.example.commerce.model.User;
 import com.example.commerce.service.DashboardService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,12 +22,11 @@ public class DashboardServiceImpl implements DashboardService {
     private final ProductDAO productDAO;
     private final UserDAO userDAO;
 
-    // 可以定义常量或从配置读取
-    private static final String PENDING_ORDER_STATUS = "待发货";
-    private static final String ACTIVE_PRODUCT_STATUS = "ACTIVE";
-    private static final int LOW_STOCK_THRESHOLD = 10; // 例如，库存低于10件算低库存
-    private static final String PENDING_SHIPMENT_STATUS = "待发货";
-    private static final int DEFAULT_LOW_STOCK_THRESHOLD = 10; // 默认低库存阈值
+    public static final String PRODUCT_STATUS_PENDING = "PENDING";
+    public static final String PRODUCT_STATUS_ACTIVE = "ACTIVE";
+    private static final String ORDER_STATUS_PENDING = "PENDING";
+    private static final int LOW_STOCK_THRESHOLD = 10;
+    private static final int DEFAULT_LOW_STOCK_THRESHOLD = 10;
 
     @Autowired
     public DashboardServiceImpl(OrderDAO orderDAO, ProductDAO productDAO, UserDAO userDAO) {
@@ -41,16 +39,13 @@ public class DashboardServiceImpl implements DashboardService {
     public MerchantDashboardDTO getMerchantDashboardData(User merchant) {
         Long merchantId = merchant.getId();
 
-        // 1. 查询订单相关统计
-        Long pendingOrdersCount = orderDAO.countMerchantOrdersByStatus(merchantId, PENDING_ORDER_STATUS);
+        Long pendingOrdersCount = orderDAO.countMerchantOrdersByStatus(merchantId, ORDER_STATUS_PENDING);
         Long totalOrdersCount = orderDAO.countTotalMerchantOrders(merchantId);
         BigDecimal totalSalesAmount = orderDAO.calculateTotalMerchantSales(merchantId);
 
-        // 2. 查询商品相关统计
-        Long activeProductsCount = productDAO.countMerchantProductsByStatus(merchantId, ACTIVE_PRODUCT_STATUS);
+        Long activeProductsCount = productDAO.countMerchantProductsByStatus(merchantId, PRODUCT_STATUS_ACTIVE);
         Long lowStockProductsCount = productDAO.countMerchantLowStockVariants(merchantId, LOW_STOCK_THRESHOLD);
 
-        // 3. 组装 DTO
         MerchantDashboardDTO dashboardData = new MerchantDashboardDTO();
         dashboardData.setPendingOrdersCount(pendingOrdersCount != null ? pendingOrdersCount : 0L);
         dashboardData.setTotalOrdersCount(totalOrdersCount != null ? totalOrdersCount : 0L);
@@ -61,34 +56,36 @@ public class DashboardServiceImpl implements DashboardService {
         return dashboardData;
     }
 
-    @Override
     public AdminDashboardDTO getAdminDashboardData() {
-        // 1. 获取用户统计
         Long totalUsers = Optional.ofNullable(userDAO.countTotalUsers()).orElse(0L);
         Long newUsersToday = Optional.ofNullable(userDAO.countNewUsersToday()).orElse(0L);
-
-        // 2. 获取商品统计
         Long totalProducts = Optional.ofNullable(productDAO.countTotalProducts()).orElse(0L);
-        Long pendingApprovalProducts = Optional.ofNullable(productDAO.countProductsByStatus(ProductServiceImpl.PRODUCT_STATUS_PENDING)).orElse(0L);
-        Long lowStockVariants = Optional.ofNullable(productDAO.countLowStockVariants(DEFAULT_LOW_STOCK_THRESHOLD)).orElse(0L);
-        List<CategoryCountDTO> productCountByCategory = Optional.ofNullable(productDAO.getProductCountByCategory()).orElse(Collections.emptyList());
+        Long productsPendingApproval = Optional.ofNullable(productDAO.countProductsByStatus(PRODUCT_STATUS_PENDING)).orElse(0L);
+        Long lowStockVariantsCount = Optional.ofNullable(productDAO.countLowStockVariants(DEFAULT_LOW_STOCK_THRESHOLD)).orElse(0L);
+        List<AdminDashboardDTO.CategoryCountDTO> productCategoryCounts = Optional.ofNullable(productDAO.getProductCountByCategory()).orElse(Collections.emptyList());
 
-        // 3. 获取订单统计
-        Long pendingShipmentOrders = Optional.ofNullable(orderDAO.countOrdersByStatus(PENDING_SHIPMENT_STATUS)).orElse(0L);
+        Long pendingShipmentOrders = Optional.ofNullable(orderDAO.countOrdersByStatus(ORDER_STATUS_PENDING)).orElse(0L);
         Long totalOrders = Optional.ofNullable(orderDAO.countTotalOrders()).orElse(0L);
         BigDecimal totalRevenue = Optional.ofNullable(orderDAO.calculateTotalRevenue()).orElse(BigDecimal.ZERO);
 
-        // 4. 组装 DTO
+        List<AdminDashboardDTO.RecentSaleDTO> recentSales = Optional.ofNullable(orderDAO.getRecentSales(30)).orElse(Collections.emptyList());
+        List<AdminDashboardDTO.OrderStatusCountDTO> orderStatusCounts = Optional.ofNullable(orderDAO.getOrderStatusCounts()).orElse(Collections.emptyList());
+
+        System.out.println("recentSales: " + recentSales);
+
         AdminDashboardDTO dto = new AdminDashboardDTO();
         dto.setTotalUsers(totalUsers);
         dto.setTotalProducts(totalProducts);
         dto.setPendingShipmentOrders(pendingShipmentOrders);
         dto.setTotalOrders(totalOrders);
         dto.setTotalRevenue(totalRevenue);
-        dto.setProductsPendingApproval(pendingApprovalProducts);
-        dto.setLowStockVariantsCount(lowStockVariants);
+        dto.setProductsPendingApproval(productsPendingApproval);
+        dto.setLowStockVariantsCount(lowStockVariantsCount);
         dto.setNewUsersToday(newUsersToday);
-        dto.setProductCountByCategory(productCountByCategory);
+
+        dto.setProductCategoryCounts(productCategoryCounts);
+        dto.setRecentSales(recentSales);
+        dto.setOrderStatusCounts(orderStatusCounts);
 
         return dto;
     }

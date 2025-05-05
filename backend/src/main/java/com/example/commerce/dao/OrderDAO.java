@@ -1,5 +1,6 @@
 package com.example.commerce.dao;
 
+import com.example.commerce.dto.AdminDashboardDTO;
 import com.example.commerce.dto.SpendingReportDTO;
 import com.example.commerce.model.Order;
 import com.example.commerce.model.OrderItem;
@@ -11,19 +12,8 @@ import java.util.Map;
 
 @Mapper
 public interface OrderDAO {
-    @Insert("INSERT INTO orders (user_id, total_amount, status, created_at, updated_at) " +
-            "VALUES (#{userId}, #{totalAmount}, #{status}, NOW(), NOW())")
-    @Options(useGeneratedKeys = true, keyProperty = "id")
     int createOrder(Order order);
 
-    @Insert({
-            "<script>",
-            "INSERT INTO order_items (order_id, product_id, product_variant_id, quantity, purchased_price, snapshot_product_name, snapshot_variant_color, snapshot_variant_size, snapshot_variant_image, created_at, updated_at) VALUES",
-            "<foreach collection='list' item='item' separator=','>",
-            "(#{item.orderId}, #{item.productId}, #{item.productVariantId}, #{item.quantity}, #{item.purchasedPrice}, #{item.snapshotProductName}, #{item.snapshotVariantColor}, #{item.snapshotVariantSize}, #{item.snapshotVariantImage}, NOW(), NOW())",
-            "</foreach>",
-            "</script>"
-    })
     int createOrderItems(@Param("list") List<OrderItem> orderItems);
 
     @Results({
@@ -35,27 +25,6 @@ public interface OrderDAO {
     @Select("SELECT * FROM orders WHERE user_id = #{userId}")
     List<Order> getOrdersByUserId(@Param("userId") Long userId);
 
-    @Results({
-            @Result(property = "orderId", column = "order_id"),
-            @Result(property = "productId", column = "product_id"),
-            @Result(property = "productVariantId", column = "product_variant_id"),
-            @Result(property = "purchasedPrice", column = "purchased_price"),
-            @Result(property = "snapshotProductName", column = "snapshot_product_name"),
-            @Result(property = "snapshotVariantColor", column = "snapshot_variant_color"),
-            @Result(property = "snapshotVariantSize", column = "snapshot_variant_size"),
-            @Result(property = "snapshotVariantImage", column = "snapshot_variant_image"),
-            @Result(property = "createdAt", column = "created_at"),
-            @Result(property = "updatedAt", column = "updated_at")
-    })
-    @Select({
-            "<script>",
-            "SELECT * FROM order_items",
-            "WHERE order_id IN",
-            "<foreach collection='orderIds' item='orderId' open='(' separator=',' close=')'>",
-            "#{orderId}",
-            "</foreach>",
-            "</script>"
-    })
     List<OrderItem> getOrderItemsByOrderIds(@Param("orderIds") List<Long> orderIds);
 
     /**
@@ -78,7 +47,7 @@ public interface OrderDAO {
             "FROM orders " +
             "WHERE user_id = #{userId} " +
             "GROUP BY period " +
-            "ORDER BY period ASC")
+            "ORDER BY period ")
     List<SpendingReportDTO.TimeBasedSpend> getUserMonthlySpendTrend(@Param("userId") Long userId);
 
 
@@ -162,7 +131,6 @@ public interface OrderDAO {
             @Result(property = "snapshotVariantImage", column = "snapshot_variant_image"),
             @Result(property = "createdAt", column = "created_at"),
             @Result(property = "updatedAt", column = "updated_at")
-            // 可以补充其他需要的字段映射
     })
     List<OrderItem> getMerchantOrderItems(@Param("orderIds") List<Long> orderIds, @Param("merchantId") Long merchantId);
 
@@ -218,23 +186,21 @@ public interface OrderDAO {
     @SelectProvider(type = OrderSqlProvider.class, method = "calculateTotalMerchantSales")
     BigDecimal calculateTotalMerchantSales(@Param("merchantId") Long merchantId);
 
-    // 添加此方法声明 (将在 XML 或 Provider 中实现)
     List<Order> findAllOrdersAdmin(@Param("statusFilter") String statusFilter);
 
-    // 添加管理员更新订单状态的方法
     @UpdateProvider(type = OrderSqlProvider.class, method = "updateOrderStatusAdmin")
     int updateOrderStatusAdmin(@Param("orderId") Long orderId, @Param("status") String status);
 
-    // 添加统计总订单数的方法
     @Select("SELECT COUNT(*) FROM orders")
     Long countTotalOrders();
 
-    // 添加按状态统计订单数的方法 (复用商家统计的Provider，只是不传 merchantId)
-    // 或者直接用注解实现更简单
     @Select("SELECT COUNT(*) FROM orders WHERE status = #{status}")
     Long countOrdersByStatus(@Param("status") String status);
 
-    // 添加计算总销售额的方法
     @Select("SELECT SUM(total_amount) FROM orders")
     BigDecimal calculateTotalRevenue();
+
+    List<AdminDashboardDTO.RecentSaleDTO> getRecentSales(@Param("days") int days);
+
+    List<AdminDashboardDTO.OrderStatusCountDTO> getOrderStatusCounts();
 }

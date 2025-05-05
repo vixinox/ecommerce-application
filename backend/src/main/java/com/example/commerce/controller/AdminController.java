@@ -1,19 +1,18 @@
 package com.example.commerce.controller;
 
-import com.example.commerce.model.User;
-import com.example.commerce.model.Product;
+import com.example.commerce.dto.AdminDashboardDTO;
 import com.example.commerce.dto.OrderDTO;
 import com.example.commerce.dto.ProductEditResponseDTO;
-import com.example.commerce.dto.AdminDashboardDTO;
-import com.example.commerce.service.UserService;
-import com.example.commerce.service.ProductService;
-import com.example.commerce.service.OrderService;
+import com.example.commerce.model.Product;
+import com.example.commerce.model.User;
 import com.example.commerce.service.DashboardService;
+import com.example.commerce.service.OrderService;
+import com.example.commerce.service.ProductService;
+import com.example.commerce.service.UserService;
 import com.github.pagehelper.PageInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.http.HttpStatus;
 
 import java.util.Map;
 import java.util.Optional;
@@ -74,32 +73,24 @@ public class AdminController {
     /**
      * 更新用户状态
      * 需要管理员权限
-     * @param username 用户名 (来自路径)
-     * @param statusData 请求体，应包含 {"status": "NEW_STATUS"}
+     * @param statusData 请求体，应包含状态与id
      * @param authHeader 认证头
      * @return ResponseEntity
      */
-    @PutMapping("/users/{username}/status")
+    @PutMapping("/users/update/status")
     public ResponseEntity<?> updateUserStatus(
-            @PathVariable String username,
             @RequestBody Map<String, String> statusData,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            // 1. 检查管理员权限
             userService.checkAdmin(authHeader);
-
+            Long userId = Long.parseLong(statusData.get("userId"));
             String newStatus = statusData.get("status");
-            if (newStatus == null || newStatus.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body("请求体中必须包含 'status' 字段。");
-            }
+            if (newStatus == null)
+                return ResponseEntity.badRequest().body("请求体字段缺失");
 
-            // 2. 调用服务更新状态
-            userService.updateUserStatus(username, newStatus.trim());
-
-            // 3. 返回成功响应
-            return ResponseEntity.ok(Map.of("message", "用户 " + username + " 状态已更新为 " + newStatus));
+            userService.updateUserStatus(userId, newStatus.trim());
+            return ResponseEntity.ok(Map.of("message", "用户 " + userId + " 状态已更新为 " + newStatus));
         } catch (RuntimeException e) {
-            // 权限不足或其他运行时异常
             return ResponseEntity.status(403).body("更新用户状态失败: " + e.getMessage());
         }
     }
@@ -115,14 +106,10 @@ public class AdminController {
             @RequestParam(value = "size", defaultValue = "10") int pageSize,
             @RequestParam(value = "status", required = false) String statusFilter) {
         try {
-            // 1. 检查管理员权限
             userService.checkAdmin(authHeader);
-            // 2. 调用服务获取分页商品数据，传入过滤器
             PageInfo<Product> productPageInfo = productService.getAllProductsAdmin(pageNum, pageSize, statusFilter);
-            // 3. 返回成功响应
             return ResponseEntity.ok(productPageInfo);
         } catch (RuntimeException e) {
-            // 权限不足或其他运行时异常
             return ResponseEntity.status(403).body("获取商品列表失败: " + e.getMessage());
         }
     }
@@ -130,32 +117,21 @@ public class AdminController {
     /**
      * 更新商品状态
      * 需要管理员权限
-     * @param productId 商品ID (来自路径)
      * @param statusData 请求体，应包含 {"status": "NEW_STATUS"}
      * @param authHeader 认证头
      * @return ResponseEntity
      */
-    @PutMapping("/products/{productId}/status")
+    @PutMapping("/products/update/status")
     public ResponseEntity<?> updateProductStatus(
-            @PathVariable Long productId,
             @RequestBody Map<String, String> statusData,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            // 1. 检查管理员权限
             userService.checkAdmin(authHeader);
-
+            Long productId = Long.valueOf(statusData.get("productId"));
             String newStatus = statusData.get("status");
-            if (newStatus == null || newStatus.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body("请求体中必须包含 'status' 字段。");
-            }
-
-            // 2. 调用服务更新状态
             productService.updateProductStatus(productId, newStatus.trim());
-
-            // 3. 返回成功响应
             return ResponseEntity.ok(Map.of("message", "商品 " + productId + " 状态已更新为 " + newStatus));
         } catch (RuntimeException e) {
-            // 权限不足或其他运行时异常
             return ResponseEntity.status(403).body("更新商品状态失败: " + e.getMessage());
         }
     }
@@ -186,27 +162,22 @@ public class AdminController {
     /**
      * 管理员更新订单状态
      * 需要管理员权限
-     * @param orderId 订单ID (来自路径)
-     * @param statusData 请求体，应包含 {"status": "NEW_STATUS"}
+     * @param statusData 请求体，应包含 {"orderId": "ORDER_ID", "status": "NEW_STATUS"}
      * @param authHeader 认证头
      * @return ResponseEntity
      */
-    @PutMapping("/orders/{orderId}/status")
+    @PutMapping("/orders/update/status")
     public ResponseEntity<?> updateOrderStatusAdmin(
-            @PathVariable Long orderId,
             @RequestBody Map<String, String> statusData,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             // 1. 检查管理员权限
             userService.checkAdmin(authHeader);
 
+            String orderId = statusData.get("orderId");
             String newStatus = statusData.get("status");
-            if (newStatus == null || newStatus.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body("请求体中必须包含 'status' 字段。");
-            }
-
             // 2. 调用服务更新状态
-            orderService.updateOrderStatusAdmin(orderId, newStatus.trim());
+            orderService.updateOrderStatusAdmin(Long.valueOf(orderId), newStatus.trim());
 
             // 3. 返回成功响应
             return ResponseEntity.ok(Map.of("message", "订单 " + orderId + " 状态已更新为 " + newStatus));
@@ -261,13 +232,9 @@ public class AdminController {
             @PathVariable Long productId,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            // 1. 检查管理员权限
             userService.checkAdmin(authHeader);
-
-            // 2. 调用服务获取商品详情
             Optional<ProductEditResponseDTO> productDetailsOpt = productService.getProductDetailsAdmin(productId);
 
-            // 3. 处理结果并返回 (使用 if/else)
             if (productDetailsOpt.isPresent()) {
                 return ResponseEntity.ok(productDetailsOpt.get());
             } else {
@@ -275,7 +242,6 @@ public class AdminController {
             }
 
         } catch (RuntimeException e) {
-            // 权限不足或其他运行时异常
             return ResponseEntity.status(403).body("获取商品详情失败: " + e.getMessage());
         }
     }
@@ -343,30 +309,23 @@ public class AdminController {
     /**
      * 管理员更新用户角色
      * 需要管理员权限
-     * @param username 要修改角色的用户名 (来自路径)
      * @param roleData 请求体，应包含 {"role": "NEW_ROLE"}
      * @param authHeader 认证头
      * @return ResponseEntity
      */
-    @PutMapping("/users/{username}/role")
+    @PutMapping("/users/update/role")
     public ResponseEntity<?> updateUserRoleAdmin(
-            @PathVariable String username,
             @RequestBody Map<String, String> roleData,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            // 1. 检查管理员权限
             userService.checkAdmin(authHeader);
 
+            Long userId = Long.parseLong(roleData.get("userId"));
             String newRole = roleData.get("role");
-            if (newRole == null || newRole.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body("请求体中必须包含 'role' 字段且不能为空。");
-            }
-
-            // 2. 调用服务更新角色
-            userService.updateUserRoleAdmin(username, newRole.trim());
+            userService.updateUserRoleAdmin(userId, newRole.trim());
 
             // 3. 返回成功响应
-            return ResponseEntity.ok(Map.of("message", "用户 " + username + " 的角色已更新为 " + newRole));
+            return ResponseEntity.ok(Map.of("message", "用户id " + userId + " 的角色已更新为 " + newRole));
 
         } catch (IllegalArgumentException e) {
             // 无效的角色值
@@ -383,37 +342,21 @@ public class AdminController {
     /**
      * 管理员软删除用户 (标记状态为 DELETED)
      * 需要管理员权限
-     * @param username 要删除的用户名 (来自路径)
+     * @param userId 要删除的用户 (来自路径)
      * @param authHeader 认证头
      * @return ResponseEntity
      */
-    @DeleteMapping("/users/{username}")
+    @DeleteMapping("/users/delete/{userId}")
     public ResponseEntity<?> softDeleteUserAdmin(
-            @PathVariable String username,
+            @PathVariable Long userId,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            // 1. 检查管理员权限
             userService.checkAdmin(authHeader);
-
-            // 2. 调用服务软删除用户
-            userService.softDeleteUser(username);
-
-            // 3. 返回成功响应
-            return ResponseEntity.ok(Map.of("message", "用户 " + username + " 已被标记为删除。"));
-
+            userService.softDeleteUser(userId);
+            return ResponseEntity.ok("用户 " + userId + " 已删除");
         } catch (RuntimeException e) {
-            // 权限不足、用户不存在或其他运行时异常
-            if (e.getMessage() != null && e.getMessage().startsWith("用户不存在")) {
-                return ResponseEntity.status(404).body("删除用户失败: " + e.getMessage());
-            }
-            // 捕获 IllegalArgumentException (无效状态) - 理论上不应发生，因为我们硬编码 "DELETED"
-            if (e instanceof IllegalArgumentException) {
-                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("删除用户失败: 内部状态错误");
-            }
-            return ResponseEntity.status(403).body("删除用户失败: " + e.getMessage());
+            return ResponseEntity.status(500).body(e.getMessage());
         }
     }
-
-    // 在这里添加其他的管理员接口...
 
 }

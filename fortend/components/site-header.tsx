@@ -1,20 +1,20 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useState } from "react"
+import {useEffect, useState} from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useTheme } from 'next-themes'
-import { LogOut, Search, ShoppingBag, SunMoon, User } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { useShoppingCart } from "@/components/shopping-cart-provider"
+import {useRouter} from "next/navigation"
+import {useTheme} from 'next-themes'
+import {Heart, LogOut, Search, ShoppingBag, SunMoon, User} from "lucide-react"
+import {Button} from "@/components/ui/button"
+import {Input} from "@/components/ui/input"
+import {Sheet, SheetContent, SheetTitle, SheetTrigger} from "@/components/ui/sheet"
+import {useShoppingCart} from "@/components/shopping-cart-provider"
 import ShoppingCart from "@/components/shopping-cart"
-import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
-import { useAuth } from "@/components/auth-provider"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {Badge} from "@/components/ui/badge"
+import {cn} from "@/lib/utils"
+import {useAuth} from "@/components/auth-provider"
+import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,17 +23,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { API_URL } from "@/lib/api";
+import {API_URL} from "@/lib/api";
 import NavLinks from "@/components/nav-links";
 
 export default function SiteHeader() {
   const router = useRouter()
-  const {cartItems} = useShoppingCart()
   const {user, logout} = useAuth()
   const {setTheme, theme} = useTheme()
   const [isScrolled, setIsScrolled] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
 
+    const {cartItems} = useShoppingCart()
   const itemCount = cartItems.reduce((total, item) => total + item.quantity, 0)
 
   useEffect(() => {
@@ -87,9 +87,11 @@ export default function SiteHeader() {
                 <DropdownMenuItem asChild>
                   <Link href="/account/profile">个人资料</Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/wishlist">愿望单</Link>
-                </DropdownMenuItem>
+                  {user.role === "ADMIN" && (
+                      <DropdownMenuItem asChild>
+                          <Link href="/admin/dashboard">管理员面板</Link>
+                      </DropdownMenuItem>
+                  )}
                 <DropdownMenuSeparator/>
                 <DropdownMenuItem onClick={() => {
                   logout();
@@ -128,6 +130,16 @@ export default function SiteHeader() {
               <ShoppingCart/>
             </SheetContent>
           </Sheet>
+            <Button
+                variant="ghost"
+                size="icon"
+                className="relative h-8 w-8"
+                aria-label="愿望单"
+                onClick={() => router.push("/wishlist")}
+            >
+                <Heart className="h-5 w-5"/>
+                <span className="sr-only">愿望单</span>
+            </Button>
           <Button
             variant="ghost"
             size="icon"

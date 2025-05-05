@@ -7,11 +7,8 @@ import com.example.commerce.dto.UploadProductDTO;
 import com.example.commerce.model.Product;
 import com.example.commerce.model.User;
 import com.example.commerce.service.ProductService;
-
 import com.example.commerce.service.UserService;
 import com.github.pagehelper.PageInfo;
-
-import org.apache.ibatis.annotations.Delete;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -47,14 +44,25 @@ public class ProductController {
      * @return ResponseEntity 包含商品列表的 PageInfo 对象和状态码
      */
     @GetMapping
-    public ResponseEntity<PageInfo<ProductDTO>> getProductList(
+    public ResponseEntity<?> getProductList(
             @RequestParam(value = "page", defaultValue = "1") int pageNum,
             @RequestParam(value = "size", defaultValue = "10") int pageSize,
             @RequestParam(value = "category", required = false) String category,
             @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(value = "minPrice", required = false) Double minPrice,
-            @RequestParam(value = "maxPrice", required = false) Double maxPrice) {
-        PageInfo<ProductDTO> productPageInfo = productService.listProducts(pageNum, pageSize, category, keyword, minPrice, maxPrice);
+            @RequestParam(value = "maxPrice", required = false) Double maxPrice,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        Long userId = null;
+        if (authorization != null) {
+            try {
+                User user = userService.checkAuthorization(authorization);
+                userId = user.getId();
+            } catch (Exception e) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(e.getMessage());
+            }
+        }
+        PageInfo<ProductDTO> productPageInfo = productService.listProducts(pageNum, pageSize, category, keyword, minPrice, maxPrice, userId);
         return ResponseEntity.ok(productPageInfo);
     }
 
@@ -66,9 +74,20 @@ public class ProductController {
     }
 
     @GetMapping("/random")
-    public ResponseEntity<List<ProductDTO>> getRandomProducts(
-            @RequestParam(value = "size", defaultValue = "8") int size) {
-        List<ProductDTO> randomProducts = productService.getRandomProducts(size);
+    public ResponseEntity<?> getRandomProducts(
+            @RequestParam(value = "size", defaultValue = "8") int size,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        Long userId = null;
+        if (authorization != null) {
+            try {
+                User user = userService.checkAuthorization(authorization);
+                userId = user.getId();
+            } catch (Exception e) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(e.getMessage());
+            }
+        }
+        List<ProductDTO> randomProducts = productService.getRandomProducts(size, userId);
         return ResponseEntity.ok(randomProducts);
     }
 

@@ -1,18 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { SubmitHandler, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
-import type { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { loginSchema, sha256 } from "@/lib/auth";
-import { useAuth } from "@/components/auth-provider";
-import { API_URL } from "@/lib/api";
+import {useState} from "react";
+import {useRouter} from "next/navigation";
+import {SubmitHandler, useForm} from "react-hook-form";
+import {zodResolver} from "@hookform/resolvers/zod";
+import {toast} from "sonner";
+import {Loader2} from "lucide-react";
+import type {z} from "zod";
+import {Button} from "@/components/ui/button";
+import {Input} from "@/components/ui/input";
+import {Form, FormControl, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form";
+import {loginSchema, sha256} from "@/lib/auth";
+import {useAuth} from "@/components/auth-provider";
+import {API_URL} from "@/lib/api";
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
@@ -41,7 +41,10 @@ export function LoginForm() {
       if (response.ok) {
         const userData = await response.json();
         login(userData.user, userData.token);
-        router.push("/");
+          if (userData.user.role === "ADMIN")
+              router.push("/admin/dashboard");
+          else
+              router.push("/");
       }
       else
         toast.error("登录失败", {description: response.text()});

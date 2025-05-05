@@ -7,7 +7,6 @@ import com.example.commerce.dto.UploadProductDTO;
 import com.example.commerce.model.Product;
 import com.example.commerce.model.User;
 import com.github.pagehelper.PageInfo;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,9 +14,9 @@ import java.util.Optional;
 public interface ProductService {
     Optional<ProductDetailDTO> getProductDetail(Long productId);
 
-    PageInfo<ProductDTO> listProducts(int pageNum, int pageSize, String category, String keyword, Double minPrice, Double maxPrice);
+    PageInfo<ProductDTO> listProducts(int pageNum, int pageSize, String category, String keyword, Double minPrice, Double maxPrice, Long userId);
 
-    List<ProductDTO> getRandomProducts(int size);
+    List<ProductDTO> getRandomProducts(int size, Long userId);
 
     void addProduct(UploadProductDTO newProduct, User user) throws Exception;
 

@@ -13,11 +13,9 @@ import com.example.commerce.service.ProductService;
 import com.example.commerce.service.UserService;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
-import org.mybatis.spring.SqlSessionTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -38,9 +36,9 @@ public class ProductServiceImpl implements ProductService {
     private static final Logger logger = LoggerFactory.getLogger(ProductServiceImpl.class);
 
     // 定义商品状态常量和有效状态集
-    public static final String PRODUCT_STATUS_PENDING = "PENDING_APPROVAL";
+    public static final String PRODUCT_STATUS_PENDING = "PENDING";
     public static final String PRODUCT_STATUS_ACTIVE = "ACTIVE";
-    public static final String PRODUCT_STATUS_INACTIVE = "INACTIVE"; // 例如下架
+    public static final String PRODUCT_STATUS_INACTIVE = "INACTIVE";
     public static final String PRODUCT_STATUS_REJECTED = "REJECTED";
     public static final String PRODUCT_STATUS_DELETED = "DELETED";
     private static final Set<String> VALID_PRODUCT_STATUSES = Set.of(
@@ -63,16 +61,16 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public PageInfo<ProductDTO> listProducts(int pageNum, int pageSize, String category, String keyword, Double minPrice, Double maxPrice) {
+    public PageInfo<ProductDTO> listProducts(int pageNum, int pageSize, String category, String keyword, Double minPrice, Double maxPrice, Long userId) {
         PageHelper.startPage(pageNum, pageSize);
-        return new PageInfo<>(productDAO.searchProducts(category, keyword, minPrice, maxPrice));
+        return new PageInfo<>(productDAO.searchProducts(category, keyword, minPrice, maxPrice, userId));
     }
 
     @Override
-    public List<ProductDTO> getRandomProducts(int size) {
+    public List<ProductDTO> getRandomProducts(int size, Long userId) {
         if (size <= 0)
             return emptyList();
-        return productDAO.getRandomProducts(Math.min(size, 20));
+        return productDAO.getRandomProducts(Math.min(size, 20), userId);
     }
 
     @Override
@@ -601,6 +599,7 @@ public class ProductServiceImpl implements ProductService {
     public PageInfo<Product> getAllProductsAdmin(int pageNum, int pageSize, String statusFilter) {
         PageHelper.startPage(pageNum, pageSize);
         List<Product> products = productDAO.findAllProductsAdmin(statusFilter);
+        logger.info("获取的商品（管理员）{}", products);
         return new PageInfo<>(products);
     }
 

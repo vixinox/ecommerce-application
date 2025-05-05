@@ -38,8 +38,7 @@ public class WishlistServiceImpl implements WishlistService {
 
         // 2. 检查是否已在愿望单中
         if (wishlistDAO.checkIfExists(user.getId(), productId) != null) {
-            System.out.println("Product " + productId + " already exists in wishlist for user " + user.getId());
-            return false; // 表示已存在，未执行添加
+            throw new IllegalArgumentException("商品已在愿望单中: ID = " + productId);
         }
 
         // 3. 添加到数据库

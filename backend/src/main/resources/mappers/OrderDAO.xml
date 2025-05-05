@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.commerce.dao.OrderDAO">
+
+    <resultMap id="OrderItemResultMap" type="com.example.commerce.model.OrderItem">
+        <result property="orderId" column="order_id"/>
+        <result property="productId" column="product_id"/>
+        <result property="productVariantId" column="product_variant_id"/>
+        <result property="purchasedPrice" column="purchased_price"/>
+        <result property="snapshotProductName" column="snapshot_product_name"/>
+        <result property="snapshotVariantColor" column="snapshot_variant_color"/>
+        <result property="snapshotVariantSize" column="snapshot_variant_size"/>
+        <result property="snapshotVariantImage" column="snapshot_variant_image"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+    <resultMap id="recentSaleResultMap" type="com.example.commerce.dto.AdminDashboardDTO$RecentSaleDTO">
+        <result column="order_date" property="date"/>
+        <result column="daily_revenue" property="amount"/>
+    </resultMap>
+
+    <insert id="createOrder" parameterType="com.example.commerce.model.Order" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO orders (user_id, total_amount, status, created_at, updated_at)
+        VALUES (#{userId}, #{totalAmount}, #{status}, NOW(), NOW())
+    </insert>
+
+    <!-- Batch insert order items -->
+    <insert id="createOrderItems" parameterType="java.util.List">
+        INSERT INTO order_items (order_id, product_id, product_variant_id, quantity, purchased_price, snapshot_product_name, snapshot_variant_color, snapshot_variant_size, snapshot_variant_image, created_at, updated_at)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.orderId}, #{item.productId}, #{item.productVariantId}, #{item.quantity}, #{item.purchasedPrice}, #{item.snapshotProductName}, #{item.snapshotVariantColor}, #{item.snapshotVariantSize}, #{item.snapshotVariantImage}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+    <select id="getOrderItemsByOrderIds" parameterType="java.util.List" resultMap="OrderItemResultMap">
+        SELECT * FROM order_items
+        WHERE order_id IN
+        <foreach collection="orderIds" item="orderId" open="(" separator="," close=")">
+            #{orderId}
+        </foreach>
+    </select>
+
+    <select id="findAllOrdersAdmin" parameterType="java.lang.String" resultType="com.example.commerce.model.Order">
+        SELECT * FROM orders
+        <where>
+            <if test="statusFilter != null">
+                status = #{statusFilter}
+            </if>
+        </where>
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="getRecentSales" resultMap="recentSaleResultMap">
+        SELECT DATE(created_at)  AS order_date,
+               SUM(total_amount) AS daily_revenue
+        FROM orders
+        WHERE status IN ('completed', 'shipped')
+          AND created_at >= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
+        GROUP BY order_date
+        ORDER BY order_date
+    </select>
+
+    <resultMap id="orderStatusCountResultMap" type="com.example.commerce.dto.AdminDashboardDTO$OrderStatusCountDTO">
+        <result column="status" property="status"/>
+        <result column="status_count" property="count"/>
+    </resultMap>
+
+    <select id="getOrderStatusCounts" resultMap="orderStatusCountResultMap">
+        SELECT
+            status,
+            COUNT(*) AS status_count
+        FROM orders
+        GROUP BY status
+    </select>
+
+</mapper>

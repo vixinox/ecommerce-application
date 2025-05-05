@@ -10,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/wishlist")
@@ -47,33 +46,16 @@ public class WishlistController {
     /**
      * 将商品添加到愿望单
      */
-    @PostMapping("/add")
+    @PostMapping("/add/{productId}")
     public ResponseEntity<?> addToWishlist(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
-            @RequestBody Map<String, Long> requestBody) {
+            @PathVariable Long productId) {
         try {
             User user = userService.checkAuthorization(authHeader);
-            Long productId = requestBody.get("productId");
-            if (productId == null) {
-                return ResponseEntity.badRequest().body("请求体中必须包含 'productId'");
-            }
-
-            boolean added = wishlistService.addToWishlist(user, productId);
-            if (added) {
-                return ResponseEntity.status(HttpStatus.CREATED).body("商品已添加到愿望单");
-            } else {
-                // Service 返回 false 表示已存在
-                return ResponseEntity.ok().body("商品已存在于愿望单中");
-            }
-        } catch (IllegalArgumentException e) {
-            // 商品不存在或其他参数错误
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("无效的认证请求头") || e.getMessage().contains("认证过期") || e.getMessage().contains("用户不存在")) {
-                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
-            }
-            System.err.println("Error adding to wishlist: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("添加愿望单失败: " + e.getMessage());
+            wishlistService.addToWishlist(user, productId);
+            return ResponseEntity.ok().body("已加入愿望单");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 

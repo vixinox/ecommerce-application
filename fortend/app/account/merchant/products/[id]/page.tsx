@@ -1,6 +1,6 @@
-import type { Metadata } from "next";
-import { Separator } from "@/components/ui/separator";
-import { ProductForm } from "@/components/product-form";
+import type {Metadata} from "next";
+import {Separator} from "@/components/ui/separator";
+import {ProductForm} from "@/components/product-form";
 
 export const metadata: Metadata = {
   title: "编辑商品 | 商家面板",
@@ -13,7 +13,7 @@ interface ProductEditPageProps {
   };
 }
 
-export default async function ProductEditPage({params}: ProductEditPageProps) {
+export default function ProductEditPage({params}: ProductEditPageProps) {
   const id = params.id;
   const isNewProduct = id === "new";
   const shouldPassParam = !isNewProduct && !isNaN(Number(params.id));

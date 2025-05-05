@@ -13,7 +13,7 @@ public interface UserDAO {
     @Select("SELECT email FROM users WHERE email = #{email}")
     User findByEmail(@Param("email") String email);
 
-    @Select("SELECT username, nickname, email, password, avatar FROM users WHERE email = #{email} AND password = #{password}")
+    @Select("SELECT username, role, nickname, email, password, avatar FROM users WHERE email = #{email} AND password = #{password}")
     User findByEmailAndPassword(@Param("email") String email, @Param("password") String password);
 
     @Select("SELECT EXISTS (SELECT 1 FROM users WHERE email = #{email} AND username != #{username})")
@@ -37,8 +37,8 @@ public interface UserDAO {
     @SelectProvider(type = UserSqlProvider.class, method = "findAllUsersFiltered")
     List<User> findAllUsers(@Param("statusFilter") String statusFilter);
 
-    @Update("UPDATE users SET status = #{status} WHERE username = #{username}")
-    void updateUserStatus(@Param("username") String username, @Param("status") String status);
+    @Update("UPDATE users SET status = #{status} WHERE id = #{userId}")
+    void updateUserStatus(@Param("id") Long userId, @Param("status") String status);
 
     @Update("UPDATE product_variants SET image = #{path} WHERE id = #{productVariantId}")
     void uploadProductImageById(Long productVariantId, String path);
@@ -49,8 +49,8 @@ public interface UserDAO {
     @Select("SELECT COUNT(*) FROM users")
     Long countTotalUsers();
 
-    @Update("UPDATE users SET role = #{role} WHERE username = #{username}")
-    void updateUserRole(@Param("username") String username, @Param("role") String role);
+    @Update("UPDATE users SET role = #{role} WHERE id = #{id}")
+    void updateUserRole(@Param("id") Long id, @Param("role") String role);
 
     @Select("SELECT COUNT(*) FROM users WHERE DATE(created_at) = CURDATE()")
     Long countNewUsersToday();

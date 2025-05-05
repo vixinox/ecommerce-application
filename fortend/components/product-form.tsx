@@ -1,23 +1,23 @@
 "use client";
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import {useCallback, useEffect, useRef, useState} from "react";
+import {useRouter} from "next/navigation";
 import Image from "next/image";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Loader2, Plus, Trash2, Upload, X } from "lucide-react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, } from "@/components/ui/form";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { API_URL } from "@/lib/api";
-import { useAuth } from "@/components/auth-provider";
+import {useForm} from "react-hook-form";
+import {zodResolver} from "@hookform/resolvers/zod";
+import {z} from "zod";
+import {Loader2, Plus, Trash2, Upload, X} from "lucide-react";
+import {toast} from "sonner";
+import {Button} from "@/components/ui/button";
+import {Input} from "@/components/ui/input";
+import {Textarea} from "@/components/ui/textarea";
+import {Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,} from "@/components/ui/form";
+import {Separator} from "@/components/ui/separator";
+import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs";
+import {Card, CardContent} from "@/components/ui/card";
+import {Badge} from "@/components/ui/badge";
+import {API_URL} from "@/lib/api";
+import {useAuth} from "@/components/auth-provider";
 
 const productSchema = z.object({
   name: z.string().min(1, {message: "商品名称不能为空"}),
@@ -359,16 +359,10 @@ export function ProductForm({param}: { param?: string }) {
   }, [colorImageUrls]);
 
   const removeImage = useCallback((color: string) => {
-    // console.log("colorImagesUrls", colorImageUrls); // 移除这条用于调试的 console.log
-
-    // 获取即将被移除的当前显示的图片 URL，用于后续的 Blob URL 释放
     const urlToRemove = colorImageUrls[color];
 
-    // 1. 将该颜色标记为已删除颜色，如果它是从后端加载的图片
-    // initialColorImageUrlsRef 保存了加载时后端返回的所有图片的 URL
     if (initialColorImageUrlsRef.current[color]) {
       setDeletedColors(prev => {
-        // 避免重复添加
         if (!prev.includes(color)) {
           return [...prev, color];
         }
@@ -376,38 +370,25 @@ export function ProductForm({param}: { param?: string }) {
       });
     }
 
-    // 2. 从 colorImages 状态中移除对应的 File 对象
     setColorImages(prevColorImages => {
       const nextColorImages = {...prevColorImages};
       delete nextColorImages[color];
       return nextColorImages;
     });
 
-    // 3. 从 colorImageUrls 状态中移除对应的 URL <-- 修复的关键步骤
     setColorImageUrls(prevColorImageUrls => {
       const nextColorImageUrls = {...prevColorImageUrls};
       delete nextColorImageUrls[color];
       return nextColorImageUrls;
     });
 
-    // 4. 如果被移除的 URL 是一个 Blob URL，则释放它
-    // 这一步放在状态更新之后，确保状态更新是有效的，但及时释放内存
     if (urlToRemove && urlToRemove.startsWith('blob:')) {
       try {
         URL.revokeObjectURL(urlToRemove);
-        // console.log("Revoked blob URL upon explicit removal:", urlToRemove); // 可以保留用于调试
       } catch (e) {
         console.warn("Failed to revoke URL on explicit removal:", urlToRemove, e);
       }
     }
-
-    // useCallback 的依赖项需要包含 colorImageUrls，因为我们直接读取了它的值
-    // 同时，因为我们直接调用了 setColorImages 和 setColorImageUrls，虽然它们是稳定的 setter，
-    // 但从严格的 React Hooks ESLint 规则角度看，通常推荐将状态或其 setter 作为依赖项。
-    // 在这个场景下，colorImageUrls 是一个状态值， its value is used directly.
-    // initialColorImageUrlsRef 是 ref，是稳定的，不需要作为依赖。
-    // setters are stable.
-    // 所以主要依赖项是 colorImageUrls。
   }, [initialColorImageUrlsRef, colorImageUrls]);
 
   const onSubmit = useCallback(async (data: ProductFormValues) => {
@@ -890,25 +871,25 @@ export function ProductForm({param}: { param?: string }) {
                       为每个颜色和尺寸的组合配置具体的价格和库存。
                     </p>
                   </div>
-                  <div className="border rounded-md overflow-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50 sticky top-0 z-10">
+                    <div className="border rounded-md overflow-auto dark:bg-black">
+                        <table className="min-w-full divide-y divide-gray-200 dark:bg-black">
+                            <thead className="bg-gray-50 dark:bg-black sticky top-0 z-10">
                       <tr>
                         <th scope="col"
-                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">颜色
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-200 uppercase tracking-wider">颜色
                         </th>
                         <th scope="col"
-                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">尺寸
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-200 uppercase tracking-wider">尺寸
                         </th>
                         <th scope="col"
-                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">价格
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-200 uppercase tracking-wider w-1/4">价格
                         </th>
                         <th scope="col"
-                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">库存
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-200 uppercase tracking-wider w-1/4">库存
                         </th>
                       </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                            <tbody className="bg-white divide-y divide-gray-200 dark:bg-black">
                       {variants.slice().sort((a, b) => {
                         const colorComparison = a.color.localeCompare(b.color);
                         if (colorComparison !== 0) return colorComparison;
@@ -917,9 +898,9 @@ export function ProductForm({param}: { param?: string }) {
                         const key = variant.id || `${variant.color}_${variant.size}`;
                         return (
                           <tr key={key}>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{variant.color}</td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{variant.size}</td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                              <td className="px-4 py-3 whitespace-nowrap text-sm">{variant.color}</td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm">{variant.size}</td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm">
                               <Input
                                 type="number"
                                 placeholder="价格"
@@ -938,7 +919,7 @@ export function ProductForm({param}: { param?: string }) {
                                 disabled={isSubmitting}
                               />
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                              <td className="px-4 py-3 whitespace-nowrap text-sm">
                               <Input
                                 type="number"
                                 placeholder="库存"

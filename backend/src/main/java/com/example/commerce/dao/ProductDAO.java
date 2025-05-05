@@ -1,6 +1,6 @@
 package com.example.commerce.dao;
 
-import com.example.commerce.dto.CategoryCountDTO;
+import com.example.commerce.dto.AdminDashboardDTO;
 import com.example.commerce.dto.ProductDTO;
 import com.example.commerce.dto.ProductDetailDTO;
 import com.example.commerce.model.Product;
@@ -88,7 +88,7 @@ public interface ProductDAO {
      * @param size 数量
      * @return 商品DTO列表
      */
-    List<ProductDTO> getRandomProducts(@Param("size") int size);
+    List<ProductDTO> getRandomProducts(@Param("size") int size, @Param("userId") Long userId);
 
     /**
      * 搜索商品
@@ -97,7 +97,7 @@ public interface ProductDAO {
      * @param keyword  关键词
      * @return 商品 DTO 列表
      */
-    List<ProductDTO> searchProducts(@Param("category") String category, @Param("keyword") String keyword, @Param("minPrice") Double minPrice, @Param("maxPrice") Double maxPrice);
+    List<ProductDTO> searchProducts(@Param("category") String category, @Param("keyword") String keyword, @Param("minPrice") Double minPrice, @Param("maxPrice") Double maxPrice, @Param("userId") Long userId);
 
     /**
      * 根据ID获取商品
@@ -150,7 +150,6 @@ public interface ProductDAO {
             "WHERE p.owner_id = #{merchantId} AND pv.stock_quantity < #{threshold}")
     Long countMerchantLowStockVariants(@Param("merchantId") Long merchantId, @Param("threshold") int threshold);
 
-    @SelectProvider(type = ProductSqlProvider.class, method = "findAllProductsAdminFiltered")
     List<Product> findAllProductsAdmin(@Param("statusFilter") String statusFilter);
 
     @Update("UPDATE products SET status = #{status}, updated_at = CURRENT_TIMESTAMP WHERE id = #{productId}")
@@ -170,5 +169,5 @@ public interface ProductDAO {
 
     // 添加按分类统计商品数量的方法 (排除 DELETED)
     @Select("SELECT category, COUNT(*) as count FROM products WHERE status != 'DELETED' GROUP BY category ORDER BY count DESC")
-    List<CategoryCountDTO> getProductCountByCategory();
+    List<AdminDashboardDTO.CategoryCountDTO> getProductCountByCategory();
 }

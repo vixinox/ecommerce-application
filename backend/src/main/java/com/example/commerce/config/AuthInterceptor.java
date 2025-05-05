@@ -1,5 +1,6 @@
 package com.example.commerce.config;
 
+import com.example.commerce.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
@@ -21,8 +22,7 @@ public class AuthInterceptor implements HandlerInterceptor {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             System.out.println("token: " + authHeader.substring(7));
             String token = authHeader.substring(7);
-            // TODO: validate token
-            return true;
+            return JwtUtil.isTokenValid(token);
         }
 
         response.setStatus(HttpStatus.UNAUTHORIZED.value());

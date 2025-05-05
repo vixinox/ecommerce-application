@@ -3,7 +3,6 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.commerce.dao.ProductDAO">
-
     <resultMap id="ProductDetailResultMap" type="com.example.commerce.dto.ProductDetailDTO">
         <id property="id" column="id"/>
         <result property="name" column="name"/>
@@ -23,6 +22,8 @@
             <result property="inStock" column="variant_in_stock"/>
         </collection>
     </resultMap>
+
+
 
     <select id="findVariantsByProductIds" resultType="com.example.commerce.model.ProductVariant">
         SELECT id, product_id, color, size, price, image, stock_quantity, in_stock
@@ -70,35 +71,38 @@
 
     <select id="searchProducts" resultType="com.example.commerce.dto.ProductDTO">
         SELECT
-        id,
-        name,
-        category,
-        default_image AS defaultImage,
-        min_price AS minPrice
+        p.id,
+        p.name,
+        p.category,
+        p.default_image AS defaultImage,
+        p.min_price AS minPrice,
+        EXISTS (SELECT 1 FROM wishlist_items wi WHERE wi.user_id = #{userId} AND wi.product_id = p.id) AS isWishlisted
         FROM
-        products
-        WHERE status = 'ACTIVE'
+        products p
+        WHERE p.status = 'ACTIVE'
         <if test="category != null and category != '' and category != '全部'">
-            AND category = #{category}
+            AND p.category = #{category}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND name LIKE CONCAT('%', #{keyword}, '%')
+            AND p.name LIKE CONCAT('%', #{keyword}, '%')
         </if>
         <if test="minPrice != null">
-            AND min_price &gt;= #{minPrice}
+            AND p.min_price &gt;= #{minPrice}
         </if>
         <if test="maxPrice != null">
-            AND min_price &lt;= #{maxPrice}
+            AND p.min_price &lt;= #{maxPrice}
         </if>
     </select>
 
     <select id="getRandomProducts" resultType="com.example.commerce.dto.ProductDTO">
-        SELECT id,
-               name,
-               category,
-               default_image AS defaultImage,
-               min_price     AS minPrice
-        FROM products
+        SELECT
+        p.id,
+        p.name,
+        p.category,
+        p.default_image AS defaultImage,
+        p.min_price AS minPrice,
+        EXISTS (SELECT 1 FROM wishlist_items wi WHERE wi.user_id = #{userId} AND wi.product_id = p.id) AS isWishlisted
+        FROM products p
         ORDER BY RAND()
         LIMIT #{size}
     </select>
@@ -225,4 +229,25 @@
         </foreach>
     </update>
 
+    <select id="findAllProductsAdmin" resultType="com.example.commerce.model.Product">
+        SELECT
+        id,
+        owner_id,
+        name,
+        description,
+        category,
+        default_image,
+        min_price,
+        total_stock,
+        features,
+        specifications,
+        status
+        FROM
+        products
+        <where>
+            <if test="statusFilter != null">
+                status = #{statusFilter}
+            </if>
+        </where>
+    </select>
 </mapper>
