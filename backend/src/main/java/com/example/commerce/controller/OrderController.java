@@ -2,7 +2,7 @@ package com.example.commerce.controller;
 
 import com.example.commerce.dto.CartItemDTO;
 import com.example.commerce.dto.OrderDTO;
-import com.example.commerce.dto.OrderSearchCriteria;
+import com.example.commerce.dto.OrderSearchDTO;
 import com.example.commerce.dto.SpendingReportDTO;
 import com.example.commerce.model.User;
 import com.example.commerce.service.OrderService;
@@ -152,7 +152,7 @@ public class OrderController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("无权访问此接口");
             }
 
-            OrderSearchCriteria criteria = new OrderSearchCriteria(orderId, userId, username, productName, status, dateFrom, dateTo);
+            OrderSearchDTO criteria = new OrderSearchDTO(orderId, userId, username, productName, status, dateFrom, dateTo);
             PageInfo<OrderDTO> orderPageInfo = orderService.searchOrders(criteria, pageNum, pageSize);
             return ResponseEntity.ok(orderPageInfo);
         } catch (IllegalArgumentException e) {

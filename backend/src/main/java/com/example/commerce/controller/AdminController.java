@@ -9,14 +9,17 @@ import com.example.commerce.service.OrderService;
 import com.example.commerce.service.ProductService;
 import com.example.commerce.service.UserService;
 import com.example.commerce.service.DashboardService;
+import com.example.commerce.dto.UserSearchDTO;
 import com.github.pagehelper.PageInfo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 import java.util.Optional;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -352,6 +355,46 @@ public class AdminController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("获取仪表盘数据失败: " + e.getMessage());
             }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("获取仪表盘数据时发生内部错误: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 管理员根据条件搜索用户 (分页)
+     * 需要管理员权限
+     */
+    @GetMapping("/users/search")
+    public ResponseEntity<?> searchUsers(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            // UserSearchCriteria fields as RequestParams
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate registrationDateStart,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate registrationDateEnd,
+            // Pagination params
+            @RequestParam(value = "page", defaultValue = "1") int pageNum,
+            @RequestParam(value = "size", defaultValue = "10") int pageSize) {
+        try {
+            userService.checkAdmin(authHeader);
+
+            UserSearchDTO criteria = new UserSearchDTO();
+            criteria.setUserId(userId);
+            criteria.setUsername(username);
+            criteria.setEmail(email);
+            criteria.setRole(role);
+            criteria.setStatus(status);
+            criteria.setRegistrationDateStart(registrationDateStart);
+            criteria.setRegistrationDateEnd(registrationDateEnd);
+
+            PageInfo<User> userPageInfo = userService.searchUsers(criteria, pageNum, pageSize);
+            return ResponseEntity.ok(userPageInfo);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("无权访问: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("搜索用户时发生错误: " + e.getMessage());
         }
     }
 

@@ -2,7 +2,7 @@ package com.example.commerce.service;
 
 import com.example.commerce.dto.CartItemDTO;
 import com.example.commerce.dto.OrderDTO;
-import com.example.commerce.dto.OrderSearchCriteria;
+import com.example.commerce.dto.OrderSearchDTO;
 import com.example.commerce.dto.SpendingReportDTO;
 import com.example.commerce.model.User;
 import com.github.pagehelper.PageInfo;
@@ -57,5 +57,5 @@ public interface OrderService {
      * @param pageSize 每页数量
      * @return 包含订单信息的 PageInfo 对象
      */
-    PageInfo<OrderDTO> searchOrders(OrderSearchCriteria criteria, int pageNum, int pageSize);
+    PageInfo<OrderDTO> searchOrders(OrderSearchDTO criteria, int pageNum, int pageSize);
 }

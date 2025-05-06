@@ -5,6 +5,7 @@ import com.example.commerce.dao.OrderDAO;
 import com.example.commerce.dao.ProductDAO;
 import com.example.commerce.dto.CartItemDTO;
 import com.example.commerce.dto.OrderDTO;
+import com.example.commerce.dto.OrderSearchDTO;
 import com.example.commerce.dto.SpendingReportDTO;
 import com.example.commerce.model.Order;
 import com.example.commerce.model.OrderItem;
@@ -434,7 +435,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public PageInfo<OrderDTO> searchOrders(com.example.commerce.dto.OrderSearchCriteria criteria, int pageNum, int pageSize) {
+    public PageInfo<OrderDTO> searchOrders(OrderSearchDTO criteria, int pageNum, int pageSize) {
         logger.debug("Searching orders with criteria: {}, page: {}, size: {}", criteria, pageNum, pageSize);
         PageHelper.startPage(pageNum, pageSize);
         List<Order> orders = orderDao.searchOrdersByCriteria(criteria);

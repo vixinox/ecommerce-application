@@ -9,7 +9,7 @@ import java.time.LocalDate;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class OrderSearchCriteria {
+public class OrderSearchDTO {
     private Long orderId;
     private Long userId;
     private String username; // For searching by buyer's username

@@ -1,5 +1,6 @@
 package com.example.commerce.dao;
 
+import com.example.commerce.dto.OrderSearchDTO;
 import org.apache.ibatis.builder.annotation.ProviderMethodResolver;
 import org.apache.ibatis.jdbc.SQL;
 import org.springframework.util.StringUtils;
@@ -194,7 +195,7 @@ public class OrderSqlProvider implements ProviderMethodResolver {
      * 注意：此方法将构建一个复杂的SQL，包含多个可选的JOIN和WHERE条件。
      */
     public String searchOrdersByCriteria(Map<String, Object> params) {
-        com.example.commerce.dto.OrderSearchCriteria criteria = (com.example.commerce.dto.OrderSearchCriteria) params.get("criteria");
+        OrderSearchDTO criteria = (OrderSearchDTO) params.get("criteria");
 
         return new SQL() {{
             SELECT_DISTINCT("o.id as o_id, o.user_id, o.total_amount, o.status as o_status, o.created_at as o_created_at, o.updated_at as o_updated_at");

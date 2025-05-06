@@ -1,6 +1,7 @@
 package com.example.commerce.service.impl;
 
 import com.example.commerce.dao.UserDAO;
+import com.example.commerce.dto.UserSearchDTO;
 import com.example.commerce.model.User;
 import com.example.commerce.service.UserService;
 import com.example.commerce.util.JwtUtil;
@@ -233,5 +234,19 @@ public class UserServiceImpl implements UserService {
     public void softDeleteUser(Long userId) {
         updateUserStatus(userId, STATUS_DELETED);
         logger.info("管理员软删除了用户 '{}'", userId);
+    }
+
+    @Override
+    public PageInfo<User> searchUsers(UserSearchDTO criteria, int pageNum, int pageSize) {
+        logger.debug("Searching users with criteria: {}, page: {}, size: {}", criteria, pageNum, pageSize);
+        PageHelper.startPage(pageNum, pageSize);
+        List<User> users = userDAO.findUsersByCriteria(criteria); // This DAO method needs to be created
+
+        // IMPORTANT: Ensure passwords are not exposed
+        if (users != null) {
+            users.forEach(user -> user.setPassword(null));
+        }
+
+        return new PageInfo<>(users);
     }
 }

@@ -1,7 +1,7 @@
 package com.example.commerce.dao;
 
 import com.example.commerce.dto.AdminDashboardDTO;
-import com.example.commerce.dto.OrderSearchCriteria;
+import com.example.commerce.dto.OrderSearchDTO;
 import com.example.commerce.dto.SpendingReportDTO;
 import com.example.commerce.model.Order;
 import com.example.commerce.model.OrderItem;
@@ -182,5 +182,5 @@ public interface OrderDAO {
             @Result(property = "createdAt", column = "o_created_at"), // 使用别名
             @Result(property = "updatedAt", column = "o_updated_at") // 使用别名
     })
-    List<Order> searchOrdersByCriteria(@Param("criteria") OrderSearchCriteria criteria);
+    List<Order> searchOrdersByCriteria(@Param("criteria") OrderSearchDTO criteria);
 }
