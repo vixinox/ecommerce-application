@@ -1,15 +1,12 @@
 package com.example.commerce.controller;
 
-import com.example.commerce.dto.AdminDashboardDTO;
-import com.example.commerce.dto.OrderDTO;
-import com.example.commerce.dto.ProductEditResponseDTO;
+import com.example.commerce.dto.*;
 import com.example.commerce.model.Product;
 import com.example.commerce.model.User;
 import com.example.commerce.service.OrderService;
 import com.example.commerce.service.ProductService;
 import com.example.commerce.service.UserService;
 import com.example.commerce.service.DashboardService;
-import com.example.commerce.dto.UserSearchDTO;
 import com.github.pagehelper.PageInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -221,6 +218,31 @@ public class AdminController {
                 return ResponseEntity.status(404).body("获取订单详情失败: " + e.getMessage());
             }
             return ResponseEntity.status(403).body("获取订单详情失败: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/orders/search")
+    public ResponseEntity<?> searchOrders(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestParam(required = false) Long orderId,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String productName,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
+            @RequestParam(value = "page", defaultValue = "1") int pageNum,
+            @RequestParam(value = "size", defaultValue = "10") int pageSize) {
+        try {
+            userService.checkAdmin(authHeader);
+            OrderSearchDTO criteria = new OrderSearchDTO(orderId, userId, username, productName, status, dateFrom, dateTo);
+            PageInfo<OrderDTO> orderPageInfo = orderService.searchOrders(criteria, pageNum, pageSize);
+            return ResponseEntity.ok(orderPageInfo);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("搜索订单时发生错误: " + e.getMessage());
         }
     }
 

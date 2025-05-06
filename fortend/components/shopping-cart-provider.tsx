@@ -162,7 +162,6 @@ export function ShoppingCartProvider({children}: { children: ReactNode }) {
           toast.error("更新商品数量失败", {description: res.text()});
         }
       } else {
-        toast.success("商品数量已更新");
         getCartItems();
       }
     } catch (e: any) {

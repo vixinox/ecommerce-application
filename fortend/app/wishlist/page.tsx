@@ -13,7 +13,7 @@ import { useAuth } from "@/components/auth-provider"
 import SiteHeader from "@/components/site-header"
 import SiteFooter from "@/components/site-footer"
 import { motion } from "framer-motion"
-import { API_URL } from "@/lib/api"
+import { API_URL, getWishlist } from "@/lib/api"
 import { formatPrice } from "@/lib/utils"
 import { ShoppingCartProvider, useShoppingCart } from "@/components/shopping-cart-provider"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -48,7 +48,7 @@ const MotionBadge = motion.create(Badge);
 // 将核心逻辑和 JSX 移到子组件中
 function WishlistPageContent() {
   const router = useRouter()
-  const {user, token} = useAuth()
+  const {user, token, isLoading} = useAuth()
   const {addToCart} = useShoppingCart() // 在 Provider 包裹的组件内调用 Hook
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -83,51 +83,37 @@ function WishlistPageContent() {
   });
 
   useEffect(() => {
-    if (!user || !token) {
-      router.push("/auth/login")
-      return
-    }
 
     fetchWishlist()
-  }, [user, token, router])
+  }, [user, token, router, isLoading])
 
   const fetchWishlist = async () => {
     try {
-      setLoading(true)
-      const response = await fetch(`${API_URL}/api/wishlist`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error("获取愿望单失败")
+      if (!token) {
+        router.push("/auth/login")
+        return
       }
 
-      const data = await response.json()
+      setLoading(true)
+      const data = await getWishlist(token)
       setWishlistItems(data)
       setSelectedItems([])
-    } catch (error) {
-      toast.error("获取愿望单失败")
-      console.error("获取愿望单失败:", error)
+    } catch (error: any) {
+      toast.error("获取愿望单失败", {description: error.message})
     } finally {
       setLoading(false)
     }
   }
 
   const removeFromWishlist = async (productId: number, productName: string) => {
-    // This function now handles single item removal UI update directly
     try {
       const response = await fetch(`${API_URL}/api/wishlist/remove/${productId}`, {
         method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
+        headers: {"Authorization": `Bearer ${token}`}
       })
 
       if (!response.ok) {
         if (response.status === 404) {
-          // Item already gone, update UI and show info
           setWishlistItems(currentItems => currentItems.filter(item => item.productId !== productId));
           setSelectedItems(currentSelected => currentSelected.filter(id => id !== productId));
           toast.info(`${productName} 已不在愿望单中`);
@@ -138,7 +124,6 @@ function WishlistPageContent() {
         }
       }
 
-      // Success (2xx), update UI and show success
       setWishlistItems(currentItems => currentItems.filter(item => item.productId !== productId));
       setSelectedItems(currentSelected => currentSelected.filter(id => id !== productId));
       toast.success(`${productName} 已从愿望单移除`);

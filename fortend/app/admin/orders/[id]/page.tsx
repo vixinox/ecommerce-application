@@ -7,6 +7,7 @@ import { use, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 interface OrderDetails {
   order: {
@@ -80,9 +81,12 @@ export default function OrderPage({params: paramsPromise}: { params: Promise<{ i
 
   return (
     <div className="container mx-auto py-6">
-      <h1 className="text-2xl font-bold mb-4">订单详情</h1>
+      <div className="flex justify-between mb-6">
+        <h1 className="text-2xl font-bold">订单详情</h1>
+        <Button onClick={() => router.back()}>返回</Button>
+      </div>
 
-      <div className="bg-white shadow rounded-lg p-6">
+      <div className="shadow rounded-lg p-6">
         <h2 className="text-xl font-semibold mb-4">
           订单号：#{orderDetails.order.id}
         </h2>
@@ -163,10 +167,10 @@ export default function OrderPage({params: paramsPromise}: { params: Promise<{ i
                   {formatCurrency(orderDetails.order.totalAmount)}
                 </span>
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-400">
                 创建时间：{formatDate(orderDetails.order.createdAt)}
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-400">
                 最后更新：{formatDate(orderDetails.order.updatedAt)}
               </p>
             </div>

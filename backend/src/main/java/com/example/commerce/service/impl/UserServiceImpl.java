@@ -177,6 +177,16 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public User checkMerchantOrAdmin(String authHeader) throws RuntimeException {
+        User user = checkAuthorization(authHeader);
+        if (!Objects.equals(user.getRole(), "MERCHANT") && !Objects.equals(user.getRole(), "ADMIN"))
+            throw new RuntimeException("无权限访问该资源");
+
+        user.setPassword(null);
+        return user;
+    }
+
+    @Override
     public PageInfo<User> getAllUsers(int pageNum, int pageSize, String statusFilter) {
         PageHelper.startPage(pageNum, pageSize);
         List<User> users = userDAO.findAllUsers(statusFilter);

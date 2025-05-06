@@ -130,7 +130,7 @@ public class ProductController {
             @PathVariable Long productId,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            userService.checkMerchant(authHeader);
+            userService.checkMerchantOrAdmin(authHeader);
             Optional<ProductEditResponseDTO> productForEditOpt = productService.getProductForEdit(productId);
             return ResponseEntity.ok(productForEditOpt);
         } catch (Exception e) {

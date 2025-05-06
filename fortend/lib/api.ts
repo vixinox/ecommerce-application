@@ -1,6 +1,10 @@
-export const API_URL = "http://localhost:8080"
+export const API_URL = "http://localhost:8080";
 
-export async function fetchData(endpoint: string, token?: string, options: RequestInit = {}) {
+export async function fetchData(
+  endpoint: string,
+  token?: string,
+  options: RequestInit = {},
+) {
   const headers = {
     "Content-Type": "application/json",
     ...(token ? {Authorization: `Bearer ${token}`} : {}),
@@ -26,7 +30,9 @@ export async function fetchData(endpoint: string, token?: string, options: Reque
       errorData = await response.text();
     }
 
-    throw new Error(typeof errorData === 'string' ? errorData : JSON.stringify(errorData));
+    throw new Error(
+      typeof errorData === "string" ? errorData : JSON.stringify(errorData),
+    );
   }
 
   const contentType = response.headers.get("content-type");
@@ -38,79 +44,87 @@ export async function fetchData(endpoint: string, token?: string, options: Reque
 }
 
 export async function getDashboardData(token: string) {
-  return fetchData("/api/admin/dashboard", token)
+  return fetchData("/api/admin/dashboard", token);
 }
 
-export async function getUsers(token: string, page: number = 1, size: number = 10, status?: string) {
-  let endpoint = `/api/admin/users?page=${page}&size=${size}`;
-  if (status)
-    endpoint += `&status=${status}`;
-  return fetchData(endpoint, token);
+export async function getUsers(token: string, query: string = "",) {
+  return fetchData(`/api/admin/users/search?${query}`, token);
 }
 
-export async function updateUserStatus(id: number, status: string, token: string) {
+export async function updateUserStatus(
+  id: number,
+  status: string,
+  token: string,
+) {
   return fetchData("/api/admin/users/update/status", token, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify({userId: id, status: status}),
   });
 }
 
 export async function updateUserRole(id: number, role: string, token: string) {
   return fetchData("/api/admin/users/update/role", token, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify({userId: id, role: role}),
-  })
+  });
 }
 
 export async function deleteUser(id: number, token: string) {
-  console.log(id)
-  return fetchData(`/api/admin/users/delete/{${id}}`, token)
+  console.log(id);
+  return fetchData(`/api/admin/users/delete/{${id}}`, token);
 }
 
-export async function getProductsAdmin(token: string, page: number = 1, size: number = 10, status?: string) {
+export async function getProductsAdmin(
+  token: string,
+  page: number = 1,
+  size: number = 10,
+  status?: string,
+) {
   let endpoint = `/api/admin/products?page=${page}&size=${size}`;
-  if (status)
-    endpoint += `&status=${status}`;
+  if (status) endpoint += `&status=${status}`;
   return fetchData(endpoint, token);
 }
 
-export async function getProductDetail(id: number, token: string) {
-  return fetchData(`/api/admin/products/${id}`, token)
-}
-
-export async function updateProductStatus(id: number, status: string, token: string) {
+export async function updateProductStatus(
+  id: number,
+  status: string,
+  token: string,
+) {
   return fetchData(`/api/admin/products/update/status`, token, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify({productId: id, status: status}),
-  })
+  });
 }
 
-export async function getOrders(token: string, page: number = 1, size: number = 10, status?: string) {
-  let endpoint = `/api/admin/orders?page=${page}&size=${size}`;
-  if (status)
-    endpoint += `&status=${status}`;
-  return fetchData(endpoint, token);
+export async function getOrders(token: string, query: string = "",) {
+  return fetchData(`/api/admin/orders/search?${query}`, token);
 }
 
-export async function updateOrderStatus(id: number, status: string, token: string) {
+export async function updateOrderStatus(
+  id: number,
+  status: string,
+  token: string,
+) {
   return fetchData(`/api/admin/orders/update/status`, token, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify({orderId: id, status: status}),
-  })
-}
-
-export async function getWishlist(token: string) {
-  return fetchData(`/api/wishlist`, token)
+  });
 }
 
 export async function addToWishlist(token: string, productId: number) {
-  return fetchData(`/api/wishlist/add/${productId}`, token, {method: "POST"})
+  return fetchData(`/api/wishlist/add/${productId}`, token, {method: "POST"});
 }
 
 export async function removeFromWishlist(token: string, productId: number) {
-  return fetchData(`/api/wishlist/remove/${productId}`, token, {method: 'DELETE'})
+  return fetchData(`/api/wishlist/remove/${productId}`, token, {
+    method: "DELETE",
+  });
 }
 
 export async function getOrderDetailAdmin(id: number, token: string) {
-  return fetchData(`/api/admin/orders/${id}`, token)
+  return fetchData(`/api/admin/orders/${id}`, token);
+}
+
+export async function getWishlist(token: string) {
+  return fetchData("/api/wishlist", token, {method: "POST"});
 }

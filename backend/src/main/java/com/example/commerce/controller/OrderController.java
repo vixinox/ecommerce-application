@@ -131,35 +131,4 @@ public class OrderController {
                     .body("更新订单状态时发生错误: " + e.getMessage());
         }
     }
-
-    @GetMapping("/search")
-    public ResponseEntity<?> searchOrders(
-            @RequestHeader(value = "Authorization", required = false) String authHeader,
-            @RequestParam(required = false) Long orderId,
-            @RequestParam(required = false) Long userId,
-            @RequestParam(required = false) String username,
-            @RequestParam(required = false) String productName,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
-            @RequestParam(value = "page", defaultValue = "1") int pageNum,
-            @RequestParam(value = "size", defaultValue = "10") int pageSize) {
-        try {
-            // 权限检查，例如，只允许管理员访问此接口
-            // userService.checkAdmin(authHeader); // 假设有这样的方法
-            User user = userService.checkAuthorization(authHeader); // 或者更通用的检查
-            if (!user.getRole().equalsIgnoreCase("ADMIN")) { // 简易权限检查
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("无权访问此接口");
-            }
-
-            OrderSearchDTO criteria = new OrderSearchDTO(orderId, userId, username, productName, status, dateFrom, dateTo);
-            PageInfo<OrderDTO> orderPageInfo = orderService.searchOrders(criteria, pageNum, pageSize);
-            return ResponseEntity.ok(orderPageInfo);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("搜索订单时发生错误: " + e.getMessage());
-        }
-    }
 }

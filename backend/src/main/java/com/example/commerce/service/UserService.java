@@ -31,6 +31,8 @@ public interface UserService {
 
     User checkAdmin(String authHeader);
 
+    User checkMerchantOrAdmin(String authHeader);
+
     PageInfo<User> getAllUsers(int pageNum, int pageSize, String statusFilter);
 
     void updateUserStatus(Long userId, String status);
