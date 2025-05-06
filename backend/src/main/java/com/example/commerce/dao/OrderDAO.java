@@ -1,6 +1,7 @@
 package com.example.commerce.dao;
 
 import com.example.commerce.dto.AdminDashboardDTO;
+import com.example.commerce.dto.OrderSearchDTO;
 import com.example.commerce.dto.SpendingReportDTO;
 import com.example.commerce.model.Order;
 import com.example.commerce.model.OrderItem;
@@ -30,60 +31,23 @@ public interface OrderDAO {
     /**
      * 获取用户订单汇总数据 (总消费、总订单数、平均单笔金额)
      */
-    @Select("SELECT " +
-            "   SUM(total_amount) AS totalSpend, " +
-            "   COUNT(id) AS totalOrders, " +
-            "   AVG(total_amount) AS averageOrderValue " +
-            "FROM orders " +
-            "WHERE user_id = #{userId}")
     Map<String, Object> getUserOrderSummary(@Param("userId") Long userId);
 
     /**
      * 获取用户按月消费趋势
      */
-    @Select("SELECT " +
-            "   DATE_FORMAT(created_at, '%Y-%m') AS period, " +
-            "   SUM(total_amount) AS amount " +
-            "FROM orders " +
-            "WHERE user_id = #{userId} " +
-            "GROUP BY period " +
-            "ORDER BY period ")
     List<SpendingReportDTO.TimeBasedSpend> getUserMonthlySpendTrend(@Param("userId") Long userId);
 
 
     /**
      * 获取用户按商品分类消费构成
      */
-    @Select("SELECT " +
-            "   COALESCE(p.category, '未知分类') AS category, " +
-            "   SUM(oi.purchased_price * oi.quantity) AS amount " +
-            "FROM order_items oi " +
-            "JOIN orders o ON oi.order_id = o.id " +
-            "LEFT JOIN products p ON oi.product_id = p.id " +
-            "WHERE o.user_id = #{userId} " +
-            "GROUP BY COALESCE(p.category, '未知分类') " +
-            "ORDER BY amount DESC")
     List<SpendingReportDTO.CategorySpend> getUserCategorySpend(@Param("userId") Long userId);
 
 
     /**
      * 获取用户消费最多的商品/款式 (按消费金额，最多显示前10条)
      */
-    @Select("SELECT " +
-            "   oi.snapshot_product_name AS name, " +
-            "   CONCAT(" +
-            "       COALESCE(oi.snapshot_variant_color, ''), " +
-            "       CASE WHEN oi.snapshot_variant_color IS NOT NULL AND oi.snapshot_variant_size IS NOT NULL THEN '/' ELSE '' END, " + // 如果颜色和尺寸都非NULL，添加分隔符'/'
-            "       COALESCE(oi.snapshot_variant_size, '')" +
-            "   ) AS variant, " +
-            "   SUM(oi.purchased_price * oi.quantity) AS spend, " +
-            "   SUM(oi.quantity) AS quantity " +
-            "FROM order_items oi " +
-            "JOIN orders o ON oi.order_id = o.id " +
-            "WHERE o.user_id = #{userId} " +
-            "GROUP BY oi.snapshot_product_name, oi.snapshot_variant_color, oi.snapshot_variant_size " +
-            "ORDER BY spend DESC, quantity DESC " +
-            "LIMIT 10")
     List<SpendingReportDTO.ItemSpend> getUserTopItemSpend(@Param("userId") Long userId);
 
     /**
@@ -203,4 +167,20 @@ public interface OrderDAO {
     List<AdminDashboardDTO.RecentSaleDTO> getRecentSales(@Param("days") int days);
 
     List<AdminDashboardDTO.OrderStatusCountDTO> getOrderStatusCounts();
+
+    /**
+     * 根据动态条件搜索订单列表 (主要供管理员使用)
+     * @param criteria 搜索条件
+     * @return 订单列表
+     */
+    @SelectProvider(type = OrderSqlProvider.class, method = "searchOrdersByCriteria")
+    @Results({
+            @Result(property = "id", column = "o_id"), // 使用别名以防与join的表冲突
+            @Result(property = "userId", column = "user_id"),
+            @Result(property = "totalAmount", column = "total_amount"),
+            @Result(property = "status", column = "o_status"), // 使用别名
+            @Result(property = "createdAt", column = "o_created_at"), // 使用别名
+            @Result(property = "updatedAt", column = "o_updated_at") // 使用别名
+    })
+    List<Order> searchOrdersByCriteria(@Param("criteria") OrderSearchDTO criteria);
 }

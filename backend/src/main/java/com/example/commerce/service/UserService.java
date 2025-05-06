@@ -1,5 +1,6 @@
 package com.example.commerce.service;
 
+import com.example.commerce.dto.UserSearchDTO;
 import com.example.commerce.model.User;
 import com.github.pagehelper.PageInfo;
 
@@ -39,4 +40,13 @@ public interface UserService {
     void updateUserRoleAdmin(Long userId, String newRole);
 
     void softDeleteUser(Long userId);
+
+    /**
+     * 根据条件搜索用户 (分页)
+     * @param criteria 搜索条件
+     * @param pageNum 页码
+     * @param pageSize 每页数量
+     * @return 包含用户信息的 PageInfo 对象 (不含密码)
+     */
+    PageInfo<User> searchUsers(UserSearchDTO criteria, int pageNum, int pageSize);
 }

@@ -31,19 +31,6 @@ public interface WishlistDAO {
      * @param userId 用户ID
      * @return WishlistItem 列表，每个项包含 Product 对象
      */
-    @Select("SELECT wi.id, wi.user_id, wi.product_id, wi.added_at " +
-            "FROM wishlist_items wi " +
-            "WHERE wi.user_id = #{userId} " +
-            "ORDER BY wi.added_at DESC")
-    @Results({
-            @Result(property = "id", column = "id"),
-            @Result(property = "userId", column = "user_id"),
-            @Result(property = "productId", column = "product_id"),
-            @Result(property = "addedAt", column = "added_at"),
-            @Result(property = "product", column = "product_id",
-                    one = @One(select = "com.example.commerce.dao.ProductDAO.getProductById")
-            )
-    })
     List<WishlistItem> getUserWishlist(@Param("userId") Long userId);
 
     /**

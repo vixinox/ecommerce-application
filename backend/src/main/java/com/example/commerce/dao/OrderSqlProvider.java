@@ -1,5 +1,6 @@
 package com.example.commerce.dao;
 
+import com.example.commerce.dto.OrderSearchDTO;
 import org.apache.ibatis.builder.annotation.ProviderMethodResolver;
 import org.apache.ibatis.jdbc.SQL;
 import org.springframework.util.StringUtils;
@@ -186,6 +187,69 @@ public class OrderSqlProvider implements ProviderMethodResolver {
             SET("status = #{status}");
             SET("updated_at = NOW()");
             WHERE("id = #{orderId}");
+        }}.toString();
+    }
+
+    /**
+     * 构建根据动态条件搜索订单的SQL (主要供管理员使用)
+     * 注意：此方法将构建一个复杂的SQL，包含多个可选的JOIN和WHERE条件。
+     */
+    public String searchOrdersByCriteria(Map<String, Object> params) {
+        OrderSearchDTO criteria = (OrderSearchDTO) params.get("criteria");
+
+        return new SQL() {{
+            SELECT_DISTINCT("o.id as o_id, o.user_id, o.total_amount, o.status as o_status, o.created_at as o_created_at, o.updated_at as o_updated_at");
+            // 如果需要显示用户名等，可以在这里添加更多字段，并确保JOIN了相应的表
+            // 例如: , u.username as buyer_username
+            FROM(ORDERS_TABLE + " o"); // 使用别名 o
+
+            // 条件JOIN：只有当需要按用户名或商品名搜索时才JOIN
+            boolean joinUsers = StringUtils.hasText(criteria.getUsername());
+            boolean joinOrderItemsAndProducts = StringUtils.hasText(criteria.getProductName());
+
+            if (joinUsers) {
+                LEFT_OUTER_JOIN("users u ON o.user_id = u.id");
+            }
+            if (joinOrderItemsAndProducts) {
+                // 使用 LEFT JOIN 以确保即使某些订单没有匹配的商品名（理论上不应发生），订单本身仍能被查询到（如果其他条件满足）
+                LEFT_OUTER_JOIN(ORDER_ITEMS_TABLE + " oi ON o.id = oi.order_id");
+                LEFT_OUTER_JOIN(PRODUCTS_TABLE + " p ON oi.product_id = p.id");
+            }
+
+            // 构建WHERE子句
+            if (criteria.getOrderId() != null) {
+                WHERE("o.id = #{criteria.orderId}");
+            }
+            if (criteria.getUserId() != null) {
+                WHERE("o.user_id = #{criteria.userId}");
+            }
+            if (StringUtils.hasText(criteria.getStatus())) {
+                WHERE("o.status = #{criteria.status}");
+            }
+            if (criteria.getDateFrom() != null) {
+                // 注意：数据库日期比较的格式，这里假设数据库字段是DATETIME或TIMESTAMP类型
+                // MyBatis 会自动处理 LocalDate 到数据库兼容类型的转换
+                WHERE("o.created_at >= #{criteria.dateFrom}");
+            }
+            if (criteria.getDateTo() != null) {
+                // 对于 dateTo，通常我们希望包含当天，所以可以设置为 dateTo + 1 天 或 在SQL中使用 '<' dateTo.plusDays(1)
+                // 或者确保数据库查询时，如果dateTo是 '2023-10-26'，则条件是 <= '2023-10-26 23:59:59.999'
+                // 使用Java端处理：params.put("dateToFormatted", criteria.getDateTo().plusDays(1));
+                // WHERE("o.created_at < #{dateToFormatted}");
+                // 或者直接使用 <= ，依赖数据库对 DATE 类型的处理
+                WHERE("DATE(o.created_at) <= #{criteria.dateTo}");
+            }
+            if (joinUsers && StringUtils.hasText(criteria.getUsername())) {
+                // 使用LOWER转换进行不区分大小写的模糊搜索
+                WHERE("LOWER(u.username) LIKE LOWER(CONCAT('%', #{criteria.username}, '%'))");
+            }
+            if (joinOrderItemsAndProducts && StringUtils.hasText(criteria.getProductName())) {
+                // 使用LOWER转换进行不区分大小写的模糊搜索
+                // 注意：snapshot_product_name 存在于 order_items 表
+                WHERE("LOWER(oi.snapshot_product_name) LIKE LOWER(CONCAT('%', #{criteria.productName}, '%'))");
+            }
+
+            ORDER_BY("o.created_at DESC"); // 默认按创建时间降序
         }}.toString();
     }
 }

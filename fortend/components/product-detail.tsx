@@ -128,7 +128,7 @@ export function ProductDetail({productDetail}: { productDetail: ProductDetails }
       // 修改URL和请求方法以匹配后端
       const url = isWishlisted
         ? `${API_URL}/api/wishlist/remove/${productDetail.id}`
-        : `${API_URL}/api/wishlist/add`;
+        : `${API_URL}/api/wishlist/add/${productDetail.id}`;
       const method = isWishlisted ? "DELETE" : "POST";
 
       const requestOptions: RequestInit = {
@@ -137,15 +137,6 @@ export function ProductDetail({productDetail}: { productDetail: ProductDetails }
           "Authorization": `Bearer ${token}`
         }
       };
-
-      // 如果是添加操作，添加请求体
-      if (!isWishlisted) {
-        requestOptions.headers = {
-          ...requestOptions.headers,
-          'Content-Type': 'application/json'
-        };
-        requestOptions.body = JSON.stringify({productId: productDetail.id});
-      }
 
       const response = await fetch(url, requestOptions);
 
