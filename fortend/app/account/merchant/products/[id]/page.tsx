@@ -1,6 +1,6 @@
-import type {Metadata} from "next";
-import {Separator} from "@/components/ui/separator";
-import {ProductForm} from "@/components/product-form";
+import type { Metadata } from "next";
+import { Separator } from "@/components/ui/separator";
+import { ProductForm } from "@/components/product-form";
 
 export const metadata: Metadata = {
   title: "编辑商品 | 商家面板",
@@ -28,7 +28,7 @@ export default function ProductEditPage({params}: ProductEditPageProps) {
             : "更新您的商品信息、图片和库存。"}
         </p>
       </div>
-      <Separator />
+      <Separator/>
       {shouldPassParam ? (
         <ProductForm param={params.id}/>
       ) : (

@@ -43,7 +43,7 @@ export function ProductsTable({products, isLoading}: ProductsTableProps) {
   const {token} = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [productToDelete, setProductToDelete] = useState<number | null>(null);
   const filteredProducts = products.filter(
     (product) =>
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -54,7 +54,7 @@ export function ProductsTable({products, isLoading}: ProductsTableProps) {
     setSearchQuery(e.target.value);
   };
 
-  const handleDeleteClick = (productId: string) => {
+  const handleDeleteClick = (productId: number) => {
     setProductToDelete(productId);
     setDeleteDialogOpen(true);
   };

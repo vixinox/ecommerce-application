@@ -51,8 +51,7 @@ export function useDebouncedApiCheck(
           timeoutRef.current = null;
         }
       }, delay);
-    }
-    else
+    } else
       setCheckResult({status: 'idle', message: ''});
     return () => {
       if (timeoutRef.current) {

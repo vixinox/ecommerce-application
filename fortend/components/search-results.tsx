@@ -1,18 +1,18 @@
 "use client";
 
-import {useCallback, useEffect, useState} from "react";
-import {useRouter, useSearchParams} from "next/navigation";
-import {AnimatePresence, motion} from "framer-motion";
-import {Loader2, SlidersHorizontal} from "lucide-react";
-import {Separator} from "@/components/ui/separator";
-import {Slider} from "@/components/ui/slider";
-import {Badge} from "@/components/ui/badge";
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
-import {Button} from "@/components/ui/button";
-import {Input} from "@/components/ui/input";
-import {Label} from "@/components/ui/label";
-import {ProductCard} from "@/components/product-card";
-import {formatPrice} from "@/lib/utils";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
+import { Loader2, SlidersHorizontal } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ProductCard } from "@/components/product-card";
+import { formatPrice } from "@/lib/utils";
 import {
   Pagination,
   PaginationContent,
@@ -21,8 +21,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import {API_URL} from "@/lib/api";
-import {Product} from "@/lib/types";
+import { API_URL } from "@/lib/api";
+import { Product } from "@/lib/types";
 
 interface PageInfo<T> {
   pageNum: number;
@@ -62,13 +62,13 @@ const itemVariants = {
 };
 
 export function SearchResults({
-                                  query,
-                                  category: initialCategory,
-                                  minPrice: initialMinPrice,
-                                  maxPrice: initialMaxPrice,
-                                  sort: initialSort,
-                                  initialPage,
-                                  initialSize,
+                                query,
+                                category: initialCategory,
+                                minPrice: initialMinPrice,
+                                maxPrice: initialMaxPrice,
+                                sort: initialSort,
+                                initialPage,
+                                initialSize,
                               }: SearchResultsProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -116,7 +116,7 @@ export function SearchResults({
         setTotalItems(data.total);
         const uniqueCategories = Array.from(new Set(data.list.map(p => p.category)));
         setCategories(["全部", ...uniqueCategories]);
-          console.log(data.list)
+        console.log(data.list)
       } catch (err: any) {
         if (err.name === 'AbortError') {
         } else {

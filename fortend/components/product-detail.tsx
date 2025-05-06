@@ -122,15 +122,15 @@ export function ProductDetail({productDetail}: { productDetail: ProductDetails }
 
   const toggleWishlist = async () => {
     if (!checkLogin()) return;
-    
+
     setIsWishlistLoading(true);
     try {
       // 修改URL和请求方法以匹配后端
-      const url = isWishlisted 
-        ? `${API_URL}/api/wishlist/remove/${productDetail.id}` 
+      const url = isWishlisted
+        ? `${API_URL}/api/wishlist/remove/${productDetail.id}`
         : `${API_URL}/api/wishlist/add`;
       const method = isWishlisted ? "DELETE" : "POST";
-      
+
       const requestOptions: RequestInit = {
         method,
         headers: {
@@ -140,11 +140,11 @@ export function ProductDetail({productDetail}: { productDetail: ProductDetails }
 
       // 如果是添加操作，添加请求体
       if (!isWishlisted) {
-        requestOptions.headers = { 
+        requestOptions.headers = {
           ...requestOptions.headers,
           'Content-Type': 'application/json'
         };
-        requestOptions.body = JSON.stringify({ productId: productDetail.id });
+        requestOptions.body = JSON.stringify({productId: productDetail.id});
       }
 
       const response = await fetch(url, requestOptions);
@@ -272,17 +272,17 @@ export function ProductDetail({productDetail}: { productDetail: ProductDetails }
               <ShoppingCart className="mr-2 h-5 w-5"/>
               加入购物车
             </Button>
-            <Button 
-              variant="outline" 
-              size="lg" 
-              className={isWishlisted ? "text-red-500" : ""} 
+            <Button
+              variant="outline"
+              size="lg"
+              className={isWishlisted ? "text-red-500" : ""}
               onClick={toggleWishlist}
               disabled={isWishlistLoading}
             >
               {isWishlistLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <Loader2 className="h-5 w-5 animate-spin"/>
               ) : (
-                <Heart className={`h-5 w-5 ${isWishlisted ? "fill-current" : ""}`} />
+                <Heart className={`h-5 w-5 ${isWishlisted ? "fill-current" : ""}`}/>
               )}
               <span className="sr-only">添加到愿望单</span>
             </Button>

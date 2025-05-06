@@ -1,28 +1,28 @@
 "use client"
 
-import {useState} from "react"
+import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import {Heart, ShoppingCart} from "lucide-react"
-import {toast} from "sonner"
-import {Button} from "@/components/ui/button"
-import {Card, CardContent, CardFooter} from "@/components/ui/card"
-import {useAuth} from "@/components/auth-provider"
-import type {Product} from "@/lib/types"
-import {formatPrice} from "@/lib/utils"
-import {motion} from "framer-motion";
-import {useRouter} from "next/navigation";
-import {addToWishlist, API_URL, removeFromWishlist} from "@/lib/api";
+import { Heart, ShoppingCart } from "lucide-react"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { useAuth } from "@/components/auth-provider"
+import type { Product } from "@/lib/types"
+import { formatPrice } from "@/lib/utils"
+import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { addToWishlist, API_URL, removeFromWishlist } from "@/lib/api";
 
 const MotionButton = motion.create(Button);
 
 export function ProductCard({product}: { product: Product }) {
   const router = useRouter();
-    const {token} = useAuth()
-    const [isWishlisted, setIsWishlisted] = useState(product.wishlisted)
+  const {token} = useAuth()
+  const [isWishlisted, setIsWishlisted] = useState(product.wishlisted)
 
   const checkLogin = () => {
-      if (!token) {
+    if (!token) {
       toast.error("请先登录", {
         action: {
           label: "登录",
@@ -34,27 +34,27 @@ export function ProductCard({product}: { product: Product }) {
     return true;
   }
 
-    const toggleWishlist = async () => {
+  const toggleWishlist = async () => {
     if (!checkLogin()) return;
-        try {
-            if (!token) {
-                toast.error("请先登录")
-                router.push("/auth/login")
-                return;
-            }
-            if (!isWishlisted) {
-                await addToWishlist(token, product.id)
-                setIsWishlisted(true)
-                toast.success("已添加到愿望单")
-            } else {
-                await removeFromWishlist(token, product.id)
-                setIsWishlisted(false)
-                toast.success("已从愿望单中移除")
-            }
-        } catch (error: any) {
-            console.error(error)
-            toast.error(`${isWishlisted ? "加入" : "移除"}愿望单失败`, {description: error.message})
-        }
+    try {
+      if (!token) {
+        toast.error("请先登录")
+        router.push("/auth/login")
+        return;
+      }
+      if (!isWishlisted) {
+        await addToWishlist(token, product.id)
+        setIsWishlisted(true)
+        toast.success("已添加到愿望单")
+      } else {
+        await removeFromWishlist(token, product.id)
+        setIsWishlisted(false)
+        toast.success("已从愿望单中移除")
+      }
+    } catch (error: any) {
+      console.error(error)
+      toast.error(`${isWishlisted ? "加入" : "移除"}愿望单失败`, {description: error.message})
+    }
   }
 
   return (

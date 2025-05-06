@@ -1,21 +1,21 @@
 "use client";
 
-import {useEffect, useRef, useState} from "react";
-import {useForm} from "react-hook-form";
-import {zodResolver} from "@hookform/resolvers/zod";
-import {toast} from "sonner";
-import {Loader2, Upload} from "lucide-react";
-import {z} from "zod";
-import {Button} from "@/components/ui/button";
-import {Input} from "@/components/ui/input";
-import {Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,} from "@/components/ui/form";
-import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
-import {Card, CardContent} from "@/components/ui/card";
-import {Separator} from "@/components/ui/separator";
-import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs";
-import {useAuth} from "@/components/auth-provider";
-import {API_URL} from "@/lib/api";
-import {sha256} from "@/lib/auth";
+import { useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
+import { Loader2, Upload } from "lucide-react";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, } from "@/components/ui/form";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/components/auth-provider";
+import { API_URL } from "@/lib/api";
+import { sha256 } from "@/lib/auth";
 
 const profileSchema = z.object({
   email: z.string().email("请输入有效的电子邮件地址").min(1, "电子邮件地址不能为空"),
@@ -177,7 +177,7 @@ export function ProfileForm() {
       if (response.ok) {
         toast.success("头像上传成功");
       } else {
-          toast.error("上传失败", {description: response.text()});
+        toast.error("上传失败", {description: response.text()});
       }
     } catch (error) {
       toast.error("网络连接异常", {description: error instanceof Error ? error.message : "未知错误"});
@@ -227,12 +227,12 @@ export function ProfileForm() {
                     ref={fileInputRef}
                     disabled={isUpdating}
                   />
-                    <label
-                        className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        onClick={() => window.location.reload()}
-                    >
-                        刷新
-                    </label>
+                  <label
+                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => window.location.reload()}
+                  >
+                    刷新
+                  </label>
                 </div>
               </div>
             </CardContent>

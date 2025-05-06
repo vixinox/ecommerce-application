@@ -1,11 +1,11 @@
 "use client";
 
-import {createContext, type ReactNode, useContext, useEffect, useState} from "react";
-import {API_URL} from "@/lib/api";
-import {toast} from "sonner";
-import {useRouter} from "next/navigation";
-import {useAuth} from "@/components/auth-provider";
-import {CartItem} from "@/lib/types";
+import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
+import { API_URL } from "@/lib/api";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/auth-provider";
+import { CartItem } from "@/lib/types";
 
 interface ShoppingCartContext {
   cartItems: CartItem[];
@@ -27,7 +27,7 @@ export function useShoppingCart() {
 
 export function ShoppingCartProvider({children}: { children: ReactNode }) {
   const router = useRouter();
-    const {user, token, isLoading} = useAuth();
+  const {user, token, isLoading} = useAuth();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const getCartItems = async () => {
     try {
@@ -86,22 +86,22 @@ export function ShoppingCartProvider({children}: { children: ReactNode }) {
         if (res.status === 401) {
           toast.error("请登录后操作");
           router.push("/auth/login");
-            return;
+          return;
         }
-          throw new Error(`${await res.text()}`);
+        throw new Error(`${await res.text()}`);
       }
 
-        await getCartItems();
+      await getCartItems();
     } catch (e: any) {
-        toast.error("添加购物车失败", {description: e.message});
+      toast.error("添加购物车失败", {description: e.message});
     }
   };
 
-    const removeFromCart = async (cartId: number) => {
-        const itemToRemove = cartItems.find(item => item.cartId === cartId);
+  const removeFromCart = async (cartId: number) => {
+    const itemToRemove = cartItems.find(item => item.cartId === cartId);
 
     if (!itemToRemove) {
-        console.warn(`Item with variantId ${cartId} not found in local state, cannot remove.`);
+      console.warn(`Item with variantId ${cartId} not found in local state, cannot remove.`);
       return;
     }
 
@@ -120,12 +120,12 @@ export function ShoppingCartProvider({children}: { children: ReactNode }) {
           toast.error("请登录后操作");
           router.push("/auth/login");
         }
-          throw new Error(`${await res.text()}`);
+        throw new Error(`${await res.text()}`);
       }
 
-        await getCartItems();
+      await getCartItems();
     } catch (e: any) {
-        toast.error("移除购物车商品失败", {description: e.message});
+      toast.error("移除购物车商品失败", {description: e.message});
     }
   };
   const updateQuantity = async (variantId: number, quantity: number) => {

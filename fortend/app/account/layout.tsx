@@ -1,12 +1,12 @@
 "use client";
 
-import React, {useEffect} from "react";
-import {NavItem} from "@/components/nav-item";
-import {useRouter} from "next/navigation";
-import {ChartNoAxesCombined, FileText, Package, Settings, UserIcon, Warehouse} from "lucide-react";
-import {useAuth} from "@/components/auth-provider";
+import React, { useEffect } from "react";
+import { NavItem } from "@/components/nav-item";
+import { useRouter } from "next/navigation";
+import { ChartNoAxesCombined, FileText, Package, Settings, UserIcon, Warehouse } from "lucide-react";
+import { useAuth } from "@/components/auth-provider";
 import SiteHeader from "@/components/site-header";
-import {ShoppingCartProvider} from "@/components/shopping-cart-provider";
+import { ShoppingCartProvider } from "@/components/shopping-cart-provider";
 
 
 interface AccountLayoutProps {
@@ -18,8 +18,8 @@ export default function AccountLayout({children}: AccountLayoutProps) {
   const router = useRouter();
 
   useEffect(() => {
-      if (!isLoading && !user)
-          router.push(`/auth/login`);
+    if (!isLoading && !user)
+      router.push(`/auth/login`);
   }, [isLoading, user, router]);
 
   if (isLoading) {
@@ -39,9 +39,9 @@ export default function AccountLayout({children}: AccountLayoutProps) {
 
   return (
     <div className="flex flex-col">
-        <ShoppingCartProvider>
-            <SiteHeader/>
-        </ShoppingCartProvider>
+      <ShoppingCartProvider>
+        <SiteHeader/>
+      </ShoppingCartProvider>
       <div className="container flex-1 items-start md:grid md:grid-cols-[220px_1fr] md:gap-6 md:py-10 mx-auto">
         <aside className="fixed top-14 z-30 -ml-2 hidden w-full shrink-0 overflow-y-auto border-r md:sticky md:block">
           <div className="py-6 pr-6 lg:py-8">
@@ -59,17 +59,17 @@ export default function AccountLayout({children}: AccountLayoutProps) {
               <NavItem href="/account/settings" icon={<Settings className="mr-2 h-4 w-4"/>}>
                 设置
               </NavItem>
-                {user && user.role === "MERCHANT" && (
-                    <>
-                        <NavItem href="/account/merchant/dashboard"
-                                 icon={<ChartNoAxesCombined className="mr-2 h-4 w-4"/>}>
-                            经营面板
-                        </NavItem>
-                        <NavItem href="/account/merchant/products" icon={<Warehouse className="mr-2 h-4 w-4"/>}>
-                            商品管理
-                        </NavItem>
-                    </>
-                )}
+              {user && user.role === "MERCHANT" && (
+                <>
+                  <NavItem href="/account/merchant/dashboard"
+                           icon={<ChartNoAxesCombined className="mr-2 h-4 w-4"/>}>
+                    经营面板
+                  </NavItem>
+                  <NavItem href="/account/merchant/products" icon={<Warehouse className="mr-2 h-4 w-4"/>}>
+                    商品管理
+                  </NavItem>
+                </>
+              )}
             </nav>
           </div>
         </aside>

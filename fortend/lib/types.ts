@@ -1,12 +1,12 @@
 export interface Product {
-    id: number;
+  id: number;
   name: string;
   category: string;
   defaultImage: string;
   minPrice: number;
   status: string;
   totalStock: number;
-    wishlisted: boolean;
+  wishlisted: boolean;
 }
 
 export interface Variant {
@@ -70,26 +70,43 @@ export interface OrderDTO {
 }
 
 export interface DashboardData {
-    totalUsers: number;
-    totalProducts: number;
-    totalOrders: number;
-    totalRevenue: number;
-    pendingShipmentOrders: number;
-    productsPendingApproval: number;
-    lowStockVariantsCount: number;
-    newUsersToday: number;
+  totalUsers: number;
+  totalProducts: number;
+  totalOrders: number;
+  totalRevenue: number;
+  pendingShipmentOrders: number;
+  productsPendingApproval: number;
+  lowStockVariantsCount: number;
+  newUsersToday: number;
 
-    recentSales: Array<{
-        date: string;
-        amount: number;
-    }>;
-    productCategoryCounts: Array<{
-        category: string;
-        count: number;
-    }>;
-    orderStatusCounts: Array<{
-        status: string;
-        count: number;
-    }>;
+  recentSales: Array<{
+    date: string;
+    amount: number;
+  }>;
+  productCategoryCounts: Array<{
+    category: string;
+    count: number;
+  }>;
+  orderStatusCounts: Array<{
+    status: string;
+    count: number;
+  }>;
 }
 
+export interface FetchedProductDTO {
+  id?: number;
+  name: string;
+  category: string;
+  description: string;
+  featuresJson: string;
+  specificationsJson: string;
+  variants: {
+    id?: string;
+    color: string;
+    size: string;
+    price: number;
+    stockQuantity: number;
+  }[];
+  colorImageUrls?: { [key: string]: string };
+  status?: string;
+}

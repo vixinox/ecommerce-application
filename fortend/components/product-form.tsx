@@ -1,23 +1,23 @@
 "use client";
 import type React from "react";
-import {useCallback, useEffect, useRef, useState} from "react";
-import {useRouter} from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
-import {useForm} from "react-hook-form";
-import {zodResolver} from "@hookform/resolvers/zod";
-import {z} from "zod";
-import {Loader2, Plus, Trash2, Upload, X} from "lucide-react";
-import {toast} from "sonner";
-import {Button} from "@/components/ui/button";
-import {Input} from "@/components/ui/input";
-import {Textarea} from "@/components/ui/textarea";
-import {Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,} from "@/components/ui/form";
-import {Separator} from "@/components/ui/separator";
-import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs";
-import {Card, CardContent} from "@/components/ui/card";
-import {Badge} from "@/components/ui/badge";
-import {API_URL} from "@/lib/api";
-import {useAuth} from "@/components/auth-provider";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, } from "@/components/ui/form";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { API_URL } from "@/lib/api";
+import { useAuth } from "@/components/auth-provider";
 
 const productSchema = z.object({
   name: z.string().min(1, {message: "商品名称不能为空"}),
@@ -871,9 +871,9 @@ export function ProductForm({param}: { param?: string }) {
                       为每个颜色和尺寸的组合配置具体的价格和库存。
                     </p>
                   </div>
-                    <div className="border rounded-md overflow-auto dark:bg-black">
-                        <table className="min-w-full divide-y divide-gray-200 dark:bg-black">
-                            <thead className="bg-gray-50 dark:bg-black sticky top-0 z-10">
+                  <div className="border rounded-md overflow-auto dark:bg-black">
+                    <table className="min-w-full divide-y divide-gray-200 dark:bg-black">
+                      <thead className="bg-gray-50 dark:bg-black sticky top-0 z-10">
                       <tr>
                         <th scope="col"
                             className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-200 uppercase tracking-wider">颜色
@@ -889,7 +889,7 @@ export function ProductForm({param}: { param?: string }) {
                         </th>
                       </tr>
                       </thead>
-                            <tbody className="bg-white divide-y divide-gray-200 dark:bg-black">
+                      <tbody className="bg-white divide-y divide-gray-200 dark:bg-black">
                       {variants.slice().sort((a, b) => {
                         const colorComparison = a.color.localeCompare(b.color);
                         if (colorComparison !== 0) return colorComparison;
@@ -898,9 +898,9 @@ export function ProductForm({param}: { param?: string }) {
                         const key = variant.id || `${variant.color}_${variant.size}`;
                         return (
                           <tr key={key}>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm">{variant.color}</td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm">{variant.size}</td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm">
+                            <td className="px-4 py-3 whitespace-nowrap text-sm">{variant.color}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm">{variant.size}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm">
                               <Input
                                 type="number"
                                 placeholder="价格"
@@ -919,7 +919,7 @@ export function ProductForm({param}: { param?: string }) {
                                 disabled={isSubmitting}
                               />
                             </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm">
+                            <td className="px-4 py-3 whitespace-nowrap text-sm">
                               <Input
                                 type="number"
                                 placeholder="库存"

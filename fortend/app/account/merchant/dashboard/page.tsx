@@ -1,13 +1,13 @@
 "use client";
 
-import {useEffect, useState} from "react";
-import {AlertTriangle, BarChart3, DollarSign, Loader2, PackageCheck, ShoppingBag, XCircle} from "lucide-react"
-import {useAuth} from "@/components/auth-provider";
-import {API_URL} from "@/lib/api";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
-import {Separator} from "@/components/ui/separator"
-import {formatPrice} from "@/lib/utils";
-import {Alert, AlertDescription, AlertTitle} from "@/components/ui/alert";
+import { useEffect, useState } from "react";
+import { AlertTriangle, BarChart3, DollarSign, Loader2, PackageCheck, ShoppingBag, XCircle } from "lucide-react"
+import { useAuth } from "@/components/auth-provider";
+import { API_URL } from "@/lib/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import { formatPrice } from "@/lib/utils";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface MerchantDashboardData {
   pendingOrdersCount: number;
@@ -18,7 +18,7 @@ interface MerchantDashboardData {
 }
 
 export default function MerchantDashboardPage() {
-  const { token } = useAuth();
+  const {token} = useAuth();
   const [data, setData] = useState<MerchantDashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +34,7 @@ export default function MerchantDashboardPage() {
       setError(null);
       try {
         const res = await fetch(`${API_URL}/api/dashboard/merchant`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {Authorization: `Bearer ${token}`},
         });
         const fetchedData: MerchantDashboardData = await res.json();
         setData(fetchedData);
@@ -52,7 +52,7 @@ export default function MerchantDashboardPage() {
   if (isLoading) {
     return (
       <div className="space-y-6 flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground"/>
         <p className="ml-2 text-muted-foreground">加载仪表盘数据中...</p>
       </div>
     );
@@ -61,7 +61,7 @@ export default function MerchantDashboardPage() {
   if (error) {
     return (
       <Alert variant="destructive" className="mt-6">
-        <XCircle className="h-4 w-4" />
+        <XCircle className="h-4 w-4"/>
         <AlertTitle>加载失败</AlertTitle>
         <AlertDescription>{error}</AlertDescription>
       </Alert>
@@ -74,13 +74,13 @@ export default function MerchantDashboardPage() {
         <h3 className="text-lg font-medium">仪表盘</h3>
         <p className="text-sm text-muted-foreground">您的店铺表现和销售概览。</p>
       </div>
-      <Separator />
+      <Separator/>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">总销售额</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <DollarSign className="h-4 w-4 text-muted-foreground"/>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatPrice(data?.totalSalesAmount ?? 0)}</div>
@@ -89,7 +89,7 @@ export default function MerchantDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">总订单数</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <BarChart3 className="h-4 w-4 text-muted-foreground"/>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data?.totalOrdersCount ?? 0}</div>
@@ -98,7 +98,7 @@ export default function MerchantDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">待发货订单</CardTitle>
-            <PackageCheck className="h-4 w-4 text-muted-foreground" />
+            <PackageCheck className="h-4 w-4 text-muted-foreground"/>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data?.pendingOrdersCount ?? 0}</div>
@@ -107,7 +107,7 @@ export default function MerchantDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">在售商品</CardTitle>
-            <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+            <ShoppingBag className="h-4 w-4 text-muted-foreground"/>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data?.activeProductsCount ?? 0}</div>
@@ -116,7 +116,7 @@ export default function MerchantDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">低库存</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            <AlertTriangle className="h-4 w-4 text-muted-foreground"/>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data?.lowStockProductsCount ?? 0}</div>
