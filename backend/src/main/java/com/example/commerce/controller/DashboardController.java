@@ -1,5 +1,6 @@
 package com.example.commerce.controller;
 
+import com.example.commerce.dto.AdminDashboardDTO;
 import com.example.commerce.dto.MerchantDashboardDTO;
 import com.example.commerce.model.User;
 import com.example.commerce.service.DashboardService;
@@ -50,6 +51,31 @@ public class DashboardController {
         }
     }
 
-    // 如果未来需要管理员仪表盘，可以在这里添加 /admin 端点
+    /**
+     * 管理员获取仪表盘数据
+     * 需要管理员权限
+     * @param authHeader 认证头
+     * @return ResponseEntity 包含 AdminDashboardDTO
+     * @deprecated 此端点已由 AdminController中的 /api/admin/dashboard 取代。
+     */
+    @Deprecated // Mark as deprecated
+    // @GetMapping("/admin") // Comment out or remove the mapping
+    public ResponseEntity<?> getAdminDashboard(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            userService.checkAdmin(authHeader);
+
+            AdminDashboardDTO dashboardData = dashboardService.getAdminDashboardData();
+
+            return ResponseEntity.ok(dashboardData);
+
+        } catch (RuntimeException e) {
+            if (e.getMessage() != null && (e.getMessage().contains("无权限访问") || e.getMessage().contains("无效的认证请求头") || e.getMessage().contains("认证过期") || e.getMessage().contains("用户不存在"))) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("获取仪表盘数据失败: (已弃用) " + e.getMessage());
+            }
+            System.err.println("Error fetching admin dashboard data (deprecated endpoint): " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("获取仪表盘数据失败: (已弃用) " + e.getMessage());
+        }
+    }
 
 } 

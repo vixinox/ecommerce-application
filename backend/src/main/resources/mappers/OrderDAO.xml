@@ -76,4 +76,53 @@
         GROUP BY status
     </select>
 
+    <select id="getUserTopItemSpend" resultType="com.example.commerce.dto.SpendingReportDTO$ItemSpend">
+        SELECT
+           oi.snapshot_product_name AS name,
+           CONCAT(
+               COALESCE(oi.snapshot_variant_color, ''),
+               CASE WHEN oi.snapshot_variant_color IS NOT NULL AND oi.snapshot_variant_size IS NOT NULL THEN '/' ELSE '' END,
+               COALESCE(oi.snapshot_variant_size, '')
+           ) AS variant,
+           SUM(oi.purchased_price * oi.quantity) AS spend,
+           SUM(oi.quantity) AS quantity
+        FROM order_items oi
+        JOIN orders o ON oi.order_id = o.id
+        WHERE o.user_id = #{userId}
+        GROUP BY oi.snapshot_product_name, oi.snapshot_variant_color, oi.snapshot_variant_size
+        ORDER BY spend DESC, quantity DESC
+        LIMIT 10
+    </select>
+
+    <select id="getUserCategorySpend" resultType="com.example.commerce.dto.SpendingReportDTO$CategorySpend" parameterType="java.lang.Long">
+        SELECT
+            COALESCE(p.category, '未知分类') AS category,
+            SUM(oi.purchased_price * oi.quantity) AS amount
+        FROM order_items oi
+        JOIN orders o ON oi.order_id = o.id
+        LEFT JOIN products p ON oi.product_id = p.id
+        WHERE o.user_id = #{userId}
+        GROUP BY COALESCE(p.category, '未知分类')
+        ORDER BY amount DESC
+    </select>
+
+    <select id="getUserMonthlySpendTrend" resultType="com.example.commerce.dto.SpendingReportDTO$TimeBasedSpend" parameterType="java.lang.Long">
+        SELECT
+            DATE_FORMAT(created_at, '%Y-%m') AS period,
+            SUM(total_amount) AS amount
+        FROM orders
+        WHERE user_id = #{userId}
+        GROUP BY period
+        ORDER BY period
+    </select>
+
+    <select id="getUserOrderSummary" resultType="map" parameterType="java.lang.Long">
+        SELECT
+            SUM(total_amount) AS totalSpend,
+            COUNT(id) AS totalOrders,
+            AVG(total_amount) AS averageOrderValue
+        FROM orders
+        WHERE user_id = #{userId}
+    </select>
+
 </mapper>

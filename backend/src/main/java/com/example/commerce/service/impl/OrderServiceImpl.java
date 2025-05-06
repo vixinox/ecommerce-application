@@ -432,4 +432,80 @@ public class OrderServiceImpl implements OrderService {
         orderItem.setSnapshotVariantImage(variant.getImage());
         return orderItem;
     }
+
+    @Override
+    public PageInfo<OrderDTO> searchOrders(com.example.commerce.dto.OrderSearchCriteria criteria, int pageNum, int pageSize) {
+        logger.debug("Searching orders with criteria: {}, page: {}, size: {}", criteria, pageNum, pageSize);
+        PageHelper.startPage(pageNum, pageSize);
+        List<Order> orders = orderDao.searchOrdersByCriteria(criteria);
+
+        if (orders == null || orders.isEmpty()) {
+            return new PageInfo<>(Collections.emptyList());
+        }
+
+        List<Long> orderIds = orders.stream().map(Order::getId).collect(Collectors.toList());
+
+        // 获取这些订单的所有订单项。因为搜索可能跨用户，所以获取所有项，然后按订单ID分组
+        List<OrderItem> allItemsForFoundOrders = orderDao.getOrderItemsByOrderIds(orderIds);
+        Map<Long, List<OrderItem>> itemsByOrderId = allItemsForFoundOrders.stream()
+                .collect(Collectors.groupingBy(OrderItem::getOrderId));
+
+        // 获取这些订单相关的用户信息（买家信息）
+        // 提取所有相关的用户ID
+        Set<Long> userIds = orders.stream().map(Order::getUserId).collect(Collectors.toSet());
+        Map<Long, User> buyerInfoMap = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            // 假设 userService 有一个方法可以根据ID列表批量获取用户信息
+            // List<User> buyers = userService.getUsersByIds(new ArrayList<>(userIds));
+            // if (buyers != null) {
+            //     buyerInfoMap = buyers.stream().collect(Collectors.toMap(User::getId, user -> user));
+            // }
+            // 如果没有批量获取的方法，可以逐个获取，但效率较低。或者在OrderDAO中JOIN查询时直接获取用户名
+            // 为了简化，这里暂时不填充详细的buyerInfo，或者假设OrderDTO构造函数可以处理null
+            // 或者，如果searchOrdersByCriteria的SQL已经JOIN了users表并返回了用户名，可以直接使用。
+            // 在当前的SQL Provider实现中，我们没有JOIN users表，所以这里buyerInfo会是null。
+            // 如果需要显示用户名，需要在SQL Provider中JOIN users表并选择相应字段，然后在OrderDTO中添加buyerUsername字段。
+        }
+
+        List<OrderDTO> orderDTOs = orders.stream()
+                .map(order -> {
+                    List<OrderItem> currentOrderItems = itemsByOrderId.getOrDefault(order.getId(), Collections.emptyList());
+                    User buyer = buyerInfoMap.get(order.getUserId()); // 可能是null
+                    // OrderDTO构造函数可能需要调整以接收User对象或用户名
+                    return new OrderDTO(order, currentOrderItems, buyer); // 假设OrderDTO有这个构造函数
+                })
+                .collect(Collectors.toList());
+
+        PageInfo<OrderDTO> pageInfoResult = new PageInfo<>(orderDTOs);
+        // PageHelper 会自动处理分页的总数等信息，我们只需要用 PageInfo 包装从 DAO 返回的 list 即可
+        // PageInfo<Order> sourcePageInfo = new PageInfo<>(orders); // 这行是关键，用包含原始数据的list构造一个PageInfo
+        // pageInfoResult.setTotal(sourcePageInfo.getTotal());
+        // pageInfoResult.setPages(sourcePageInfo.getPages());
+        // pageInfoResult.setPageNum(sourcePageInfo.getPageNum());
+        // pageInfoResult.setPageSize(sourcePageInfo.getPageSize());
+        // pageInfoResult.setHasNextPage(sourcePageInfo.isHasNextPage());
+        // pageInfoResult.setHasPreviousPage(sourcePageInfo.isHasPreviousPage());
+        // pageInfoResult.setIsFirstPage(sourcePageInfo.isIsFirstPage());
+        // pageInfoResult.setIsLastPage(sourcePageInfo.isIsLastPage());
+
+        // 实际上，当 PageHelper.startPage 执行后，下一条 MyBatis 查询（orderDao.searchOrdersByCriteria(criteria)）
+        // 返回的 List<Order> 已经是分页后当页的数据。
+        // 将这个 List<Order> 转换为 List<OrderDTO> 后，可以直接用 new PageInfo<>(orderDTOs) 来创建。
+        // PageHelper 会将总记录数等信息保存在一个 ThreadLocal 变量中，
+        // new PageInfo<>(daoResultList) 构造函数会自动从这个 ThreadLocal 中获取这些分页信息。
+        // 但是，为了确保total, pages等信息的正确性，最好是用原始的DAO查询结果（orders）来构造一个PageInfo，然后转换list
+        PageInfo<Order> originalPageInfo = new PageInfo<>(orders); // 使用DAO返回的原始列表
+        pageInfoResult.setList(orderDTOs); // 设置转换后的DTO列表
+        pageInfoResult.setTotal(originalPageInfo.getTotal());
+        pageInfoResult.setPageNum(originalPageInfo.getPageNum());
+        pageInfoResult.setPageSize(originalPageInfo.getPageSize());
+        pageInfoResult.setPages(originalPageInfo.getPages());
+        pageInfoResult.setHasNextPage(originalPageInfo.isHasNextPage());
+        pageInfoResult.setHasPreviousPage(originalPageInfo.isHasPreviousPage());
+        pageInfoResult.setIsFirstPage(originalPageInfo.isIsFirstPage());
+        pageInfoResult.setIsLastPage(originalPageInfo.isIsLastPage());
+
+        logger.debug("Found {} orders matching criteria.", pageInfoResult.getTotal());
+        return pageInfoResult;
+    }
 }

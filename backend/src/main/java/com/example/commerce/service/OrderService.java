@@ -2,6 +2,7 @@ package com.example.commerce.service;
 
 import com.example.commerce.dto.CartItemDTO;
 import com.example.commerce.dto.OrderDTO;
+import com.example.commerce.dto.OrderSearchCriteria;
 import com.example.commerce.dto.SpendingReportDTO;
 import com.example.commerce.model.User;
 import com.github.pagehelper.PageInfo;
@@ -48,4 +49,13 @@ public interface OrderService {
     void updateOrderStatusAdmin(Long orderId, String newStatus);
 
     OrderDTO getOrderDetailsAdmin(Long orderId);
+
+    /**
+     * 根据条件搜索订单 (分页)
+     * @param criteria 搜索条件
+     * @param pageNum 页码
+     * @param pageSize 每页数量
+     * @return 包含订单信息的 PageInfo 对象
+     */
+    PageInfo<OrderDTO> searchOrders(OrderSearchCriteria criteria, int pageNum, int pageSize);
 }

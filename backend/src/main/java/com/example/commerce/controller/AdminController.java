@@ -5,12 +5,13 @@ import com.example.commerce.dto.OrderDTO;
 import com.example.commerce.dto.ProductEditResponseDTO;
 import com.example.commerce.model.Product;
 import com.example.commerce.model.User;
-import com.example.commerce.service.DashboardService;
 import com.example.commerce.service.OrderService;
 import com.example.commerce.service.ProductService;
 import com.example.commerce.service.UserService;
+import com.example.commerce.service.DashboardService;
 import com.github.pagehelper.PageInfo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -282,31 +283,6 @@ public class AdminController {
     }
 
     /**
-     * 管理员获取仪表盘数据
-     * 需要管理员权限
-     * @param authHeader 认证头
-     * @return ResponseEntity 包含 AdminDashboardDTO
-     */
-    @GetMapping("/dashboard")
-    public ResponseEntity<?> getAdminDashboard(
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        try {
-            // 1. 检查管理员权限
-            userService.checkAdmin(authHeader);
-
-            // 2. 调用服务获取仪表盘数据
-            AdminDashboardDTO dashboardData = dashboardService.getAdminDashboardData();
-
-            // 3. 返回成功响应
-            return ResponseEntity.ok(dashboardData);
-
-        } catch (RuntimeException e) {
-            // 权限不足或其他运行时异常
-            return ResponseEntity.status(403).body("获取仪表盘数据失败: " + e.getMessage());
-        }
-    }
-
-    /**
      * 管理员更新用户角色
      * 需要管理员权限
      * @param roleData 请求体，应包含 {"role": "NEW_ROLE"}
@@ -355,7 +331,27 @@ public class AdminController {
             userService.softDeleteUser(userId);
             return ResponseEntity.ok("用户 " + userId + " 已删除");
         } catch (RuntimeException e) {
-            return ResponseEntity.status(500).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+    }
+
+    /**
+     * 管理员获取仪表盘数据
+     * 需要管理员权限
+     * @param authHeader 认证头
+     * @return ResponseEntity 包含 AdminDashboardDTO
+     */
+    @GetMapping("/dashboard")
+    public ResponseEntity<?> getAdminDashboardData(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            userService.checkAdmin(authHeader);
+            AdminDashboardDTO dashboardData = dashboardService.getAdminDashboardData();
+            return ResponseEntity.ok(dashboardData);
+        } catch (RuntimeException e) {
+            if (e.getMessage() != null && (e.getMessage().contains("无权限访问") || e.getMessage().contains("无效的认证请求头") || e.getMessage().contains("认证过期") || e.getMessage().contains("用户不存在"))) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("获取仪表盘数据失败: " + e.getMessage());
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("获取仪表盘数据时发生内部错误: " + e.getMessage());
         }
     }
 
