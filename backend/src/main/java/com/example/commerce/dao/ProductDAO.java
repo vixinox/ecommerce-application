@@ -170,4 +170,6 @@ public interface ProductDAO {
     // 添加按分类统计商品数量的方法 (排除 DELETED)
     @Select("SELECT category, COUNT(*) as count FROM products WHERE status != 'DELETED' GROUP BY category ORDER BY count DESC")
     List<AdminDashboardDTO.CategoryCountDTO> getProductCountByCategory();
+
+    List<Product> searchProductsAdmin(@Param("criteria") com.example.commerce.dto.ProductSearchCriteria criteria);
 }

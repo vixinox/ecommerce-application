@@ -420,4 +420,36 @@ public class AdminController {
         }
     }
 
+    /**
+     * 管理员搜索商品（分页，多条件）
+     * 需要管理员权限
+     */
+    @GetMapping("/products/search")
+    public ResponseEntity<?> searchProductsAdmin(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestParam(required = false) Long productId,
+            @RequestParam(required = false) String name, // 商品名称
+            @RequestParam(required = false) String categoryName, // 分类名称
+            @RequestParam(required = false) String status, // 商品状态
+            @RequestParam(required = false) Double minPrice, // 最低价格
+            @RequestParam(required = false) Double maxPrice, // 最高价格
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateAddedStart, //上架日期起
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateAddedEnd, //上架日期止
+            @RequestParam(value = "page", defaultValue = "1") int pageNum,
+            @RequestParam(value = "size", defaultValue = "10") int pageSize) {
+        try {
+            userService.checkAdmin(authHeader); // 权限检查
+
+            ProductSearchCriteria criteria = new ProductSearchCriteria(
+                    productId, name, categoryName, status, minPrice, maxPrice,
+                    Optional.ofNullable(dateAddedStart), Optional.ofNullable(dateAddedEnd)
+            );
+
+            PageInfo<Product> productPageInfo = productService.searchProductsAdmin(criteria, pageNum, pageSize);
+            return ResponseEntity.ok(productPageInfo);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("搜索商品失败: " + e.getMessage());
+        }
+    }
+
 }

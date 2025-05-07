@@ -250,4 +250,46 @@
             </if>
         </where>
     </select>
+
+    <select id="searchProductsAdmin" resultType="com.example.commerce.model.Product">
+        SELECT p.*
+        FROM products p
+        <where>
+            <if test="criteria.productId != null">
+                AND p.id = #{criteria.productId}
+            </if>
+            <if test="criteria.name != null and criteria.name != ''">
+                AND p.name LIKE CONCAT('%', #{criteria.name}, '%')
+            </if>
+            <if test="criteria.categoryName != null and criteria.categoryName != ''">
+                AND p.category LIKE CONCAT('%', #{criteria.categoryName}, '%')
+            </if>
+            <if test="criteria.status != null and criteria.status != ''">
+                AND p.status = #{criteria.status}
+            </if>
+            <if test="criteria.dateAddedStart.present">
+                AND p.created_at &gt;= #{criteria.dateAddedStart.get()}
+            </if>
+            <if test="criteria.dateAddedEnd.present">
+                AND p.created_at &lt;= DATE_ADD(#{criteria.dateAddedEnd.get()}, INTERVAL 1 DAY) <!-- For inclusive end date -->
+            </if>
+            <if test="criteria.minPrice != null or criteria.maxPrice != null">
+                AND EXISTS (
+                    SELECT 1 FROM product_variants pv
+                    WHERE pv.product_id = p.id
+                    <if test="criteria.minPrice != null">
+                        AND pv.price &gt;= #{criteria.minPrice}
+                    </if>
+                    <if test="criteria.maxPrice != null">
+                        AND pv.price &lt;= #{criteria.maxPrice}
+                    </if>
+                )
+            </if>
+            <!-- Default behavior: do not show DELETED products unless explicitly requested by status -->
+            <if test="criteria.status == null or criteria.status == '' or !criteria.status.equalsIgnoreCase('DELETED')">
+                AND p.status != 'DELETED'
+            </if>
+        </where>
+        ORDER BY p.created_at DESC
+    </select>
 </mapper>

@@ -672,7 +672,24 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public void softDeleteProduct(Long productId) {
-        updateProductStatus(productId, PRODUCT_STATUS_DELETED);
-        logger.info("管理员软删除了商品 {}", productId); // 添加日志
+        Product product = productDAO.getProductById(productId);
+        if (product == null) {
+            throw new RuntimeException("商品不存在");
+        }
+        // 检查是否已经是DELETED状态，如果是则不执行操作或抛出特定异常
+        if (PRODUCT_STATUS_DELETED.equals(product.getStatus())) {
+            logger.warn("商品 {} 已经是DELETED状态，无需再次删除。", productId);
+            return; // 或者可以抛出异常，例如: throw new IllegalStateException("商品已删除");
+        }
+        productDAO.updateProductStatus(productId, PRODUCT_STATUS_DELETED);
+        // 可选: 记录日志或发送通知等
+        logger.info("商品 {} 已被软删除。", productId);
+    }
+
+    @Override
+    public PageInfo<Product> searchProductsAdmin(com.example.commerce.dto.ProductSearchCriteria criteria, int pageNum, int pageSize) {
+        PageHelper.startPage(pageNum, pageSize);
+        List<Product> products = productDAO.searchProductsAdmin(criteria); // Assuming ProductDAO will have this method
+        return new PageInfo<>(products);
     }
 }
