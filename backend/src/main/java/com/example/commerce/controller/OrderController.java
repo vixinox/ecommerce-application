@@ -19,6 +19,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.Collections.emptyList;
+
 
 @RestController
 @RequestMapping("/api/orders")
@@ -48,7 +50,23 @@ public class OrderController {
         }
     }
 
-    @GetMapping("/my")
+    @GetMapping("/{orderId}")
+    public ResponseEntity<?> getOrderDetailsAdmin(
+            @PathVariable Long orderId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            userService.checkMerchantOrAdmin(authHeader);
+            OrderDTO orderDetails = orderService.getOrderDetailsAdmin(orderId);
+            return ResponseEntity.ok(orderDetails);
+        } catch (RuntimeException e) {
+            if (e.getMessage() != null && e.getMessage().startsWith("订单不存在")) {
+                return ResponseEntity.status(404).body("获取订单详情失败: " + e.getMessage());
+            }
+            return ResponseEntity.status(403).body("获取订单详情失败: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/mine")
     public ResponseEntity<?> getMyOrders(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             User user = userService.checkAuthorization(authHeader);
@@ -60,7 +78,7 @@ public class OrderController {
         }
     }
 
-    @GetMapping("/my/report")
+    @GetMapping("/report")
     public ResponseEntity<?> getMySpendingReport(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             User user = userService.checkAuthorization(authHeader);
@@ -82,25 +100,6 @@ public class OrderController {
             User merchant = userService.checkMerchant(authHeader);
             PageInfo<OrderDTO> orderPageInfo = orderService.getMerchantOrders(merchant, pageNum, pageSize, status);
             return ResponseEntity.ok(orderPageInfo);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(e.getMessage());
-        }
-    }
-
-    @GetMapping("/merchant/{orderId}")
-    public ResponseEntity<?> getMerchantOrderDetail(
-            @RequestHeader(value = "Authorization", required = false) String authHeader,
-            @PathVariable Long orderId) {
-        try {
-            User merchant = userService.checkMerchant(authHeader);
-            OrderDTO orderDetail = orderService.getMerchantOrderDetail(merchant, orderId);
-            if (orderDetail != null) {
-                return ResponseEntity.ok(orderDetail);
-            } else {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("订单未找到或无权访问");
-            }
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(e.getMessage());
@@ -129,6 +128,53 @@ public class OrderController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("更新订单状态时发生错误: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<?> searchOrders(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestParam(required = false) Long orderId,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String productName,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
+            @RequestParam(value = "page", defaultValue = "1") int pageNum,
+            @RequestParam(value = "size", defaultValue = "10") int pageSize) {
+        try {
+            userService.checkAdmin(authHeader);
+            OrderSearchDTO criteria = new OrderSearchDTO(orderId, userId, username, productName, status, dateFrom, dateTo);
+            PageInfo<OrderDTO> orderPageInfo = orderService.searchOrders(criteria, pageNum, pageSize);
+            return ResponseEntity.ok(orderPageInfo);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("搜索订单时发生错误: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/search/merchant")
+    public ResponseEntity<?> searchMyOrders(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestParam(required = false) Long orderId,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String productName,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
+            @RequestParam(value = "page", defaultValue = "1") int pageNum,
+            @RequestParam(value = "size", defaultValue = "10") int pageSize) {
+        try {
+            User merchant = userService.checkMerchant(authHeader);
+            //TODO: 仅搜索当前商户的订单
+            return ResponseEntity.ok(emptyList());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(e.getMessage());
         }
     }
 }

@@ -29,7 +29,7 @@ import {
   UserIcon,
   X
 } from "lucide-react"
-import { getOrders, updateOrderStatus } from "@/lib/api"
+import { getOrdersAdmin, updateOrderStatus } from "@/lib/api"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -183,7 +183,7 @@ export default function OrdersPage() {
       }
 
       const queryParams = buildOrdersQueryParams(currentFilters, page, size);
-      const data: OrdersResponse = await getOrders(token, queryParams);
+      const data: OrdersResponse = await getOrdersAdmin(token, queryParams);
 
       console.log("Fetched orders data:", data);
 

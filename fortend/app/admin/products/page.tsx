@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Product } from "@/lib/types";
 
 interface ProductFilters {
   productId?: string
@@ -65,7 +66,7 @@ const container = {hidden: {opacity: 0}, show: {opacity: 1, transition: {stagger
 const item = {hidden: {opacity: 0, y: 20}, show: {opacity: 1, y: 0}}
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<any[]>([])
+  const [products, setProducts] = useState<Product[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(10)
   const [totalPages, setTotalPages] = useState(1)
@@ -146,7 +147,7 @@ export default function ProductsPage() {
 
   // 应用筛选
   const handleApply = () => {
-    let toApply: ProductFilters = {}
+    let toApply: ProductFilters
     if (tempFilters.productId) {
       toApply = {productId: tempFilters.productId}
     } else if (tempFilters.ownerId) {
@@ -563,17 +564,17 @@ export default function ProductsPage() {
               <div className="mt-4 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <Pagination>
                   <PaginationContent>
-                    <PaginationItem>
+                    <PaginationItem className="select-none">
                       <PaginationPrevious onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}/>
                     </PaginationItem>
                     {Array.from({length: totalPages}, (_, i) => i + 1).map(page => (
-                      <PaginationItem key={page}>
+                      <PaginationItem key={page} className="select-none">
                         <PaginationLink onClick={() => setCurrentPage(page)} isActive={currentPage === page}>
                           {page}
                         </PaginationLink>
                       </PaginationItem>
                     ))}
-                    <PaginationItem>
+                    <PaginationItem className="select-none">
                       <PaginationNext onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}/>
                     </PaginationItem>
                   </PaginationContent>

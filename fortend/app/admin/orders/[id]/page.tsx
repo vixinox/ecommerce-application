@@ -1,7 +1,7 @@
 "use client"
 
 import { OrderTimeline } from "@/components/order-timeline"
-import { API_URL, getOrderDetailAdmin } from "@/lib/api";
+import { API_URL, getOrderDetails } from "@/lib/api";
 import { useAuth } from "@/components/auth-provider";
 import { use, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -53,7 +53,7 @@ export default function OrderPage({params: paramsPromise}: { params: Promise<{ i
 
     const fetchOrder = async () => {
       try {
-        const data = await getOrderDetailAdmin(Number(id), token);
+        const data = await getOrderDetails(Number(id), token);
         setOrderDetails(data);
       } catch (error: any) {
         toast.error("获取订单详情失败", {description: error.message});

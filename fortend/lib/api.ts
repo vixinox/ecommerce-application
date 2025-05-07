@@ -31,7 +31,7 @@ export async function fetchData(
     }
 
     throw new Error(
-      typeof errorData === "string" ? errorData : JSON.stringify(errorData),
+      typeof errorData === "string" ? errorData : JSON.stringify(errorData.message),
     );
   }
 
@@ -75,7 +75,7 @@ export async function deleteUser(id: number, token: string) {
 }
 
 export async function getProductsAdmin(token: string, query: string = "",) {
-  return fetchData(`/api/admin/products/search?${query}`, token);
+  return fetchData(`/api/products/search?${query}`, token);
 }
 
 export async function updateProductStatus(
@@ -83,14 +83,14 @@ export async function updateProductStatus(
   status: string,
   token: string,
 ) {
-  return fetchData(`/api/admin/products/update/status`, token, {
+  return fetchData(`/api/products/update/status`, token, {
     method: "PUT",
     body: JSON.stringify({productId: id, status: status}),
   });
 }
 
-export async function getOrders(token: string, query: string = "",) {
-  return fetchData(`/api/admin/orders/search?${query}`, token);
+export async function getOrdersAdmin(token: string, query: string = "",) {
+  return fetchData(`/api/orders/search?${query}`, token);
 }
 
 export async function updateOrderStatus(
@@ -114,10 +114,18 @@ export async function removeFromWishlist(token: string, productId: number) {
   });
 }
 
-export async function getOrderDetailAdmin(id: number, token: string) {
-  return fetchData(`/api/admin/orders/${id}`, token);
+export async function getOrderDetails(id: number, token: string) {
+  return fetchData(`/api/orders/${id}`, token);
 }
 
 export async function getWishlist(token: string) {
   return fetchData("/api/wishlist", token, {method: "POST"});
+}
+
+export async function deleteMyProduct(productId: number, token: string) {
+  return fetchData(`/api/products/delete/${productId}`, token, {method: "DELETE"});
+}
+
+export async function searchMyProducts(token: string, query: string = "") {
+  return fetchData(`/api/products/search/merchant?${query}`, token);
 }

@@ -4,10 +4,14 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
+import org.springframework.stereotype.Component;
+
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+
+@Component
 public class JwtUtil {
     private static final String SECRET_KEY = "t241tf341gv34ef43efg43g145146135514614634wef24ef3442ef43e234567890";
     private static final long EXPIRATION_TIME = 86400000;

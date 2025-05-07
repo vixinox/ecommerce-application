@@ -1,7 +1,9 @@
 export interface Product {
   id: number;
+  ownerId: number;
   name: string;
   category: string;
+  description: string;
   defaultImage: string;
   minPrice: number;
   status: string;

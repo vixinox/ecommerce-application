@@ -192,61 +192,6 @@ public class AdminController {
     }
 
     /**
-     * 管理员获取订单详情
-     * 需要管理员权限
-     * @param orderId 订单ID (来自路径)
-     * @param authHeader 认证头
-     * @return ResponseEntity 包含 OrderDTO
-     */
-    @GetMapping("/orders/{orderId}")
-    public ResponseEntity<?> getOrderDetailsAdmin(
-            @PathVariable Long orderId,
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        try {
-            // 1. 检查管理员权限
-            userService.checkAdmin(authHeader);
-
-            // 2. 调用服务获取订单详情
-            OrderDTO orderDetails = orderService.getOrderDetailsAdmin(orderId);
-
-            // 3. 返回成功响应
-            return ResponseEntity.ok(orderDetails);
-        } catch (RuntimeException e) {
-            // 权限不足、订单不存在或其他运行时异常
-            // 可以根据异常类型返回不同的状态码，例如 404 Not Found
-            if (e.getMessage() != null && e.getMessage().startsWith("订单不存在")) {
-                return ResponseEntity.status(404).body("获取订单详情失败: " + e.getMessage());
-            }
-            return ResponseEntity.status(403).body("获取订单详情失败: " + e.getMessage());
-        }
-    }
-
-    @GetMapping("/orders/search")
-    public ResponseEntity<?> searchOrders(
-            @RequestHeader(value = "Authorization", required = false) String authHeader,
-            @RequestParam(required = false) Long orderId,
-            @RequestParam(required = false) Long userId,
-            @RequestParam(required = false) String username,
-            @RequestParam(required = false) String productName,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
-            @RequestParam(value = "page", defaultValue = "1") int pageNum,
-            @RequestParam(value = "size", defaultValue = "10") int pageSize) {
-        try {
-            userService.checkAdmin(authHeader);
-            OrderSearchDTO criteria = new OrderSearchDTO(orderId, userId, username, productName, status, dateFrom, dateTo);
-            PageInfo<OrderDTO> orderPageInfo = orderService.searchOrders(criteria, pageNum, pageSize);
-            return ResponseEntity.ok(orderPageInfo);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("搜索订单时发生错误: " + e.getMessage());
-        }
-    }
-
-    /**
      * 管理员获取商品详情
      * 需要管理员权限
      * @param productId 商品ID (来自路径)
@@ -387,7 +332,6 @@ public class AdminController {
     @GetMapping("/users/search")
     public ResponseEntity<?> searchUsers(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
-            // UserSearchCriteria fields as RequestParams
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String username,
             @RequestParam(required = false) String email,
@@ -395,7 +339,6 @@ public class AdminController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate registrationDateStart,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate registrationDateEnd,
-            // Pagination params
             @RequestParam(value = "page", defaultValue = "1") int pageNum,
             @RequestParam(value = "size", defaultValue = "10") int pageSize) {
         try {
@@ -419,37 +362,4 @@ public class AdminController {
                     .body("搜索用户时发生错误: " + e.getMessage());
         }
     }
-
-    /**
-     * 管理员搜索商品（分页，多条件）
-     * 需要管理员权限
-     */
-    @GetMapping("/products/search")
-    public ResponseEntity<?> searchProductsAdmin(
-            @RequestHeader(value = "Authorization", required = false) String authHeader,
-            @RequestParam(required = false) Long productId,
-            @RequestParam(required = false) String name, // 商品名称
-            @RequestParam(required = false) String categoryName, // 分类名称
-            @RequestParam(required = false) String status, // 商品状态
-            @RequestParam(required = false) Double minPrice, // 最低价格
-            @RequestParam(required = false) Double maxPrice, // 最高价格
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateAddedStart, //上架日期起
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateAddedEnd, //上架日期止
-            @RequestParam(value = "page", defaultValue = "1") int pageNum,
-            @RequestParam(value = "size", defaultValue = "10") int pageSize) {
-        try {
-            userService.checkAdmin(authHeader); // 权限检查
-
-            ProductSearchCriteria criteria = new ProductSearchCriteria(
-                    productId, name, categoryName, status, minPrice, maxPrice,
-                    Optional.ofNullable(dateAddedStart), Optional.ofNullable(dateAddedEnd)
-            );
-
-            PageInfo<Product> productPageInfo = productService.searchProductsAdmin(criteria, pageNum, pageSize);
-            return ResponseEntity.ok(productPageInfo);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("搜索商品失败: " + e.getMessage());
-        }
-    }
-
 }

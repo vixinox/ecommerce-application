@@ -85,7 +85,7 @@ export default function SpendingReportDashboard() {
       setError(null);
 
       try {
-        const response = await fetch(`${API_URL}/api/orders/my/report`, {
+        const response = await fetch(`${API_URL}/api/orders/report`, {
           method: "GET",
           headers: {Authorization: `Bearer ${token}`}
         });

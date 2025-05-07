@@ -1,22 +1,23 @@
 package com.example.commerce.controller;
 
-import com.example.commerce.dto.ProductDTO;
-import com.example.commerce.dto.ProductDetailDTO;
-import com.example.commerce.dto.ProductEditResponseDTO;
-import com.example.commerce.dto.UploadProductDTO;
+import com.example.commerce.dto.*;
 import com.example.commerce.model.Product;
 import com.example.commerce.model.User;
 import com.example.commerce.service.ProductService;
 import com.example.commerce.service.UserService;
 import com.github.pagehelper.PageInfo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import static java.util.Collections.emptyList;
 
 @RestController
 @RequestMapping("/api/products")
@@ -167,4 +168,51 @@ public class ProductController {
         }
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<?> searchProductsAdmin(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestParam(required = false) Long productId,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String categoryName,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateAddedStart,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateAddedEnd,
+            @RequestParam(value = "page", defaultValue = "1") int pageNum,
+            @RequestParam(value = "size", defaultValue = "10") int pageSize) {
+        try {
+            userService.checkAdmin(authHeader);
+            ProductSearchCriteria criteria = new ProductSearchCriteria(
+                    productId, name, categoryName, status, minPrice, maxPrice,
+                    Optional.ofNullable(dateAddedStart), Optional.ofNullable(dateAddedEnd)
+            );
+            PageInfo<Product> productPageInfo = productService.searchProductsAdmin(criteria, pageNum, pageSize);
+            return ResponseEntity.ok(productPageInfo);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("搜索商品失败: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/search/merchant")
+    public ResponseEntity<?> searchMyProducts(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestParam(required = false) Long productId,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String categoryName,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateAddedStart,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateAddedEnd,
+            @RequestParam(value = "page", defaultValue = "1") int pageNum,
+            @RequestParam(value = "size", defaultValue = "10") int pageSize) {
+        try {
+            User merchant = userService.checkMerchant(authHeader);
+            // TODO: 仅搜索当前商户的商品
+            return ResponseEntity.ok(emptyList());
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("搜索商品失败: " + e.getMessage());
+        }
+    }
 }
