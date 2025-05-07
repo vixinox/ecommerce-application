@@ -107,7 +107,7 @@ export function ShoppingCartProvider({children}: { children: ReactNode }) {
 
     try {
       const res = await fetch(`${API_URL}/api/cart/remove`, {
-        method: "POST",
+        method: "DELETE",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,

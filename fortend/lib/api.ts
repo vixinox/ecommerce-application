@@ -74,15 +74,8 @@ export async function deleteUser(id: number, token: string) {
   return fetchData(`/api/admin/users/delete/{${id}}`, token);
 }
 
-export async function getProductsAdmin(
-  token: string,
-  page: number = 1,
-  size: number = 10,
-  status?: string,
-) {
-  let endpoint = `/api/admin/products?page=${page}&size=${size}`;
-  if (status) endpoint += `&status=${status}`;
-  return fetchData(endpoint, token);
+export async function getProductsAdmin(token: string, query: string = "",) {
+  return fetchData(`/api/admin/products/search?${query}`, token);
 }
 
 export async function updateProductStatus(

@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/pagination"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Edit, Trash2, UserCheck, CalendarIcon, FilterIcon, X, Loader2 } from "lucide-react"
+import { CalendarIcon, Edit, FilterIcon, Loader2, Trash2, UserCheck, X } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -331,6 +331,12 @@ export default function UsersPage() {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Button
+            onClick={() => handleApplyFilters()}
+            disabled={isFetching}
+          >
+            搜索
+          </Button>
           <Input
             placeholder={`搜索${tempFilters.searchField === 'id' ? '用户ID' : tempFilters.searchField === 'email' ? '邮箱' : '用户名'}...`}
             value={tempFilters.searchTerm || ''}
@@ -338,12 +344,6 @@ export default function UsersPage() {
             className="w-full sm:w-[250px]"
             disabled={isFetching} 
           />
-          <Button
-            onClick={() => handleApplyFilters()} 
-            disabled={isFetching} 
-          >
-            搜索
-          </Button>
           <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
             <PopoverTrigger asChild>
               <Button variant="outline" className="flex items-center gap-2" disabled={isFetching}> 
@@ -799,7 +799,7 @@ export default function UsersPage() {
                     </PaginationItem>
                   </PaginationContent>
                 </Pagination>
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-muted-foreground text-nowrap">
                   第 {currentPage} / {totalPages} 页
                 </div>
               </div>

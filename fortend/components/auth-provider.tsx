@@ -70,6 +70,7 @@ export function AuthProvider({children}: { children: ReactNode }) {
           });
           if (res.ok) {
             const data = await res.json();
+            console.log(data)
             login(data, storedToken, false);
           } else {
             console.warn("Token验证失败，清除认证信息。状态码:", res.status);

@@ -17,10 +17,22 @@ import {
 } from "@/components/ui/pagination"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Eye, RefreshCw, FilterIcon, X, Loader2, CalendarIcon } from "lucide-react"
+import {
+  CalendarIcon,
+  Eye,
+  FilterIcon,
+  Loader2,
+  ReceiptText,
+  RefreshCw,
+  ShoppingBagIcon,
+  TagIcon,
+  UserIcon,
+  X
+} from "lucide-react"
 import { getOrders, updateOrderStatus } from "@/lib/api"
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -35,19 +47,20 @@ import { Calendar } from "@/components/ui/calendar"
 import { format, isValid } from "date-fns"
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 
 interface ApiOrderDto {
   order: {
     id: number;
-    orderNumber?: string; // Assuming orderNumber might not always be present directly, or id is used as orderNumber
+    orderNumber?: string;
     userId: number;
     status: string;
     totalAmount: number;
     createdAt: string;
     updatedAt: string;
   };
-  items: any[]; // Define more specifically if needed
-  buyerInfo?: any; // Define more specifically if needed
+  items: any[];
+  buyerInfo?: any;
 }
 
 interface OrderFilters {
@@ -61,7 +74,7 @@ interface OrderFilters {
 }
 
 interface OrdersResponse {
-  list: ApiOrderDto[]; // Use the new DTO structure
+  list: ApiOrderDto[];
   total: number;
   pageNum: number;
   pageSize: number;
@@ -82,6 +95,23 @@ const container = {
 const item = {
   hidden: {opacity: 0, y: 20},
   show: {opacity: 1, y: 0},
+}
+
+const allOrderColumns: { key: string, label: string }[] = [
+  {key: 'id', label: '订单号'},
+  {key: 'userId', label: '用户ID'},
+  {key: 'itemsSummary', label: '商品信息'},
+  {key: 'totalAmount', label: '总金额'},
+  {key: 'status', label: '状态'},
+  {key: 'createdAt', label: '创建时间'},
+  {key: 'updatedAt', label: '更新时间'},
+];
+
+const hoverCardContent = {
+  id: {icon: <ReceiptText className="h-4 w-4"/>, title: '订单号'},
+  userId: {icon: <UserIcon className="h-4 w-4"/>, title: '用户ID'},
+  itemsSummary: {icon: <ShoppingBagIcon className="h-4 w-4"/>, title: '商品详情'},
+  createdAt: {icon: <CalendarIcon className="h-4 w-4"/>, title: '创建时间'}
 }
 
 const buildOrdersQueryParams = (filters: OrderFilters, page: number, size: number): string => {
@@ -129,6 +159,10 @@ export default function OrdersPage() {
   const [ordersFilters, setOrdersFilters] = useState<OrderFilters>({});
   const [tempOrdersFilters, setTempOrdersFilters] = useState<OrderFilters>({});
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
+
+  const [visibleOrderColumns, setVisibleOrderColumns] = useState<string[]>(
+    ['id', 'userId', 'itemsSummary', 'totalAmount', 'status', 'createdAt']
+  );
 
   const {token, isLoading: isAuthLoading} = useAuth()
   const [isFetching, setIsFetching] = useState(false)
@@ -258,8 +292,8 @@ export default function OrdersPage() {
 
   const handleStatusChange = async (id: number | undefined | null, status: string) => {
     console.log('[StatusChange Attempt] ID:', id, 'Type:', typeof id, 'New Status:', status);
-    if (id == null || typeof id !== 'number' || !Number.isFinite(id)) {
-      toast.error("更新订单状态失败", { description: `无效的订单ID: ${id}` });
+    if (id == null || !Number.isFinite(id)) {
+      toast.error("更新订单状态失败", {description: `无效的订单ID: ${id}`});
       console.error("[StatusChange Error] Invalid Order ID provided:", id);
       return;
     }
@@ -324,8 +358,23 @@ export default function OrdersPage() {
     }).format(amount);
   }
 
+  const isExactSearchActiveInTempFilters = () => {
+    return !!tempOrdersFilters.orderId || !!tempOrdersFilters.userId;
+  }
+
   const isInitialLoading = isFetching && orders.length === 0 && !isAnyFilterActive();
-  const isOrderIdActive = !!tempOrdersFilters.orderId;
+  const isContentDisabled = isFetching || isAuthLoading;
+
+  const getItemSummary = (items: ApiOrderDto['items'] | undefined) => {
+    if (!items || items.length === 0) return '无商品';
+    const names = items.map(item => item.snapshotProductName).join(', ');
+    return `${names} (${items.length}种商品)`;
+  };
+
+  const getAllItemNames = (items: ApiOrderDto['items'] | undefined) => {
+    if (!items || items.length === 0) return '无商品详情';
+    return items.map(item => `${item.productName} x${item.quantity} (${formatCurrency(item.purchasedPrice)})`).join(';\n');
+  }
 
   return (
     <motion.div initial="hidden" animate="show" variants={container} className="space-y-6 mt-6">
@@ -336,10 +385,9 @@ export default function OrdersPage() {
           <p className="text-muted-foreground">查看和管理平台上的订单</p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
-
           <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2" disabled={isFetching || isAuthLoading}>
+              <Button variant="outline" className="flex items-center gap-2" disabled={isContentDisabled}>
                 <FilterIcon className="h-4 w-4"/>
                 <span>搜索和筛选</span>
                 {isAnyFilterActive() && (
@@ -357,7 +405,7 @@ export default function OrdersPage() {
                   placeholder="输入订单号 (精确)"
                   value={tempOrdersFilters.orderId || ''}
                   onChange={(e) => setTempOrdersFilters(prev => ({...prev, orderId: e.target.value}))}
-                  disabled={isFetching || isAuthLoading}
+                  disabled={isContentDisabled}
                 />
               </div>
               <div className="grid gap-2">
@@ -367,7 +415,7 @@ export default function OrdersPage() {
                   placeholder="输入用户ID (精确)"
                   value={tempOrdersFilters.userId || ''}
                   onChange={(e) => setTempOrdersFilters(prev => ({...prev, userId: e.target.value}))}
-                  disabled={isOrderIdActive || isFetching || isAuthLoading}
+                  disabled={isExactSearchActiveInTempFilters() || isContentDisabled}
                 />
               </div>
               <div className="grid gap-2">
@@ -377,7 +425,7 @@ export default function OrdersPage() {
                   placeholder="输入用户名 (模糊)"
                   value={tempOrdersFilters.username || ''}
                   onChange={(e) => setTempOrdersFilters(prev => ({...prev, username: e.target.value}))}
-                  disabled={isOrderIdActive || isFetching || isAuthLoading}
+                  disabled={isExactSearchActiveInTempFilters() || isContentDisabled}
                 />
               </div>
               <div className="grid gap-2">
@@ -387,7 +435,7 @@ export default function OrdersPage() {
                   placeholder="输入商品名称 (模糊)"
                   value={tempOrdersFilters.productName || ''}
                   onChange={(e) => setTempOrdersFilters(prev => ({...prev, productName: e.target.value}))}
-                  disabled={isOrderIdActive || isFetching || isAuthLoading}
+                  disabled={isExactSearchActiveInTempFilters() || isContentDisabled}
                 />
               </div>
               <div className="grid gap-2">
@@ -398,7 +446,7 @@ export default function OrdersPage() {
                     ...prev,
                     status: value === "all" ? undefined : value
                   }))}
-                  disabled={isOrderIdActive || isFetching || isAuthLoading}
+                  disabled={isExactSearchActiveInTempFilters() || isContentDisabled}
                 >
                   <SelectTrigger id="status-filter">
                     <SelectValue placeholder="所有状态"/>
@@ -417,32 +465,32 @@ export default function OrdersPage() {
                 <div
                   className={cn(
                     "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-                    (isOrderIdActive || isFetching || isAuthLoading) && "opacity-50 cursor-not-allowed"
+                    (isExactSearchActiveInTempFilters() || isContentDisabled) && "opacity-50 cursor-not-allowed"
                   )}
                 >
                   <Popover>
-                    <PopoverTrigger asChild disabled={isOrderIdActive || isFetching || isAuthLoading}>
+                    <PopoverTrigger asChild disabled={isExactSearchActiveInTempFilters() || isContentDisabled}>
                       <Button
                         variant="ghost"
                         className={cn(
                           "flex-grow justify-start text-left font-normal rounded-r-none",
                           !tempOrdersFilters.dateFrom && "text-muted-foreground"
                         )}
-                        disabled={isOrderIdActive || isFetching || isAuthLoading}
+                        disabled={isExactSearchActiveInTempFilters() || isContentDisabled}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4"/>
                         {tempOrdersFilters.dateFrom ? format(tempOrdersFilters.dateFrom, "yyyy-MM-dd") :
                           <span>开始日期</span>}
                       </Button>
                     </PopoverTrigger>
-                    {isFilterPopoverOpen && !(isOrderIdActive || isFetching || isAuthLoading) && (
+                    {isFilterPopoverOpen && !(isExactSearchActiveInTempFilters() || isContentDisabled) && (
                       <PopoverContent className="w-auto p-0">
                         <Calendar
                           mode="single"
                           selected={tempOrdersFilters.dateFrom}
                           onSelect={(date) => setTempOrdersFilters(prev => ({...prev, dateFrom: date}))}
                           initialFocus
-                          disabled={isOrderIdActive || isFetching || isAuthLoading ? true : undefined}
+                          disabled={isExactSearchActiveInTempFilters() || isContentDisabled ? true : undefined}
                         />
                       </PopoverContent>
                     )}
@@ -456,42 +504,42 @@ export default function OrdersPage() {
                         e.stopPropagation();
                         setTempOrdersFilters(prev => ({...prev, dateFrom: undefined}));
                       }}
-                      disabled={isOrderIdActive || isFetching || isAuthLoading}
+                      disabled={isExactSearchActiveInTempFilters() || isContentDisabled}
                       type="button"
                     >
-                      <X/>
+                      <X className="h-4 w-4"/>
                     </Button>
                   )}
                 </div>
                 <div
                   className={cn(
                     "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-                    (isOrderIdActive || isFetching || isAuthLoading) && "opacity-50 cursor-not-allowed"
+                    (isExactSearchActiveInTempFilters() || isContentDisabled) && "opacity-50 cursor-not-allowed"
                   )}
                 >
                   <Popover>
-                    <PopoverTrigger asChild disabled={isOrderIdActive || isFetching || isAuthLoading}>
+                    <PopoverTrigger asChild disabled={isExactSearchActiveInTempFilters() || isContentDisabled}>
                       <Button
                         variant="ghost"
                         className={cn(
                           "flex-grow justify-start text-left font-normal rounded-r-none",
                           !tempOrdersFilters.dateTo && "text-muted-foreground"
                         )}
-                        disabled={isOrderIdActive || isFetching || isAuthLoading}
+                        disabled={isExactSearchActiveInTempFilters() || isContentDisabled}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4"/>
                         {tempOrdersFilters.dateTo ? format(tempOrdersFilters.dateTo, "yyyy-MM-dd") :
                           <span>结束日期</span>}
                       </Button>
                     </PopoverTrigger>
-                    {isFilterPopoverOpen && !(isOrderIdActive || isFetching || isAuthLoading) && (
+                    {isFilterPopoverOpen && !(isExactSearchActiveInTempFilters() || isContentDisabled) && (
                       <PopoverContent className="w-auto p-0">
                         <Calendar
                           mode="single"
                           selected={tempOrdersFilters.dateTo}
                           onSelect={(date) => setTempOrdersFilters(prev => ({...prev, dateTo: date}))}
                           initialFocus
-                          disabled={isOrderIdActive || isFetching || isAuthLoading ? true : undefined}
+                          disabled={isExactSearchActiveInTempFilters() || isContentDisabled}
                         />
                       </PopoverContent>
                     )}
@@ -505,28 +553,56 @@ export default function OrdersPage() {
                         e.stopPropagation();
                         setTempOrdersFilters(prev => ({...prev, dateTo: undefined}));
                       }}
-                      disabled={isOrderIdActive || isFetching || isAuthLoading}
+                      disabled={isExactSearchActiveInTempFilters() || isContentDisabled}
                       type="button"
                     >
-                      <X/>
+                      <X className="h-4 w-4"/>
                     </Button>
                   )}
                 </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" onClick={handleResetFilters} disabled={isFetching || isAuthLoading}>
+                <Button variant="outline" onClick={handleResetFilters} disabled={isContentDisabled}>
                   重置
                 </Button>
-                <Button onClick={handleApplyFilters} disabled={isFetching || isAuthLoading}>
+                <Button onClick={handleApplyFilters} disabled={isContentDisabled}>
                   {(isFetching && isAnyFilterActive()) && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                   应用筛选
                 </Button>
               </div>
             </PopoverContent>
           </Popover>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" disabled={isContentDisabled}>
+                <TagIcon className="h-4 w-4"/>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end">
+              <DropdownMenuLabel>显示栏目</DropdownMenuLabel>
+              <DropdownMenuSeparator/>
+              {allOrderColumns.map(col => (
+                <DropdownMenuCheckboxItem
+                  key={col.key} className="flex items-center"
+                  checked={visibleOrderColumns.includes(col.key)}
+                  onCheckedChange={(checked) => {
+                    setVisibleOrderColumns(prev => {
+                      if (checked) return [...prev, col.key]
+                      return prev.filter(c => c !== col.key)
+                    })
+                  }}
+                  disabled={visibleOrderColumns.length === 1 && visibleOrderColumns[0] === col.key}
+                >
+                  {col.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </motion.div>
+
       <motion.div variants={item}>
         <Card>
           <CardHeader>
@@ -536,124 +612,197 @@ export default function OrdersPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="relative">
-            {(isFetching || isAuthLoading) && (
+            {isContentDisabled && (
               <div
                 className="absolute inset-0 flex items-center justify-center z-10 bg-background/80 rounded-md transition-opacity">
                 <Loader2 className="h-8 w-8 text-primary animate-spin"/>
               </div>
             )}
-            <div
-              className={`overflow-x-auto ${isFetching || isAuthLoading ? 'opacity-50 pointer-events-none' : ''} transition-opacity duration-200`}>
+
+            <div className={cn("overflow-x-auto", isContentDisabled && 'opacity-50 pointer-events-none')}>
               <Table className="min-w-full">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>订单号</TableHead>
-                    <TableHead>用户ID</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead>金额</TableHead>
-                    <TableHead>创建时间</TableHead>
+                    {allOrderColumns.filter(col => visibleOrderColumns.includes(col.key)).map(col => (
+                      <TableHead key={col.key}>
+                        {col.label}
+                      </TableHead>
+                    ))}
                     <TableHead className="text-right">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isInitialLoading ? (
-                    Array.from({length: 5}).map((_, i) => (
-                      <TableRow key={i}><TableCell><Skeleton className="h-6 w-24"/></TableCell><TableCell><Skeleton className="h-6 w-16"/></TableCell><TableCell><Skeleton className="h-6 w-20"/></TableCell><TableCell><Skeleton className="h-6 w-24"/></TableCell><TableCell><Skeleton className="h-6 w-32"/></TableCell><TableCell className="text-right"><div className="flex justify-end gap-2"><Skeleton className="h-7 w-7"/><Skeleton className="h-7 w-7"/></div></TableCell></TableRow>
+                    Array.from({length: pageSize}).map((_, i) => (
+                      <TableRow key={i}>
+                        {allOrderColumns.filter(col => visibleOrderColumns.includes(col.key)).map(col => (
+                          <TableCell key={col.key}>
+                            <Skeleton className={cn("h-6",
+                              col.key === 'itemsSummary' ? 'w-40' :
+                                col.key === 'totalAmount' ? 'w-24' :
+                                  col.key === 'createdAt' || col.key === 'updatedAt' ? 'w-32' :
+                                    'w-16'
+                            )}/>
+                          </TableCell>
+                        ))}
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Skeleton className="h-7 w-7"/>
+                            <Skeleton className="h-7 w-7"/>
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     ))
                   ) : (
-                    <>
-                      {orders.length === 0 ? (
-                        <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                            {isAnyFilterActive()
-                              ? "根据当前筛选条件未找到订单"
-                              : "没有找到订单"}
-                          </TableCell></TableRow>
-                      ) : (
-                        orders.map((apiOrderDto, index) => {
-                          const order = apiOrderDto.order; // Extract the actual order object
-                          // Log the order object and its id at render time for each item
-                          // console.log(`Rendering order at index ${index}:`, order);
+                    orders.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={visibleOrderColumns.length + 1}
+                                   className="text-center py-8 text-muted-foreground">
+                          {isAnyFilterActive()
+                            ? "根据当前筛选条件未找到订单"
+                            : "暂无订单"}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      orders.map((apiOrderDto, index) => {
+                        const order = apiOrderDto.order;
 
-                          return (
-                            <TableRow key={order?.id ?? `order-index-${index}`}><TableCell className="font-medium">{order?.id ?? 'N/A'}</TableCell><TableCell className="font-medium">{order?.userId ?? 'N/A'}</TableCell><TableCell>{getStatusBadge(order?.status)}</TableCell><TableCell>{formatCurrency(order?.totalAmount)}</TableCell><TableCell>{formatDate(order?.createdAt)}</TableCell><TableCell className="text-right">
-                                <div className="flex justify-end gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => {
-                                      console.log('[ViewButton Clicked] Order object:', JSON.stringify(order));
-                                      console.log('[ViewButton Clicked] order.id:', order?.id, 'Type:', typeof order?.id);
+                        return (
+                          <TableRow key={order?.id ?? `order-row-${index}`}>
+                            {allOrderColumns.filter(col => visibleOrderColumns.includes(col.key)).map(col => (
+                              <TableCell key={col.key}>
+                                {col.key === 'id' && (
+                                  <HoverCard>
+                                    <HoverCardTrigger asChild>
+                                      <div
+                                        className="max-w-[100px] truncate font-medium hover:underline hover:cursor-help">
+                                        {order?.id ?? 'N/A'}
+                                      </div>
+                                    </HoverCardTrigger>
+                                    <HoverCardContent className="w-auto max-w-[300px]">
+                                      <div className="flex gap-2 items-center mb-1">
+                                        {hoverCardContent.id.icon}
+                                        <h4 className="font-semibold">{hoverCardContent.id.title}</h4>
+                                      </div>
+                                      <p className="text-sm">{order?.id ?? 'N/A'}</p>
+                                    </HoverCardContent>
+                                  </HoverCard>
+                                )}
+                                {col.key === 'userId' && (
+                                  <HoverCard>
+                                    <HoverCardTrigger asChild>
+                                      <div
+                                        className="max-w-[100px] truncate font-medium hover:underline hover:cursor-help">
+                                        {order?.userId ?? 'N/A'}
+                                      </div>
+                                    </HoverCardTrigger>
+                                    <HoverCardContent className="w-auto max-w-[300px]">
+                                      <div className="flex gap-2 items-center mb-1">
+                                        {hoverCardContent.userId.icon}
+                                        <h4 className="font-semibold">{hoverCardContent.userId.title}</h4>
+                                      </div>
+                                      <p className="text-sm">{order?.userId ?? 'N/A'}</p>
+                                    </HoverCardContent>
+                                  </HoverCard>
+                                )}
+                                {col.key === 'itemsSummary' && (
+                                  <HoverCard>
+                                    <HoverCardTrigger asChild>
+                                      <div className="max-w-[250px] truncate hover:underline hover:cursor-help">
+                                        {getItemSummary(apiOrderDto.items)}
+                                      </div>
+                                    </HoverCardTrigger>
+                                    <HoverCardContent className="w-auto max-w-[400px] whitespace-pre-wrap">
+                                      <div className="flex gap-2 items-center mb-1">
+                                        {hoverCardContent.itemsSummary.icon}
+                                        <h4 className="font-semibold">{hoverCardContent.itemsSummary.title}</h4>
+                                      </div>
+                                      <p className="text-sm leading-relaxed">
+                                        {getAllItemNames(apiOrderDto.items)}
+                                      </p>
+                                    </HoverCardContent>
+                                  </HoverCard>
+                                )}
+                                {col.key === 'totalAmount' && (
+                                  formatCurrency(order?.totalAmount)
+                                )}
+                                {col.key === 'status' && (
+                                  getStatusBadge(order?.status)
+                                )}
+                                {col.key === 'createdAt' && (
+                                  formatDate(order?.createdAt)
+                                )}
+                                {col.key === 'updatedAt' && (
+                                  formatDate(order?.updatedAt)
+                                )}
+                              </TableCell>
+                            ))}
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
 
-                                      const currentOrderId = order?.id;
-                                      if (currentOrderId != null && typeof currentOrderId === 'number' && Number.isFinite(currentOrderId)) {
-                                        console.log(`[ViewButton Action] Routing to /admin/orders/${currentOrderId}`);
-                                        router.push(`/admin/orders/${currentOrderId}`);
-                                      } else {
-                                        console.error("[ViewButton Error] Invalid order ID for routing:", currentOrderId);
-                                        toast.error("无法查看订单详情", { description: `订单ID (${currentOrderId}) 无效或非数字，无法跳转。` });
-                                      }
-                                    }}
-                                    disabled={isFetching || isAuthLoading || order?.id == null}
-                                  >
-                                    <Eye className="h-4 w-4"/>
-                                  </Button>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button
-                                        variant="outline"
-                                        size="icon"
-                                        disabled={isFetching || isAuthLoading || order?.id == null} // Also disable if order.id is null
-                                      >
-                                        <RefreshCw className="h-4 w-4"/>
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    {!(isFetching || isAuthLoading) && (
-                                      <DropdownMenuContent align="end">
-                                        <DropdownMenuLabel>更新订单状态</DropdownMenuLabel>
-                                        <DropdownMenuSeparator/>
-                                        <DropdownMenuItem
-                                          key="status-pending"
-                                          onClick={() => handleStatusChange(order?.id, 'PENDING')}>
-                                          待发货
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          key="status-shipped"
-                                          onClick={() => handleStatusChange(order?.id, 'SHIPPED')}>
-                                          已发货
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          key="status-completed"
-                                          onClick={() => handleStatusChange(order?.id, 'COMPLETED')}>
-                                          已完成
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          key="status-canceled"
-                                          onClick={() => handleStatusChange(order?.id, 'CANCELED')}>
-                                          已取消
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    )}
-                                  </DropdownMenu>
-                                </div>
-                              </TableCell></TableRow>
-                          );
-                        })
-                      )}
-                    </>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => {
+                                    const currentOrderId = order?.id;
+                                    if (currentOrderId != null && Number.isFinite(currentOrderId)) {
+                                      router.push(`/admin/orders/${currentOrderId}`);
+                                    } else {
+                                      console.error("[ViewButton Error] Invalid order ID for routing:", currentOrderId);
+                                      toast.error("无法查看订单详情", {description: `订单ID (${currentOrderId}) 无效，无法跳转。`});
+                                    }
+                                  }}
+                                  disabled={isContentDisabled || order?.id == null}
+                                >
+                                  <Eye className="h-4 w-4"/>
+                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="icon"
+                                      disabled={isContentDisabled || order?.id == null}
+                                    >
+                                      <RefreshCw className="h-4 w-4"/>
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  {!isContentDisabled && (
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuLabel>更新订单状态</DropdownMenuLabel>
+                                      <DropdownMenuSeparator/>
+                                      <DropdownMenuItem
+                                        onClick={() => handleStatusChange(order?.id, 'PENDING')}>待发货</DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => handleStatusChange(order?.id, 'SHIPPED')}>已发货</DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => handleStatusChange(order?.id, 'COMPLETED')}>已完成</DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => handleStatusChange(order?.id, 'CANCELED')}>已取消</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  )}
+                                </DropdownMenu>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )
                   )}
                 </TableBody>
               </Table>
             </div>
+
             {totalOrders > 0 && (
-              <div
-                className={`mt-4 flex flex-col sm:flex-row justify-between items-center gap-4 ${isFetching || isAuthLoading ? 'opacity-50 pointer-events-none' : ''} transition-opacity duration-200`}>
-                <Pagination className="mx-auto sm:mx-0 w-full sm:w-auto">
+              <div className={cn("mt-4 flex flex-col sm:flex-row justify-between items-center gap-4",
+             isContentDisabled && 'opacity-50 pointer-events-none')}>
+                <div/>
+                <Pagination className="sm:mx-0 w-full sm:w-auto ml-12">
                   <PaginationContent>
                     <PaginationItem>
                       <PaginationPrevious
                         onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                        className={`select-none cursor-pointer ${currentPage === 1 || isFetching || isAuthLoading ? "cursor-not-allowed opacity-50" : ""}`}
-                        aria-disabled={currentPage === 1 || isFetching || isAuthLoading}
+                        className={cn("select-none cursor-pointer", (currentPage === 1 || isContentDisabled) && "cursor-not-allowed opacity-50")}
+                        aria-disabled={currentPage === 1 || isContentDisabled}
                       />
                     </PaginationItem>
 
@@ -663,8 +812,8 @@ export default function OrdersPage() {
                           <PaginationLink
                             onClick={() => setCurrentPage(page)}
                             isActive={currentPage === page}
-                            className={`select-none cursor-pointer ${currentPage === page || isFetching || isAuthLoading ? "cursor-not-allowed " : ""}`}
-                            aria-disabled={isFetching || isAuthLoading}
+                            className={cn("select-none cursor-pointer", isContentDisabled && "cursor-not-allowed opacity-50")}
+                            aria-disabled={isContentDisabled}
                           >
                             {page}
                           </PaginationLink>
@@ -673,11 +822,11 @@ export default function OrdersPage() {
                     ) : (
                       <>
                         <PaginationItem><PaginationLink onClick={() => setCurrentPage(1)} isActive={currentPage === 1}
-                                                        aria-disabled={isFetching || isAuthLoading}
-                                                        className={`select-none cursor-pointer ${currentPage === 1 || isFetching || isAuthLoading ? "cursor-not-allowed" : ""}`}>1</PaginationLink></PaginationItem>
-                        {currentPage > 3 && <PaginationItem> ... </PaginationItem>}
+                                                        aria-disabled={isContentDisabled}
+                                                        className={cn("select-none cursor-pointer", (currentPage === 1 || isContentDisabled) && "cursor-not-allowed opacity-50")}>1</PaginationLink></PaginationItem>
+                        {currentPage > 3 && <PaginationItem><span className="px-2">...</span></PaginationItem>}
                         {
-                          Array.from({length: Math.min(totalPages - 2, 3)}, (_, i) => {
+                          Array.from({length: 3}, (_, i) => {
                             let page = currentPage - 1 + i;
                             if (currentPage <= 3) page = 2 + i;
                             if (currentPage > totalPages - 3) page = totalPages - 3 + i;
@@ -685,25 +834,27 @@ export default function OrdersPage() {
                           }).filter(page => page > 1 && page < totalPages).map(page => (
                             <PaginationItem key={page}>
                               <PaginationLink onClick={() => setCurrentPage(page)} isActive={currentPage === page}
-                                              aria-disabled={isFetching || isAuthLoading}
-                                              className={`select-none cursor-pointer ${currentPage === page || isFetching || isAuthLoading ? "cursor-not-allowed" : ""}`}>
+                                              aria-disabled={isContentDisabled}
+                                              className={cn("select-none cursor-pointer", isContentDisabled && "cursor-not-allowed opacity-50")}>
                                 {page}
                               </PaginationLink>
                             </PaginationItem>
                           ))
                         }
-                        {currentPage < totalPages - 2 && <PaginationItem> ... </PaginationItem>}
+                        {currentPage < totalPages - 2 &&
+                         <PaginationItem><span className="px-2">...</span></PaginationItem>}
                         <PaginationItem><PaginationLink onClick={() => setCurrentPage(totalPages)}
                                                         isActive={currentPage === totalPages}
-                                                        aria-disabled={isFetching || isAuthLoading}
-                                                        className={`select-none cursor-pointer ${currentPage === totalPages || isFetching || isAuthLoading ? "cursor-not-allowed" : ""}`}>{totalPages}</PaginationLink></PaginationItem>
+                                                        aria-disabled={isContentDisabled}
+                                                        className={cn("select-none cursor-pointer", (currentPage === totalPages || isContentDisabled) && "cursor-not-allowed opacity-50")}>{totalPages}</PaginationLink></PaginationItem>
                       </>
                     )}
+
                     <PaginationItem>
                       <PaginationNext
                         onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                        className={`select-none cursor-pointer ${currentPage === totalPages || isFetching || isAuthLoading ? "cursor-not-allowed opacity-50" : ""}`}
-                        aria-disabled={currentPage === totalPages || isFetching || isAuthLoading}
+                        className={cn("select-none cursor-pointer", (currentPage === totalPages || isContentDisabled) && "cursor-not-allowed opacity-50")}
+                        aria-disabled={currentPage === totalPages || isContentDisabled}
                       />
                     </PaginationItem>
                   </PaginationContent>
