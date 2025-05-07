@@ -35,4 +35,6 @@ public interface ProductService {
     Optional<ProductEditResponseDTO> getProductDetailsAdmin(Long productId);
 
     void softDeleteProduct(Long productId);
+
+    PageInfo<Product> searchProductsAdmin(com.example.commerce.dto.ProductSearchCriteria criteria, int pageNum, int pageSize);
 }

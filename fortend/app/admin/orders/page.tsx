@@ -36,14 +36,18 @@ import { format, isValid } from "date-fns"
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label";
 
-interface Order {
-  id: number
-  orderNumber: string
-  userId: number
-  status: string
-  totalAmount: number
-  createdAt: string
-  updatedAt: string
+interface ApiOrderDto {
+  order: {
+    id: number;
+    orderNumber?: string; // Assuming orderNumber might not always be present directly, or id is used as orderNumber
+    userId: number;
+    status: string;
+    totalAmount: number;
+    createdAt: string;
+    updatedAt: string;
+  };
+  items: any[]; // Define more specifically if needed
+  buyerInfo?: any; // Define more specifically if needed
 }
 
 interface OrderFilters {
@@ -57,12 +61,12 @@ interface OrderFilters {
 }
 
 interface OrdersResponse {
-  list: Order[]
-  total: number
-  pageNum: number
-  pageSize: number
-  size: number
-  pages: number
+  list: ApiOrderDto[]; // Use the new DTO structure
+  total: number;
+  pageNum: number;
+  pageSize: number;
+  size: number;
+  pages: number;
 }
 
 const container = {
@@ -116,7 +120,7 @@ const buildOrdersQueryParams = (filters: OrderFilters, page: number, size: numbe
 
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([])
+  const [orders, setOrders] = useState<ApiOrderDto[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(10)
   const [totalPages, setTotalPages] = useState(1)
@@ -252,7 +256,14 @@ export default function OrdersPage() {
     });
   };
 
-  const handleStatusChange = async (id: number, status: string) => {
+  const handleStatusChange = async (id: number | undefined | null, status: string) => {
+    console.log('[StatusChange Attempt] ID:', id, 'Type:', typeof id, 'New Status:', status);
+    if (id == null || typeof id !== 'number' || !Number.isFinite(id)) {
+      toast.error("更新订单状态失败", { description: `无效的订单ID: ${id}` });
+      console.error("[StatusChange Error] Invalid Order ID provided:", id);
+      return;
+    }
+
     if (isFetching || isAuthLoading) return;
 
     try {
@@ -547,84 +558,86 @@ export default function OrdersPage() {
                 <TableBody>
                   {isInitialLoading ? (
                     Array.from({length: 5}).map((_, i) => (
-                      <TableRow key={i}>
-                        <TableCell><Skeleton className="h-6 w-24"/></TableCell>
-                        <TableCell><Skeleton className="h-6 w-16"/></TableCell>
-                        <TableCell><Skeleton className="h-6 w-20"/></TableCell>
-                        <TableCell><Skeleton className="h-6 w-24"/></TableCell>
-                        <TableCell><Skeleton className="h-6 w-32"/></TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2"><Skeleton className="h-7 w-7"/><Skeleton
-                            className="h-7 w-7"/></div>
-                        </TableCell>
-                      </TableRow>
+                      <TableRow key={i}><TableCell><Skeleton className="h-6 w-24"/></TableCell><TableCell><Skeleton className="h-6 w-16"/></TableCell><TableCell><Skeleton className="h-6 w-20"/></TableCell><TableCell><Skeleton className="h-6 w-24"/></TableCell><TableCell><Skeleton className="h-6 w-32"/></TableCell><TableCell className="text-right"><div className="flex justify-end gap-2"><Skeleton className="h-7 w-7"/><Skeleton className="h-7 w-7"/></div></TableCell></TableRow>
                     ))
                   ) : (
                     <>
                       {orders.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={6}
-                                     className="text-center py-8 text-muted-foreground">
+                        <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                             {isAnyFilterActive()
                               ? "根据当前筛选条件未找到订单"
                               : "没有找到订单"}
-                          </TableCell>
-                        </TableRow>
+                          </TableCell></TableRow>
                       ) : (
-                        orders.map((order) => (
-                          <TableRow key={order.id}>
-                            <TableCell className="font-medium">{order.id}</TableCell>
-                            <TableCell className="font-medium">{order.userId}</TableCell>
-                            <TableCell>{getStatusBadge(order.status)}</TableCell>
-                            <TableCell>{formatCurrency(order.totalAmount)}</TableCell>
-                            <TableCell>{formatDate(order.createdAt)}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  onClick={() => router.push(`/admin/orders/${order.id}`)}
-                                  disabled={isFetching || isAuthLoading}
-                                >
-                                  <Eye className="h-4 w-4"/>
-                                </Button>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="outline"
-                                      size="icon"
-                                      disabled={isFetching || isAuthLoading}
-                                    >
-                                      <RefreshCw className="h-4 w-4"/>
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  {!(isFetching || isAuthLoading) && (
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuLabel>更新订单状态</DropdownMenuLabel>
-                                      <DropdownMenuSeparator/>
-                                      <DropdownMenuItem
-                                        onClick={() => handleStatusChange(order.id, 'PENDING')}>
-                                        待发货
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() => handleStatusChange(order.id, 'SHIPPED')}>
-                                        已发货
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() => handleStatusChange(order.id, 'COMPLETED')}>
-                                        已完成
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() => handleStatusChange(order.id, 'CANCELED')}>
-                                        已取消
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  )}
-                                </DropdownMenu>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
+                        orders.map((apiOrderDto, index) => {
+                          const order = apiOrderDto.order; // Extract the actual order object
+                          // Log the order object and its id at render time for each item
+                          // console.log(`Rendering order at index ${index}:`, order);
+
+                          return (
+                            <TableRow key={order?.id ?? `order-index-${index}`}><TableCell className="font-medium">{order?.id ?? 'N/A'}</TableCell><TableCell className="font-medium">{order?.userId ?? 'N/A'}</TableCell><TableCell>{getStatusBadge(order?.status)}</TableCell><TableCell>{formatCurrency(order?.totalAmount)}</TableCell><TableCell>{formatDate(order?.createdAt)}</TableCell><TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => {
+                                      console.log('[ViewButton Clicked] Order object:', JSON.stringify(order));
+                                      console.log('[ViewButton Clicked] order.id:', order?.id, 'Type:', typeof order?.id);
+
+                                      const currentOrderId = order?.id;
+                                      if (currentOrderId != null && typeof currentOrderId === 'number' && Number.isFinite(currentOrderId)) {
+                                        console.log(`[ViewButton Action] Routing to /admin/orders/${currentOrderId}`);
+                                        router.push(`/admin/orders/${currentOrderId}`);
+                                      } else {
+                                        console.error("[ViewButton Error] Invalid order ID for routing:", currentOrderId);
+                                        toast.error("无法查看订单详情", { description: `订单ID (${currentOrderId}) 无效或非数字，无法跳转。` });
+                                      }
+                                    }}
+                                    disabled={isFetching || isAuthLoading || order?.id == null}
+                                  >
+                                    <Eye className="h-4 w-4"/>
+                                  </Button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        size="icon"
+                                        disabled={isFetching || isAuthLoading || order?.id == null} // Also disable if order.id is null
+                                      >
+                                        <RefreshCw className="h-4 w-4"/>
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    {!(isFetching || isAuthLoading) && (
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuLabel>更新订单状态</DropdownMenuLabel>
+                                        <DropdownMenuSeparator/>
+                                        <DropdownMenuItem
+                                          key="status-pending"
+                                          onClick={() => handleStatusChange(order?.id, 'PENDING')}>
+                                          待发货
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          key="status-shipped"
+                                          onClick={() => handleStatusChange(order?.id, 'SHIPPED')}>
+                                          已发货
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          key="status-completed"
+                                          onClick={() => handleStatusChange(order?.id, 'COMPLETED')}>
+                                          已完成
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          key="status-canceled"
+                                          onClick={() => handleStatusChange(order?.id, 'CANCELED')}>
+                                          已取消
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    )}
+                                  </DropdownMenu>
+                                </div>
+                              </TableCell></TableRow>
+                          );
+                        })
                       )}
                     </>
                   )}

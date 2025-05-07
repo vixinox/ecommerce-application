@@ -201,7 +201,7 @@ public class OrderSqlProvider implements ProviderMethodResolver {
             SELECT_DISTINCT("o.id as o_id, o.user_id, o.total_amount, o.status as o_status, o.created_at as o_created_at, o.updated_at as o_updated_at");
             // 如果需要显示用户名等，可以在这里添加更多字段，并确保JOIN了相应的表
             // 例如: , u.username as buyer_username
-            FROM(ORDERS_TABLE + " o"); // 使用别名 o
+            FROM(ORDERS_TABLE); // 使用别名 o
 
             // 条件JOIN：只有当需要按用户名或商品名搜索时才JOIN
             boolean joinUsers = StringUtils.hasText(criteria.getUsername());
