@@ -70,13 +70,14 @@ const PIE_CHART_COLORS = [
 ];
 
 export default function SpendingReportDashboard() {
-  const {token} = useAuth();
+  const {token, isLoading} = useAuth();
   const [reportData, setReportData] = useState<SpendingReportDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchReport = async () => {
+      if (isLoading) return;
       if (!token) {
         setLoading(false);
         return;

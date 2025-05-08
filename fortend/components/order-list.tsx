@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from 'next/navigation';
 
 export default function OrderList() {
-  const {token} = useAuth();
+  const {token, isLoading} = useAuth();
   const [orders, setOrders] = useState<OrderDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +20,7 @@ export default function OrderList() {
 
   useEffect(() => {
     async function fetchOrders() {
+      if (isLoading) return;
       if (!token) {
         setLoading(false);
         setError("请登录以查看您的订单。");

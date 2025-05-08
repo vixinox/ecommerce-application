@@ -37,14 +37,12 @@ export default function PaymentPage() {
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'paying' | 'success' | 'failure'>('idle');
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
-
   useEffect(() => {
     if (!paymentInitiationDetails && paymentStatus === 'idle') {
       toast.warning("没有待支付的订单信息，已返回。");
-      router.push('/');
+      router.back();
     }
   }, [paymentInitiationDetails, paymentStatus, clearPaymentInitiation, router]);
-
 
   const handlePayClick = useCallback(async () => {
     if (!paymentInitiationDetails || !token) {
@@ -53,7 +51,6 @@ export default function PaymentPage() {
     }
 
     const {orderIds, amount, transactionId} = paymentInitiationDetails;
-
     setPaymentStatus('paying');
     setPaymentError(null);
 
@@ -63,7 +60,6 @@ export default function PaymentPage() {
       console.log("Simulated payment successful.");
       setPaymentStatus('success');
       toast.success(`支付成功！交易号: ${transactionId}`);
-
 
       await fetchPendingOrders();
     } catch (error: any) {
@@ -77,16 +73,14 @@ export default function PaymentPage() {
     }
   }, [paymentInitiationDetails, token, fetchPendingOrders]);
 
-
-  const { orderIds, amount, transactionId, selectedOrders } = paymentInitiationDetails || {};
-
+  const {transactionId, selectedOrders} = paymentInitiationDetails || {};
 
   useEffect(() => {
     if (paymentInitiationDetails && (!selectedOrders || selectedOrders.length === 0)) {
       toast.error("支付信息异常，请重新尝试。");
       const timer = setTimeout(() => {
         clearPaymentInitiation();
-        router.push('/pending');
+        router.push('/');
       }, 50);
       return () => clearTimeout(timer);
     }
@@ -156,7 +150,7 @@ export default function PaymentPage() {
               }}
               className="min-w-48 text-base py-3"
             >
-              返回待支付列表
+              返回
             </Button>
           </motion.div>
         );
@@ -188,7 +182,7 @@ export default function PaymentPage() {
               }}
               className="min-w-48 text-base py-3"
             >
-              返回待支付列表
+              返回
             </Button>
           </motion.div>
         );
@@ -299,7 +293,7 @@ export default function PaymentPage() {
                   disabled={paymentStatus !== 'idle'}
                 >
                   <ArrowLeft className="h-5 w-5 mr-2"/>
-                  取消支付 / 返回列表
+                  取消支付 / 返回
                 </Button>
               </div>
             </motion.div>
