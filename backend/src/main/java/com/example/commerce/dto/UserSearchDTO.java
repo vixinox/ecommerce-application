@@ -11,6 +11,7 @@ public class UserSearchDTO {
     private Long userId;
     private String username;    // 模糊搜索用户名
     private String email;       // 模糊搜索邮箱
+    private String nickname;    // 模糊搜索昵称
     private String role;        // 精确匹配角色 (e.g., USER, ADMIN, MERCHANT)
     private String status;      // 精确匹配状态 (e.g., ACTIVE, INACTIVE, BANNED, DELETED)
     private java.time.LocalDate registrationDateStart; // 注册日期开始

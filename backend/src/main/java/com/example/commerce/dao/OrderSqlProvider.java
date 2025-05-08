@@ -212,8 +212,8 @@ public class OrderSqlProvider implements ProviderMethodResolver {
             }
             if (joinOrderItemsAndProducts) {
                 // 使用 LEFT JOIN 以确保即使某些订单没有匹配的商品名（理论上不应发生），订单本身仍能被查询到（如果其他条件满足）
-                LEFT_OUTER_JOIN(ORDER_ITEMS_TABLE + " oi ON o.id = oi.order_id");
-                LEFT_OUTER_JOIN(PRODUCTS_TABLE + " p ON oi.product_id = p.id");
+                LEFT_OUTER_JOIN(ORDER_ITEMS_TABLE + " ON o.id = oi.order_id");
+                LEFT_OUTER_JOIN(PRODUCTS_TABLE + " ON oi.product_id = p.id");
             }
 
             // 构建WHERE子句

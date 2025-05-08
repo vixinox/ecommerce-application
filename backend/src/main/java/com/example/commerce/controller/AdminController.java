@@ -280,8 +280,8 @@ public class AdminController {
     public ResponseEntity<?> searchUsers(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestParam(required = false) Long userId,
-            @RequestParam(required = false) String username,
-            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String searchTerm,
+            @RequestParam(required = false) String searchField,
             @RequestParam(required = false) String role,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate registrationDateStart,
@@ -293,8 +293,17 @@ public class AdminController {
 
             UserSearchDTO criteria = new UserSearchDTO();
             criteria.setUserId(userId);
-            criteria.setUsername(username);
-            criteria.setEmail(email);
+
+            if (searchField != null && searchTerm != null && !searchTerm.trim().isEmpty()) {
+                if ("username".equalsIgnoreCase(searchField)) {
+                    criteria.setUsername(searchTerm.trim());
+                } else if ("email".equalsIgnoreCase(searchField)) {
+                    criteria.setEmail(searchTerm.trim());
+                } else if ("nickname".equalsIgnoreCase(searchField)) {
+                    criteria.setNickname(searchTerm.trim());
+                }
+            }
+
             criteria.setRole(role);
             criteria.setStatus(status);
             criteria.setRegistrationDateStart(registrationDateStart);
