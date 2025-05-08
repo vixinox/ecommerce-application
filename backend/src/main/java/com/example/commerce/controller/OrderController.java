@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -202,13 +203,38 @@ public class OrderController {
             User user = userService.checkAuthorization(authHeader);
             
             // 获取支付数据
-            @SuppressWarnings("unchecked")
-            List<Long> orderIds = (List<Long>) paymentData.get("orderIds");
+            Object orderIdsObj = paymentData.get("orderIds");
+            List<Long> orderIds = null;
+
+            if (orderIdsObj instanceof List) {
+                List<?> rawList = (List<?>) orderIdsObj;
+                orderIds = new ArrayList<>();
+                for (Object idObj : rawList) {
+                    if (idObj instanceof Number) {
+                        orderIds.add(((Number) idObj).longValue()); // 显式转换为 Long
+                    } else if (idObj instanceof String) { // 也处理一下字符串形式的数字ID
+                        try {
+                            orderIds.add(Long.parseLong((String) idObj));
+                        } catch (NumberFormatException nfe) {
+                            return ResponseEntity.badRequest().body("订单ID列表中包含无效的ID格式: " + idObj);
+                        }
+                    } else {
+                        return ResponseEntity.badRequest().body("订单ID列表中包含无效的ID类型");
+                    }
+                }
+            } else {
+                return ResponseEntity.badRequest().body("orderIds 必须是一个列表");
+            }
+
+            if (orderIds == null || orderIds.isEmpty()) { // 确保 orderIds 被初始化且非空
+                 return ResponseEntity.badRequest().body("orderIds 列表不能为空");
+            }
+
             String transactionId = (String) paymentData.get("transactionId");
-            Object amountObj = paymentData.get("amount");
             
             // 转换支付金额
             BigDecimal paidAmount = null;
+            Object amountObj = paymentData.get("amount");
             if (amountObj != null) {
                 if (amountObj instanceof Number) {
                     paidAmount = new BigDecimal(amountObj.toString());
