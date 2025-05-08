@@ -89,6 +89,7 @@ function WishlistPageContent() {
 
   const fetchWishlist = async () => {
     try {
+      if (isLoading) return;
       if (!token) {
         router.push("/auth/login")
         return

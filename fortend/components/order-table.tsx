@@ -56,6 +56,8 @@ const hoverCardContent = {
 
 const getStatusBadge = (status?: string) => {
   switch (status?.toUpperCase()) {
+    case "PENDING_PAYMENT":
+      return <Badge variant="outline">待支付</Badge>;
     case "PENDING":
       return <Badge variant="outline">待发货</Badge>;
     case "SHIPPED":

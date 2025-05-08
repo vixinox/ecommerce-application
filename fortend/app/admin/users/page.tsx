@@ -28,13 +28,14 @@ import {
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/components/auth-provider";
 import { useRouter } from "next/navigation"
-import { deleteUser, getUsers, updateUserRole, updateUserStatus } from "@/lib/api";
+import { API_URL, deleteUser, getUsers, updateUserRole, updateUserStatus } from "@/lib/api";
 import { motion } from "framer-motion"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { format, isValid } from "date-fns"
 import { cn } from "@/lib/utils"
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
 
 interface User {
   id: number
@@ -42,6 +43,7 @@ interface User {
   email: string
   role: string
   status: string
+  avatar: string
   createdAt?: string | null
 }
 
@@ -557,6 +559,7 @@ export default function UsersPage() {
               <Table className="min-w-full">
                 <TableHeader>
                   <TableRow>
+                    <TableHead>头像</TableHead>
                     <TableHead>用户名</TableHead>
                     <TableHead>ID</TableHead>
                     <TableHead>邮箱</TableHead>
@@ -578,6 +581,11 @@ export default function UsersPage() {
                   ) : (
                     users.map((user) => (
                       <TableRow key={user.id}>
+                        <TableCell>
+                          <Avatar>
+                            <AvatarImage src={`${API_URL}/api/image${user.avatar}`} alt={user.username}/>
+                          </Avatar>
+                        </TableCell>
                         <TableCell className="font-medium">{user.username}</TableCell>
                         <TableCell>{user.id}</TableCell>
                         <TableCell>{user.email}</TableCell>
@@ -610,7 +618,7 @@ export default function UsersPage() {
 
                               {isStatusDialogOpen && selectedUser?.id === user.id && (
                                 <DialogContent>
-                                  
+
                                   <DialogHeader>
                                     <DialogTitle>更改用户状态</DialogTitle>
                                     <DialogDescription>更改用户 {selectedUser.username} 的状态</DialogDescription>
@@ -632,7 +640,7 @@ export default function UsersPage() {
                                     <Button variant="outline" onClick={() => setIsStatusDialogOpen(false)}>
                                       取消
                                     </Button>
-                                    <Button onClick={handleStatusChange} disabled={isFetching}> 
+                                    <Button onClick={handleStatusChange} disabled={isFetching}>
                                       {isFetching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                       保存
                                     </Button>
@@ -683,7 +691,7 @@ export default function UsersPage() {
                                     <Button variant="outline" onClick={() => setIsRoleDialogOpen(false)}>
                                       取消
                                     </Button>
-                                    <Button onClick={handleRoleChange} disabled={isFetching}> 
+                                    <Button onClick={handleRoleChange} disabled={isFetching}>
                                       {isFetching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                       保存
                                     </Button>
@@ -723,7 +731,7 @@ export default function UsersPage() {
                                     <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
                                       取消
                                     </Button>
-                                    <Button variant="destructive" onClick={handleDeleteUser} disabled={isFetching}> 
+                                    <Button variant="destructive" onClick={handleDeleteUser} disabled={isFetching}>
                                       {isFetching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                       删除
                                     </Button>

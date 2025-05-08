@@ -10,15 +10,6 @@ export default function NavLinks() {
         <Link href="/" className="text-sm font-medium transition-colors hover:text-primary">
           首页
         </Link>
-        <Link href="/" className="text-sm font-medium transition-colors hover:text-primary">
-          导航1
-        </Link>
-        <Link href={"/"} className="text-sm font-medium transition-colors hover:text-primary">
-          导航2
-        </Link>
-        <Link href="/" className="text-sm font-medium transition-colors hover:text-primary">
-          导航3
-        </Link>
       </nav>
     </>
   )
