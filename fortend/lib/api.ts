@@ -126,10 +126,6 @@ export async function getWishlist(token: string) {
   return fetchData("/api/wishlist", token, {method: "GET"});
 }
 
-export async function deleteMyProduct(productId: number, token: string) {
-  return fetchData(`/api/products/delete/${productId}`, token, {method: "DELETE"});
-}
-
 export async function searchMyProducts(token: string, query: string = "") {
   return fetchData(`/api/products/search?${query}`, token);
 }
@@ -139,7 +135,7 @@ export async function getPendingOrders(token: string) {
 }
 
 export async function payOrder(token: string, orderIds: number[], transactId: string, amount: number) {
-  return fetchData(`/api/orders/pending`, token, {
+  return fetchData(`/api/orders/payment/success`, token, {
     method: "POST",
     body: JSON.stringify({orderIds: orderIds, transactionId: transactId, amount: amount}),
   });
