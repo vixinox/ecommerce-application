@@ -49,7 +49,7 @@ public interface OrderService {
 
     void updateOrderStatusAdmin(Long orderId, String newStatus, User user);
 
-    OrderDTO getOrderDetailsAdmin(Long orderId);
+    OrderDTO getOrderDetailsAdmin(Long orderId, User requester);
 
     /**
      * 根据条件搜索订单 (分页)

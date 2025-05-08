@@ -239,8 +239,9 @@ public class ProductServiceImpl implements ProductService {
         Map<String, String> colorImageUrls = new HashMap<>();
         Map<String, ProductVariant> variantsByColor = new HashMap<>();
         for (ProductVariant pv : variants) {
-            if (pv.getImage() != null && !pv.getImage().trim().isEmpty())
-                variantsByColor.putIfAbsent(pv.getColor(), pv);
+            if (pv.getColor() != null && !pv.getColor().trim().isEmpty() && pv.getImage() != null && !pv.getImage().trim().isEmpty()) {
+                variantsByColor.putIfAbsent(pv.getColor().trim(), pv);
+            }
         }
 
         for(Map.Entry<String, ProductVariant> entry : variantsByColor.entrySet()){
@@ -642,8 +643,8 @@ public class ProductServiceImpl implements ProductService {
         Map<String, String> colorImageUrls = new HashMap<>();
         Map<String, ProductVariant> variantsByColor = new HashMap<>();
         for (ProductVariant pv : variants) {
-            if (pv.getImage() != null && !pv.getImage().trim().isEmpty()) {
-                variantsByColor.putIfAbsent(pv.getColor(), pv);
+            if (pv.getColor() != null && !pv.getColor().trim().isEmpty() && pv.getImage() != null && !pv.getImage().trim().isEmpty()) {
+                variantsByColor.putIfAbsent(pv.getColor().trim(), pv);
             }
         }
         for(Map.Entry<String, ProductVariant> entry : variantsByColor.entrySet()){
@@ -652,7 +653,6 @@ public class ProductServiceImpl implements ProductService {
                 colorImageUrls.put(entry.getKey(), imageUrl);
             } catch (Exception e) {
                 logger.error("为管理员生成商品 {} 颜色 '{}' 的图片URL失败: {}", productId, entry.getKey(), entry.getValue().getImage(), e);
-                colorImageUrls.put(entry.getKey(), null);
             }
         }
 

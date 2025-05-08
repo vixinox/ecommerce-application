@@ -14,6 +14,11 @@ public class OrderSqlProvider implements ProviderMethodResolver {
     private static final String ORDER_ITEMS_TABLE = "order_items oi";
     private static final String PRODUCTS_TABLE = "products p";
 
+    // 引用或重新定义核心状态常量，以便在SQL Provider中使用
+    private static final String SQL_ORDER_STATUS_PENDING_PAYMENT = "PENDING_PAYMENT";
+    // 如果需要，也可以定义商家默认可见的状态列表
+    // private static final String MERCHANT_DEFAULT_VISIBLE_STATUSES = "('PENDING', 'SHIPPED', 'COMPLETED', 'CANCELED')";
+
     /**
      * 构建查询商家相关订单ID的SQL (支持状态过滤和分页 - 分页由PageHelper处理)
      */
@@ -27,10 +32,17 @@ public class OrderSqlProvider implements ProviderMethodResolver {
             INNER_JOIN(ORDER_ITEMS_TABLE + " ON o.id = oi.order_id");
             INNER_JOIN(PRODUCTS_TABLE + " ON oi.product_id = p.id");
             WHERE("p.owner_id = #{merchantId}");
+
+            // 强制商家永远看不到 PENDING_PAYMENT 状态的订单
+            WHERE("o.status != '" + SQL_ORDER_STATUS_PENDING_PAYMENT + "'");
+
             if (StringUtils.hasText(status)) {
+                // 如果前端仍然传递了 status 过滤器，此条件会与上面的条件 AND 在一起。
+                // 例如，如果 status 是 'PENDING', 则条件是: o.status != 'PENDING_PAYMENT' AND o.status = 'PENDING'
+                // 如果 status 是 'PENDING_PAYMENT', 则条件是: o.status != 'PENDING_PAYMENT' AND o.status = 'PENDING_PAYMENT' (结果为空)
                 WHERE("o.status = #{status}");
             }
-            ORDER_BY("o.created_at DESC"); // 默认按创建时间降序
+            ORDER_BY("o.created_at DESC"); 
         }}.toString();
     }
 

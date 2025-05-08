@@ -38,7 +38,7 @@ public interface UserDAO {
     @SelectProvider(type = UserSqlProvider.class, method = "findAllUsersFiltered")
     List<User> findAllUsers(@Param("statusFilter") String statusFilter);
 
-    @Update("UPDATE users SET status = #{status} WHERE id = #{userId}")
+    @Update("UPDATE users SET status = #{status} WHERE id = #{id}")
     void updateUserStatus(@Param("id") Long userId, @Param("status") String status);
 
     @Update("UPDATE product_variants SET image = #{path} WHERE id = #{productVariantId}")

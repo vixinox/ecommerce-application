@@ -83,12 +83,14 @@ public class CartController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             User user = userService.checkAuthorization(authHeader);
-            Long variantId = Long.parseLong(data.get("cartId"));
-            cartService.removeFromCart(user.getId(), variantId);
-            return ResponseEntity.status(HttpStatus.OK).body("success");
+            Long cartId = Long.parseLong(data.get("cartId"));
+            cartService.removeFromCart(user.getId(), cartId);
+            return ResponseEntity.status(HttpStatus.OK).body("购物车商品移除成功");
+        } catch (NumberFormatException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("无效的购物车项ID格式");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(e.getMessage());
+                    .body("移除购物车商品时发生错误: " + e.getMessage());
         }
     }
 

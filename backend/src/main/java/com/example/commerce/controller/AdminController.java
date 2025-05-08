@@ -211,24 +211,36 @@ public class AdminController {
             @RequestBody Map<String, String> roleData,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            userService.checkAdmin(authHeader);
+            User adminUser = userService.checkAdmin(authHeader);
 
-            Long userId = Long.parseLong(roleData.get("userId"));
+            String userIdStr = roleData.get("userId");
             String newRole = roleData.get("role");
-            userService.updateUserRoleAdmin(userId, newRole.trim());
 
-            // 3. 返回成功响应
-            return ResponseEntity.ok(Map.of("message", "用户id " + userId + " 的角色已更新为 " + newRole));
+            if (userIdStr == null || userIdStr.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("更新用户角色失败: 用户ID不能为空。");
+            }
+            if (newRole == null || newRole.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("更新用户角色失败: 角色不能为空。");
+            }
+
+            Long userIdToChange;
+            try {
+                userIdToChange = Long.parseLong(userIdStr);
+            } catch (NumberFormatException e) {
+                return ResponseEntity.badRequest().body("更新用户角色失败: 无效的用户ID格式。");
+            }
+            
+            userService.updateUserRoleAdmin(adminUser, userIdToChange, newRole.trim());
+
+            return ResponseEntity.ok(Map.of("message", "用户id " + userIdToChange + " 的角色已更新为 " + newRole.trim()));
 
         } catch (IllegalArgumentException e) {
-            // 无效的角色值
             return ResponseEntity.badRequest().body("更新用户角色失败: " + e.getMessage());
         } catch (RuntimeException e) {
-            // 权限不足、用户不存在或其他运行时异常
-            if (e.getMessage() != null && e.getMessage().startsWith("用户不存在")) {
-                return ResponseEntity.status(404).body("更新用户角色失败: " + e.getMessage());
+            if (e.getMessage() != null && e.getMessage().startsWith("用户id不存在")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("更新用户角色失败: " + e.getMessage());
             }
-            return ResponseEntity.status(403).body("更新用户角色失败: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("更新用户角色失败: " + e.getMessage());
         }
     }
 
@@ -316,6 +328,51 @@ public class AdminController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("搜索用户时发生错误: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 管理员或商家更新订单状态
+     * 需要管理员或商家权限
+     * @param statusData 请求体，应包含 {"orderId": 123, "status": "NEW_STATUS"}
+     * @param authHeader 认证头
+     * @return ResponseEntity
+     */
+    @PutMapping("/orders/update/status")
+    public ResponseEntity<?> updateOrderStatusAdmin(
+            @RequestBody Map<String, Object> statusData,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            User user = userService.checkMerchantOrAdmin(authHeader);
+
+            Object orderIdObj = statusData.get("orderId");
+            String newStatus = (String) statusData.get("status");
+
+            if (orderIdObj == null || newStatus == null) {
+                return ResponseEntity.badRequest().body("请求体缺少 orderId 或 status 字段");
+            }
+
+            Long orderId;
+            if (orderIdObj instanceof Number) {
+                orderId = ((Number) orderIdObj).longValue();
+            } else if (orderIdObj instanceof String) {
+                try {
+                    orderId = Long.valueOf((String) orderIdObj);
+                } catch (NumberFormatException e) {
+                    return ResponseEntity.badRequest().body("无效的 orderId 格式");
+                }
+            } else {
+                return ResponseEntity.badRequest().body("无效的 orderId 类型");
+            }
+
+            orderService.updateOrderStatusAdmin(orderId, newStatus.trim(), user);
+            return ResponseEntity.ok(Map.of("message", "订单 " + orderId + " 状态已更新为 " + newStatus));
+        } catch (IllegalArgumentException e) {
+            // 无效的状态值或订单不存在等
+            return ResponseEntity.badRequest().body("更新订单状态失败: " + e.getMessage());
+        } catch (RuntimeException e) {
+            // 权限不足或其他运行时异常
+            return ResponseEntity.status(403).body("更新订单状态失败: " + e.getMessage());
         }
     }
 }

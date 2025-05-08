@@ -57,14 +57,22 @@ public class OrderController {
             @PathVariable Long orderId,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            userService.checkMerchantOrAdmin(authHeader);
-            OrderDTO orderDetails = orderService.getOrderDetailsAdmin(orderId);
-            return ResponseEntity.ok(orderDetails);
-        } catch (RuntimeException e) {
-            if (e.getMessage() != null && e.getMessage().startsWith("订单不存在")) {
-                return ResponseEntity.status(404).body("获取订单详情失败: " + e.getMessage());
+            User requester = userService.checkMerchantOrAdmin(authHeader);
+            OrderDTO orderDetails = orderService.getOrderDetailsAdmin(orderId, requester);
+            
+            if (orderDetails == null) {
+                // 根据 OrderServiceImpl 的逻辑，如果 orderId 无效或找不到订单，可能会返回 null
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("获取订单详情失败: 订单不存在或无法访问。");
             }
-            return ResponseEntity.status(403).body("获取订单详情失败: " + e.getMessage());
+            return ResponseEntity.ok(orderDetails);
+        } catch (IllegalArgumentException e) {
+            // 例如，来自 serviceImpl 的无效参数异常
+            return ResponseEntity.badRequest().body("获取订单详情失败: " + e.getMessage());
+        } catch (RuntimeException e) { // 其他运行时异常，如权限问题
+            // if (e.getMessage() != null && e.getMessage().startsWith("订单不存在")) { // 这个判断现在可能多余了，因为service可能返回null
+            //     return ResponseEntity.status(HttpStatus.NOT_FOUND).body("获取订单详情失败: " + e.getMessage());
+            // }
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("获取订单详情失败: " + e.getMessage());
         }
     }
 
@@ -105,34 +113,6 @@ public class OrderController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(e.getMessage());
-        }
-    }
-
-    /**
-     * 管理员更新订单状态
-     * 需要管理员权限
-     * @param statusData 请求体，应包含 {"orderId": "ORDER_ID", "status": "NEW_STATUS"}
-     * @param authHeader 认证头
-     * @return ResponseEntity
-     */
-    @PutMapping("/orders/update/status")
-    public ResponseEntity<?> updateOrderStatusAdmin(
-            @RequestBody Map<String, String> statusData,
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        try {
-            User user = userService.checkMerchantOrAdmin(authHeader);
-
-            String orderId = statusData.get("orderId");
-            String newStatus = statusData.get("status");
-
-            orderService.updateOrderStatusAdmin(Long.valueOf(orderId), newStatus.trim(), user);
-            return ResponseEntity.ok(Map.of("message", "订单 " + orderId + " 状态已更新为 " + newStatus));
-        } catch (IllegalArgumentException e) {
-            // 无效的状态值
-            return ResponseEntity.badRequest().body("更新订单状态失败: " + e.getMessage());
-        } catch (RuntimeException e) {
-            // 权限不足、订单不存在或其他运行时异常
-            return ResponseEntity.status(403).body("更新订单状态失败: " + e.getMessage());
         }
     }
 

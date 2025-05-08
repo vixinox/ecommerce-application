@@ -52,6 +52,9 @@ public class OrderServiceImpl implements OrderService {
             ORDER_STATUS_CANCELED_TIMEOUT
     );
 
+    // 商家视角下，当原始订单状态为 PENDING_PAYMENT 时，显示为此状态
+    // private static final String MERCHANT_DISPLAY_STATUS_FOR_PENDING_PAYMENT = ORDER_STATUS_PENDING; // 这行不再需要，因为我们不转换状态了
+
     @Autowired
     private UserService userService;
 
@@ -461,30 +464,52 @@ public class OrderServiceImpl implements OrderService {
 
     // 新增 getOrderDetailsAdmin 实现
     @Override
-    public OrderDTO getOrderDetailsAdmin(Long orderId) {
-        // 1. 获取订单基本信息
+    public OrderDTO getOrderDetailsAdmin(Long orderId, User requester) {
+        if (orderId == null) {
+            logger.warn("getOrderDetailsAdmin called with null orderId");
+            throw new IllegalArgumentException("订单ID不能为空。");
+        }
+        if (requester == null || requester.getId() == null || requester.getRole() == null) {
+            logger.warn("getOrderDetailsAdmin called with invalid requester info for orderId: {}", orderId);
+            throw new IllegalArgumentException("无效的请求者信息。");
+        }
+
         Order order = orderDao.getOrderById(orderId);
         if (order == null) {
-            throw new RuntimeException("订单不存在: " + orderId);
+            logger.warn("No order found with ID: {} by getOrderDetailsAdmin", orderId);
+            return null; 
         }
 
-        // 2. 获取订单项
+        // 关键逻辑：严格不可见
+        if ("MERCHANT".equals(requester.getRole()) && ORDER_STATUS_PENDING_PAYMENT.equals(order.getStatus())) {
+            logger.info("Merchant {} attempted to view PENDING_PAYMENT order {}. Access denied (strict visibility).",
+                        requester.getId(), orderId);
+            return null; // 商家无法看到等待支付的订单详情
+        }
+
+        // 不再根据角色修改订单状态的显示
+        // String originalStatus = order.getStatus(); 
+        // if ("MERCHANT".equals(requester.getRole()) && ORDER_STATUS_PENDING_PAYMENT.equals(originalStatus)) { ... }
+
         List<OrderItem> items = orderDao.getOrderItemsByOrderIds(Collections.singletonList(orderId));
-        if (items == null) {
-            items = Collections.emptyList(); // 保证 items 不为 null
+        if (items == null) { 
+            items = Collections.emptyList();
         }
+        
+        User buyerInfo = userService.findUserById(order.getUserId()); 
 
-        // 3. 获取购买者信息
-        User buyerInfo = userService.findUserById(order.getUserId());
-        // buyerInfo 可能为 null 如果用户已被删除，根据业务需求决定如何处理
-        // 这里暂时允许 buyerInfo 为 null
-
-        // 4. 组装 DTO
-        OrderDTO orderDTO = new OrderDTO();
-        orderDTO.setOrder(order);
-        orderDTO.setItems(items);
-        orderDTO.setBuyerInfo(buyerInfo);
-
+        Long secondsRemaining = null;
+        // 只有当真实状态是 PENDING_PAYMENT 时才计算剩余支付时间 (如果执行到这里，说明不是商家在看 PENDING_PAYMENT 单)
+        if (ORDER_STATUS_PENDING_PAYMENT.equals(order.getStatus()) && order.getExpiresAt() != null) { 
+            secondsRemaining = java.time.Duration.between(LocalDateTime.now(), order.getExpiresAt()).getSeconds();
+            if (secondsRemaining < 0) {
+                secondsRemaining = 0L; 
+            }
+        }
+        
+        OrderDTO orderDTO = new OrderDTO(order, items, buyerInfo);
+        orderDTO.setSecondsRemaining(secondsRemaining); // 直接设置计算出的秒数
+       
         return orderDTO;
     }
 
