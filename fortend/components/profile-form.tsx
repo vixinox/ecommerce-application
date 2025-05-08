@@ -35,7 +35,7 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 type PasswordFormValues = z.infer<typeof passwordSchema>;
 
 export function ProfileForm() {
-  const {user, token, login, logout} = useAuth();
+  const {user, token, login, logout, isLoading} = useAuth();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -65,11 +65,12 @@ export function ProfileForm() {
   }, [user, profileForm]);
 
   async function onProfileSubmit(data: ProfileFormValues) {
-    setIsUpdating(true);
+    if (isLoading) return;
     if (!token) {
       setIsUpdating(false);
       return;
     }
+    setIsUpdating(true);
     try {
       const response = await fetch(`${API_URL}/api/user/update/info`, {
         method: "POST",
