@@ -1,15 +1,8 @@
 "use client"
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useContext,
-  createContext,
-  ReactNode,
-} from 'react';
+import React, { createContext, ReactNode, useContext, useEffect, useRef, useState, } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from "@/components/auth-provider";
-import { getPendingOrders, cancelOrder } from "@/lib/api";
+import { cancelOrder, getPendingOrders } from "@/lib/api";
 
 interface OrderItem {
   id: number;
@@ -28,6 +21,7 @@ interface OrderItem {
 }
 
 interface Order {
+  expiresAt: any;
   id: number;
   userId: number;
   totalAmount: number;
@@ -45,6 +39,7 @@ interface PendingOrderState extends OrderDTO {
   isSelected: boolean;
   timeRemaining: number;
   isExpired: boolean;
+  initialDuration: number;
 }
 
 interface PaymentInitiationDetails {
@@ -65,6 +60,7 @@ interface PendingPaymentContextValue {
   cancelOrderHandler: (orderId: number) => Promise<void>;
   clearPaymentInitiation: () => void;
   fetchPendingOrders: () => Promise<void>;
+  clearExpiredOrders: (orderIds?: number[]) => void;
   formatPrice: (price: number | string, currencyCode?: string, locale?: string) => string;
   formatTimeRemaining: (seconds: number) => string;
   getPaymentProgress: (order: PendingOrderState) => number;
@@ -105,10 +101,12 @@ export const formatTimeRemaining = (seconds: number): string => {
 
 const getPaymentProgress = (order: PendingOrderState): number => {
   const createdAtTimestamp = new Date(order.order.createdAt).getTime();
-  const totalDuration = PAYMENT_DURATION * 1000;
+  const totalDuration = order.initialDuration * 1000;
+  if (totalDuration <= 0) return order.isExpired ? 0 : 100;
   const elapsed = Date.now() - createdAtTimestamp;
   return Math.max(0, Math.min(100, ((totalDuration - elapsed) / totalDuration) * 100));
 };
+
 
 const getCountdownColorClass = (timeRemaining: number, isExpired: boolean): string => {
   if (isExpired) return "text-gray-500 dark:text-gray-600";
@@ -138,11 +136,13 @@ export const PendingPaymentProvider = ({ children }: { children: ReactNode }) =>
       const now = Date.now();
       return prevOrders.map(orderDto => {
         const createdAtTimestamp = new Date(orderDto.order.createdAt).getTime();
-        const expirationTime = createdAtTimestamp + PAYMENT_DURATION * 1000;
+        const initialDurationMillis = orderDto.initialDuration * 1000;
+        const expirationTime = createdAtTimestamp + initialDurationMillis;
         const timeRemaining = Math.max(0, Math.floor((expirationTime - now) / 1000));
         const isExpired = timeRemaining === 0;
+
         const isSelected = isExpired ? false : orderDto.isSelected;
-        const status = isExpired && orderDto.order.status === 'pending_payment' ? 'cancelled' : orderDto.order.status;
+        const status = isExpired && orderDto.order.status === 'PENDING_PAYMENT' ? 'EXPIRED' : orderDto.order.status;
 
         return {
           ...orderDto,
@@ -166,22 +166,51 @@ export const PendingPaymentProvider = ({ children }: { children: ReactNode }) =>
     }
     setIsLoading(true);
     try {
-      const orders = await getPendingOrders(token);
-      const initialPendingOrders: PendingOrderState[] = orders
-      .filter((orderDto: OrderDTO) => orderDto.order.status === 'pending_payment')
-      .map((orderDto: OrderDTO) => {
-        const createdAtTimestamp = new Date(orderDto.order.createdAt).getTime();
-        const expirationTime = createdAtTimestamp + PAYMENT_DURATION * 1000;
-        const timeRemaining = Math.max(0, Math.floor((expirationTime - Date.now()) / 1000));
-        const isExpired = timeRemaining === 0 || orderDto.order.status !== 'pending_payment';
-        return {
-          ...orderDto,
-          isSelected: false,
-          timeRemaining,
-          isExpired,
-        };
-      });
+      const orders: OrderDTO[] = await getPendingOrders(token);
+
+      const initialPendingOrders: PendingOrderState[] = orders.filter((orderDto: OrderDTO) => {
+          if (orderDto.order.status !== 'PENDING_PAYMENT')
+            return false;
+          const createdAt = new Date(orderDto.order.createdAt);
+          const now = new Date();
+          const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
+          return createdAt >= fifteenMinutesAgo;
+        }).map((orderDto: OrderDTO) => {
+          const createdAtTimestamp = new Date(orderDto.order.createdAt).getTime();
+          const expiresAtTimestamp = orderDto.order.expiresAt ? new Date(orderDto.order.expiresAt).getTime() : null;
+          const now = Date.now();
+
+          let timeRemaining: number;
+          let isExpired: boolean;
+          let initialDuration: number;
+
+          if (expiresAtTimestamp !== null && !isNaN(expiresAtTimestamp)) {
+            const durationMillis = expiresAtTimestamp - createdAtTimestamp;
+            initialDuration = Math.max(0, Math.floor(durationMillis / 1000));
+            timeRemaining = Math.max(0, Math.floor((expiresAtTimestamp - now) / 1000));
+            isExpired = timeRemaining <= 0;
+          } else {
+            console.warn(`Order ${orderDto.order.id} is missing or has invalid expiresAt: ${orderDto.order.expiresAt}. Falling back to PAYMENT_DURATION.`);
+            initialDuration = PAYMENT_DURATION;
+            const estimatedExpirationTime = createdAtTimestamp + PAYMENT_DURATION * 1000;
+            timeRemaining = Math.max(0, Math.floor((estimatedExpirationTime - now) / 1000));
+            isExpired = timeRemaining <= 0;
+          }
+
+          const isSelected = false;
+
+          return {
+            ...orderDto,
+            isSelected,
+            timeRemaining,
+            isExpired,
+            initialDuration,
+          };
+        }).filter(orderDto => orderDto.order.status === 'PENDING_PAYMENT')
+      ;
+
       setPendingOrders(initialPendingOrders);
+
     } catch (error: any) {
       console.error('Failed to load pending orders:', error);
       toast.error("加载待支付订单失败", { description: error.message });
@@ -193,7 +222,6 @@ export const PendingPaymentProvider = ({ children }: { children: ReactNode }) =>
 
   useEffect(() => {
     fetchPendingOrders();
-
     intervalRef.current = setInterval(updateCountdown, 1000);
 
     return () => {
@@ -223,7 +251,6 @@ export const PendingPaymentProvider = ({ children }: { children: ReactNode }) =>
     }
 
     const selectedOrderIds = selectedOrders.map(orderDto => orderDto.order.id);
-
     const totalAmount = selectedOrders.reduce((total, orderDto) => {
       const orderTotal = orderDto.items.reduce((sum, item) => sum + item.purchasedPrice * item.quantity, 0);
       return total + orderTotal;
@@ -238,7 +265,7 @@ export const PendingPaymentProvider = ({ children }: { children: ReactNode }) =>
       selectedOrders: selectedOrders
     });
 
-    toast.info(`已为您准备支付信息，即将跳转至支付页面...`);
+    toast.info(`已为您准备支付信息...`);
   };
 
   const cancelOrderHandler = async (orderId: number) => {
@@ -253,16 +280,19 @@ export const PendingPaymentProvider = ({ children }: { children: ReactNode }) =>
     }
 
     const orderToCancel = pendingOrders.find(o => o.order.id === orderId);
+
     if (!orderToCancel) {
       toast.error("未找到该订单或订单已不在列表中。");
       return;
     }
-    if (orderToCancel.isExpired || orderToCancel.order.status !== 'pending_payment') {
+
+    if (orderToCancel.isExpired || orderToCancel.order.status !== 'PENDING_PAYMENT') {
       toast.info("该订单已过期或状态不允许取消，无需手动取消。");
       return;
     }
 
     setPendingOrders(prevOrders => prevOrders.filter(orderDto => orderDto.order.id !== orderId));
+
     try {
       await cancelOrder(token, orderId);
       toast.success(`订单 ${orderId} 已取消。`);
@@ -278,6 +308,30 @@ export const PendingPaymentProvider = ({ children }: { children: ReactNode }) =>
     setPendingOrders(prevOrders => prevOrders.map(order => ({...order, isSelected: false})));
   };
 
+  const clearExpiredOrders = (orderIdsToClear: number[] = []) => {
+    setPendingOrders(prevOrders => {
+      const filteredOrders = prevOrders.filter(order => {
+        if (!order.isExpired) {
+          return true;
+        }
+        if (orderIdsToClear.length === 0) {
+          return false;
+        } else {
+          return !orderIdsToClear.includes(order.order.id);
+        }
+      });
+      if (orderIdsToClear.length > 0) {
+        const actualRemoved = orderIdsToClear.filter(id => prevOrders.some(o => o.order.id === id && o.isExpired)).length;
+        if (actualRemoved === 0) {
+          toast.info("未找到需要移除的已过期订单。");
+        }
+      }
+
+      return filteredOrders;
+    });
+  };
+
+
   const selectedCount = pendingOrders.filter(order => order.isSelected).length;
   const hasSelectableOrders = pendingOrders.some(order => !order.isExpired);
 
@@ -292,6 +346,7 @@ export const PendingPaymentProvider = ({ children }: { children: ReactNode }) =>
     cancelOrderHandler,
     clearPaymentInitiation,
     fetchPendingOrders,
+    clearExpiredOrders,
     formatPrice,
     formatTimeRemaining,
     getPaymentProgress,
