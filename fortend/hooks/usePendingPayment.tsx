@@ -56,6 +56,7 @@ interface PendingPaymentContextValue {
   hasSelectableOrders: boolean;
   paymentInitiationDetails: PaymentInitiationDetails | null;
   toggleOrderSelection: (orderId: number) => void;
+  toggleSelectAll: (isChecked: boolean) => void;
   preparePayment: () => void;
   cancelOrderHandler: (orderId: number) => Promise<void>;
   clearPaymentInitiation: () => void;
@@ -129,7 +130,7 @@ export const PendingPaymentProvider = ({ children }: { children: ReactNode }) =>
   const [isLoading, setIsLoading] = useState(true);
   const [paymentInitiationDetails, setPaymentInitiationDetails] = useState<PaymentInitiationDetails | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const { token } = useAuth();
+  const { token, isLoading: isAuthLoading } = useAuth();
 
   const updateCountdown = () => {
     setPendingOrders(prevOrders => {
@@ -159,6 +160,7 @@ export const PendingPaymentProvider = ({ children }: { children: ReactNode }) =>
   };
 
   const fetchPendingOrders = async () => {
+    if (isAuthLoading) return;
     if (!token) {
       setIsLoading(false);
       setPendingOrders([]);
@@ -241,6 +243,18 @@ export const PendingPaymentProvider = ({ children }: { children: ReactNode }) =>
     );
   };
 
+  const toggleSelectAll = (isChecked: boolean) => {
+    if (isLoading || paymentInitiationDetails !== null) return;
+    setPendingOrders(prevOrders =>
+      prevOrders.map(orderDto => {
+        const isSelectable = !orderDto.isExpired;
+        return {
+          ...orderDto,
+          isSelected: isSelectable ? isChecked : orderDto.isSelected,
+        };
+      })
+    );
+  };
   const preparePayment = () => {
     const selectedOrders = pendingOrders
     .filter(orderDto => orderDto.isSelected && !orderDto.isExpired);
@@ -342,6 +356,7 @@ export const PendingPaymentProvider = ({ children }: { children: ReactNode }) =>
     hasSelectableOrders,
     paymentInitiationDetails,
     toggleOrderSelection,
+    toggleSelectAll,
     preparePayment,
     cancelOrderHandler,
     clearPaymentInitiation,

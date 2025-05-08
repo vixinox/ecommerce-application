@@ -136,11 +136,11 @@ export default function UsersPage() {
     }
 
     try {
+      if (!isAuthLoading)
+        return;
       if (!token) {
-        if (!isAuthLoading) {
-          toast.error("请先登录");
-          router.push("/auth/login");
-        }
+        toast.error("请先登录");
+        router.push("/auth/login");
         return;
       }
 

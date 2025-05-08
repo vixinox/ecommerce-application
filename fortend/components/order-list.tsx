@@ -201,6 +201,8 @@ function formatCurrency(amount: number): string {
 
 function getOrderStatusBadgeVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' | null | undefined {
   switch (status) {
+    case 'PENDING_PAYMENT':
+      return 'default';
     case 'PENDING':
       return 'default';
     case 'SHIPPED':
@@ -216,6 +218,8 @@ function getOrderStatusBadgeVariant(status: string): 'default' | 'secondary' | '
 
 function getOrderStatusText(status: string): string {
   switch (status) {
+    case 'PENDING_PAYMENT':
+      return '待支付';
     case 'PENDING':
       return '待发货';
     case 'SHIPPED':
