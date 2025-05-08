@@ -22,8 +22,8 @@
     </resultMap>
 
     <insert id="createOrder" parameterType="com.example.commerce.model.Order" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO orders (user_id, total_amount, status, created_at, updated_at)
-        VALUES (#{userId}, #{totalAmount}, #{status}, NOW(), NOW())
+        INSERT INTO orders (user_id, total_amount, status, created_at, updated_at, expires_at)
+        VALUES (#{userId}, #{totalAmount}, #{status}, NOW(), NOW(), #{expiresAt})
     </insert>
 
     <!-- Batch insert order items -->

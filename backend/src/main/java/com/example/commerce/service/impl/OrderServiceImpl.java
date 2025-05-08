@@ -94,94 +94,106 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public List<Long> createOrder(User user, List<CartItemDTO> items) {
-        if (items == null || items.isEmpty())
+        logger.info("开始为用户ID: {} 创建订单，原始商品项数量: {}", user.getId(), items != null ? items.size() : 0);
+        if (items == null || items.isEmpty()) {
+            logger.warn("订单商品列表为空或为null，用户ID: {}", user.getId());
             throw new IllegalArgumentException("订单商品列表不能为空");
+        }
 
-        // 创建的订单ID列表
         List<Long> createdOrderIds = new ArrayList<>();
-        
-        // 首先按照商品所属的商家对购物车项进行分组
         Map<Long, List<CartItemDTO>> itemsByMerchant = new HashMap<>();
         
-        // 先检查所有商品的库存，避免后续创建部分订单成功，部分失败
+        logger.debug("开始检查所有商品库存并按商家分组，用户ID: {}", user.getId());
         for (CartItemDTO item : items) {
             ProductVariant variant = item.getProductVariant();
-            if (variant == null || variant.getId() == null)
-                throw new IllegalArgumentException("购物车项包含无效的商品款式信息");
+            if (variant == null || variant.getId() == null) {
+                logger.error("购物车项 {} (商品名: {}) 包含无效的商品款式信息，用户ID: {}", item.getCartId(), item.getProductName(), user.getId());
+                throw new IllegalArgumentException("购物车项包含无效的商品款式信息，商品名: " + item.getProductName());
+            }
+            logger.debug("检查库存：商品款式ID: {}, 请求数量: {}, 商品名: {}", variant.getId(), item.getQuantity(), item.getProductName());
+            checkQuantity(item, variant); // checkQuantity 内部已有库存不足的异常和日志
             
-            // 验证库存
-            checkQuantity(item, variant);
-            
-            // 获取商品信息，以获取商家ID
             Product product = productDao.getProductById(variant.getProductId());
             if (product == null) {
+                logger.error("商品信息不存在，商品ID: {} (来自款式ID: {})，用户ID: {}", variant.getProductId(), variant.getId(), user.getId());
                 throw new IllegalArgumentException("商品信息不存在，商品ID: " + variant.getProductId());
             }
-            
             Long merchantId = product.getOwnerId();
-            
-            // 将购物车项添加到对应商家的列表中
-            if (!itemsByMerchant.containsKey(merchantId)) {
-                itemsByMerchant.put(merchantId, new ArrayList<>());
-            }
-            itemsByMerchant.get(merchantId).add(item);
+            itemsByMerchant.computeIfAbsent(merchantId, k -> new ArrayList<>()).add(item);
+            logger.debug("商品款式ID: {} (商品ID: {}) 属于商家ID: {}，已添加到分组", variant.getId(), product.getId(), merchantId);
         }
+        logger.info("商品已按商家分组完成，共 {} 个商家，用户ID: {}", itemsByMerchant.size(), user.getId());
         
-        // 为每个商家创建独立的订单
-        for (Map.Entry<Long, List<CartItemDTO>> entry : itemsByMerchant.entrySet()) {
-            Long merchantId = entry.getKey();
-            List<CartItemDTO> merchantItems = entry.getValue();
-            
-            // 计算该商家订单的总金额
-            BigDecimal totalAmount = BigDecimal.ZERO;
-            List<OrderItem> orderItemsToCreate = new ArrayList<>();
-            
-            for (CartItemDTO item : merchantItems) {
-                ProductVariant variant = item.getProductVariant();
-                totalAmount = totalAmount.add(
-                        variant.getPrice().multiply(
-                                BigDecimal.valueOf(
-                                        item.getQuantity())));
+        try {
+            for (Map.Entry<Long, List<CartItemDTO>> entry : itemsByMerchant.entrySet()) {
+                Long merchantId = entry.getKey();
+                List<CartItemDTO> merchantItems = entry.getValue();
+                logger.info("开始为商家ID: {} 创建独立订单，商品项数量: {}", merchantId, merchantItems.size());
+                
+                BigDecimal totalAmount = BigDecimal.ZERO;
+                List<OrderItem> orderItemsToCreate = new ArrayList<>();
+                for (CartItemDTO item : merchantItems) {
+                    ProductVariant variant = item.getProductVariant();
+                    totalAmount = totalAmount.add(variant.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+                }
+                logger.debug("商家ID: {} 的订单计算总金额: {}", merchantId, totalAmount);
+                
+                Order newOrder = new Order();
+                newOrder.setUserId(user.getId());
+                newOrder.setTotalAmount(totalAmount);
+                newOrder.setStatus(ORDER_STATUS_PENDING_PAYMENT);
+                newOrder.setExpiresAt(LocalDateTime.now().plusMinutes(PAYMENT_EXPIRY_MINUTES));
+                
+                logger.debug("准备为商家ID: {} 创建订单主记录: {}", merchantId, newOrder);
+                int orderCreatedRows = orderDao.createOrder(newOrder);
+                if (orderCreatedRows != 1 || newOrder.getId() == null) {
+                    logger.error("创建订单主记录失败，商家ID: {}，影响行数: {}，获取到的订单ID: {}", merchantId, orderCreatedRows, newOrder.getId());
+                    throw new RuntimeException("创建订单主记录失败，商家ID: " + merchantId);
+                }
+                Long newOrderId = newOrder.getId();
+                createdOrderIds.add(newOrderId);
+                logger.info("订单主记录创建成功，商家ID: {}，新订单ID: {}", merchantId, newOrderId);
+                
+                for (CartItemDTO item : merchantItems) {
+                    OrderItem orderItem = getOrderItem(item, newOrderId);
+                    orderItemsToCreate.add(orderItem);
+                }
+                logger.debug("准备为订单ID: {} 创建 {} 条订单明细项", newOrderId, orderItemsToCreate.size());
+                int orderItemsCreatedRows = orderDao.createOrderItems(orderItemsToCreate);
+                if (orderItemsCreatedRows != orderItemsToCreate.size()) {
+                    logger.error("批量创建订单明细失败，订单ID: {}，预期插入: {}，实际插入: {}，商家ID: {}", 
+                                 newOrderId, orderItemsToCreate.size(), orderItemsCreatedRows, merchantId);
+                    throw new RuntimeException("批量创建订单明细失败，订单ID: " + newOrderId);
+                }
+                logger.info("订单明细项创建成功，订单ID: {}，数量: {}", newOrderId, orderItemsCreatedRows);
+                
+                logger.debug("开始为订单ID: {} 的商品预留库存", newOrderId);
+                for (OrderItem item : orderItemsToCreate) {
+                    logger.debug("预留库存：订单项商品款式ID: {}, 数量: {}, 商品名: {}", item.getProductVariantId(), item.getQuantity(), item.getSnapshotProductName());
+                    int reserveStockResult = productDao.reserveStock(item.getProductVariantId(), item.getQuantity());
+                    if (reserveStockResult == 0) {
+                        logger.error("预留库存失败，订单ID: {}，商品款式ID: {}，请求数量: {}。可能是可用库存不足。", 
+                                     newOrderId, item.getProductVariantId(), item.getQuantity());
+                        throw new RuntimeException("预留库存失败，商品可用库存不足 (款式ID: " + item.getProductVariantId() + ")");
+                    }
+                    logger.debug("库存预留成功：订单项商品款式ID: {}, 数量: {}", item.getProductVariantId(), item.getQuantity());
+                }
+                logger.info("订单ID: {} 的所有商品库存预留成功", newOrderId);
+                
+                logger.debug("开始为用户ID: {} 清理与订单ID: {} 相关的购物车项", user.getId(), newOrderId);
+                for (CartItemDTO item : merchantItems) {
+                    logger.debug("清理购物车项：用户ID: {}, 购物车项ID: {}, 商品名: {}", user.getId(), item.getCartId(), item.getProductName());
+                    cartDao.removeCardItem(user.getId(), item.getCartId());
+                }
+                logger.info("订单ID: {} (商家ID: {}) 相关的购物车项清理完成", newOrderId, merchantId);
+                logger.info("商家 {} 的订单创建流程完成，订单ID: {} (这是您在前端看到的日志来源)", merchantId, newOrderId); // 对应前端看到的日志
             }
-            
-            // 创建订单主记录
-            Order newOrder = new Order();
-            newOrder.setUserId(user.getId());
-            newOrder.setTotalAmount(totalAmount);
-            newOrder.setStatus(ORDER_STATUS_PENDING_PAYMENT); // 设置为"待支付"状态
-            newOrder.setExpiresAt(LocalDateTime.now().plusMinutes(PAYMENT_EXPIRY_MINUTES)); // 设置过期时间
-            
-            int orderCreatedRows = orderDao.createOrder(newOrder);
-            if (orderCreatedRows != 1 || newOrder.getId() == null)
-                throw new RuntimeException("创建订单主记录失败，商家ID: " + merchantId);
-            
-            Long newOrderId = newOrder.getId();
-            createdOrderIds.add(newOrderId);
-            
-            // 创建订单明细
-            for (CartItemDTO item : merchantItems) {
-                OrderItem orderItem = getOrderItem(item, newOrderId);
-                orderItemsToCreate.add(orderItem);
-            }
-            
-            int orderItemsCreatedRows = orderDao.createOrderItems(orderItemsToCreate);
-            if (orderItemsCreatedRows != orderItemsToCreate.size())
-                throw new RuntimeException("批量创建订单明细失败，预期插入 " + orderItemsToCreate.size() +
-                        " 条，实际插入 " + orderItemsCreatedRows + " 条，商家ID: " + merchantId);
-            
-            // 扣减库存
-            for (OrderItem item : orderItemsToCreate)
-                if (productDao.reserveStock(item.getProductVariantId(), item.getQuantity()) == 0)
-                    throw new RuntimeException("预留库存失败，商品可用库存不足。");
-            
-            // 清理购物车
-            for (CartItemDTO item : merchantItems)
-                cartDao.removeCardItem(user.getId(), item.getCartId());
-            
-            System.out.println("商家" + merchantId + "的订单创建成功，订单ID: " + newOrderId);
+            logger.info("所有商家的订单均已处理完毕，共创建 {} 个订单ID: {}，用户ID: {}。准备提交事务。", createdOrderIds.size(), createdOrderIds, user.getId());
+            return createdOrderIds;
+        } catch (Exception e) {
+            logger.error("创建订单过程中发生异常，用户ID: {}，错误信息: {}。事务将回滚。", user.getId(), e.getMessage(), e);
+            throw e; // 重新抛出异常，确保事务回滚
         }
-        
-        return createdOrderIds;
     }
 
     @Override
