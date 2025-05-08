@@ -39,7 +39,7 @@ public interface UserService {
 
     User findUserById(Long userId);
 
-    void updateUserRoleAdmin(Long userId, String newRole);
+    void updateUserRoleAdmin(User adminUser, Long userIdToChange, String newRole);
 
     void softDeleteUser(Long userId);
 

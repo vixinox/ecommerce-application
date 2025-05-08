@@ -224,18 +224,34 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void updateUserRoleAdmin(Long userId, String newRole) {
+    public void updateUserRoleAdmin(User adminUser, Long userIdToChange, String newRole) {
+        if (adminUser == null || adminUser.getId() == null) {
+            throw new IllegalArgumentException("执行操作的管理员信息不能为空。");
+        }
+        if (userIdToChange == null) {
+            throw new IllegalArgumentException("目标用户ID不能为空。");
+        }
+
+        // 关键检查：管理员不能修改自己的角色
+        if (adminUser.getId().equals(userIdToChange)) {
+            throw new IllegalArgumentException("管理员不能修改自己的角色。");
+        }
+
         if (!VALID_ROLES.contains(newRole)) {
             throw new IllegalArgumentException("无效的用户角色: " + newRole + ". 合法角色为: " + VALID_ROLES);
         }
 
-        User user = userDAO.findById(userId);
-        if (user == null)
-            throw new RuntimeException("用户id不存在: " + userId);
-        String oldRole = user.getRole();
+        User userToChange = userDAO.findById(userIdToChange);
+        if (userToChange == null) {
+            throw new RuntimeException("用户id不存在: " + userIdToChange);
+        }
+        String oldRole = userToChange.getRole();
 
-        userDAO.updateUserRole(userId, newRole);
-        logger.info("管理员更新了用户 '{}' 的角色: {} -> {}", userId, oldRole, newRole);
+        userDAO.updateUserRole(userIdToChange, newRole);
+        logger.info("管理员 {} (ID: {}) 更新了用户 {} (ID: {}) 的角色: {} -> {}",
+                adminUser.getUsername(), adminUser.getId(),
+                userToChange.getUsername(), userToChange.getId(),
+                oldRole, newRole);
     }
 
     // 新增 softDeleteUser 实现
