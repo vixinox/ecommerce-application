@@ -57,7 +57,7 @@
         SELECT DATE(created_at)  AS order_date,
                SUM(total_amount) AS daily_revenue
         FROM orders
-        WHERE status IN ('completed', 'shipped')
+        WHERE status IN ('PENDING', 'SHIPPED', 'COMPLETED')
           AND created_at >= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
         GROUP BY order_date
         ORDER BY order_date

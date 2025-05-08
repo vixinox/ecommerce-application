@@ -183,7 +183,7 @@ public interface ProductDAO {
      */
     @Select("SELECT COUNT(pv.id) FROM product_variants pv " +
             "JOIN products p ON pv.product_id = p.id " +
-            "WHERE p.owner_id = #{merchantId} AND pv.stock_quantity < #{threshold}")
+            "WHERE p.owner_id = #{merchantId} AND (pv.stock_quantity - COALESCE(pv.reserved_quantity, 0)) < #{threshold}")
     Long countMerchantLowStockVariants(@Param("merchantId") Long merchantId, @Param("threshold") int threshold);
 
     List<Product> findAllProductsAdmin(@Param("statusFilter") String statusFilter);
@@ -200,7 +200,7 @@ public interface ProductDAO {
     Long countProductsByStatus(@Param("status") String status);
 
     // 添加统计低库存变体数的方法
-    @Select("SELECT COUNT(*) FROM product_variants WHERE stock_quantity < #{threshold}")
+    @Select("SELECT COUNT(*) FROM product_variants WHERE (stock_quantity - COALESCE(reserved_quantity, 0)) < #{threshold}")
     Long countLowStockVariants(@Param("threshold") int threshold);
 
     // 添加按分类统计商品数量的方法 (排除 DELETED)

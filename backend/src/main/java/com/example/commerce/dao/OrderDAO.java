@@ -155,13 +155,13 @@ public interface OrderDAO {
     @UpdateProvider(type = OrderSqlProvider.class, method = "updateOrderStatusAdmin")
     int updateOrderStatusAdmin(@Param("orderId") Long orderId, @Param("status") String status);
 
-    @Select("SELECT COUNT(*) FROM orders")
+    @Select("SELECT COUNT(*) FROM orders WHERE status IN ('PENDING', 'SHIPPED', 'COMPLETED')")
     Long countTotalOrders();
 
     @Select("SELECT COUNT(*) FROM orders WHERE status = #{status}")
     Long countOrdersByStatus(@Param("status") String status);
 
-    @Select("SELECT SUM(total_amount) FROM orders")
+    @Select("SELECT SUM(total_amount) FROM orders WHERE status IN ('PENDING', 'SHIPPED', 'COMPLETED')")
     BigDecimal calculateTotalRevenue();
 
     /**
