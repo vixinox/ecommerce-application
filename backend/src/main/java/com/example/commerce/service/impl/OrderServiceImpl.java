@@ -856,4 +856,58 @@ public class OrderServiceImpl implements OrderService {
             throw new IllegalStateException(message);
         }
     }
+
+    /**
+     * 获取当前用户单个订单的详细信息
+     * @param user 当前用户
+     * @param orderId 订单ID
+     * @return 订单详情DTO，如果订单不存在或不属于该用户，则返回null或抛出异常
+     */
+    @Override
+    public OrderDTO getMyOrderDetails(User user, Long orderId) {
+        if (orderId == null) {
+            logger.warn("getMyOrderDetails called with null orderId for user {}", user.getId());
+            throw new IllegalArgumentException("订单ID不能为空。");
+        }
+        if (user == null || user.getId() == null) {
+            logger.error("getMyOrderDetails called with invalid user for orderId: {}", orderId);
+            throw new IllegalArgumentException("无效的用户信息。"); // 或者应该是认证异常
+        }
+
+        Order order = orderDao.getOrderById(orderId);
+        if (order == null) {
+            logger.warn("User {} attempted to access non-existent order {}.", user.getId(), orderId);
+            // 对于用户来说，订单不存在和订单不属于他，都返回找不到比较好
+            return null; // 或者 throw new ResourceNotFoundException(...)
+        }
+
+        // 关键：检查订单是否属于当前用户
+        if (!order.getUserId().equals(user.getId())) {
+            logger.warn("User {} attempted to access order {} which belongs to user {}. Access denied.",
+                    user.getId(), orderId, order.getUserId());
+            // 不抛出权限异常，而是返回null，使其看起来像"未找到"
+            return null;
+        }
+
+        List<OrderItem> items = orderDao.getOrderItemsByOrderIds(Collections.singletonList(orderId));
+        if (items == null) {
+            items = Collections.emptyList();
+        }
+
+        // 用户查看自己的订单，不需要获取 buyerInfo，因为 buyerInfo 就是 user 自己
+        // 如果 OrderDTO 设计上必须有 buyerInfo，可以传入 user
+        
+        Long secondsRemaining = null;
+        if (ORDER_STATUS_PENDING_PAYMENT.equals(order.getStatus()) && order.getExpiresAt() != null) {
+            secondsRemaining = java.time.Duration.between(LocalDateTime.now(), order.getExpiresAt()).getSeconds();
+            if (secondsRemaining < 0) {
+                secondsRemaining = 0L;
+            }
+        }
+
+        OrderDTO orderDTO = new OrderDTO(order, items, user); // 传入 user 作为 buyerInfo
+        orderDTO.setSecondsRemaining(secondsRemaining);
+
+        return orderDTO;
+    }
 }

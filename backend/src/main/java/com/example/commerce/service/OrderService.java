@@ -91,4 +91,12 @@ public interface OrderService {
      * @throws IllegalArgumentException 如果订单不存在或不属于该用户
      */
     boolean cancelOrder(User user, Long orderId);
+
+    /**
+     * 获取当前用户单个订单的详细信息
+     * @param user 当前用户
+     * @param orderId 订单ID
+     * @return 订单详情DTO，如果订单不存在或不属于该用户，则返回null或抛出异常
+     */
+    OrderDTO getMyOrderDetails(User user, Long orderId);
 }
