@@ -309,4 +309,33 @@ public class OrderController {
                     .body("取消订单时发生错误: " + e.getMessage());
         }
     }
+
+    /**
+     * 获取当前用户单个订单的详细信息
+     * @param orderId    订单ID (来自路径)
+     * @param authHeader 认证头
+     * @return ResponseEntity 包含 OrderDTO 或 404/403
+     */
+    @GetMapping("/mine/{orderId}")
+    public ResponseEntity<?> getMySingleOrderDetails(
+            @PathVariable Long orderId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            User user = userService.checkAuthorization(authHeader);
+            OrderDTO orderDetails = orderService.getMyOrderDetails(user, orderId);
+
+            if (orderDetails != null) {
+                return ResponseEntity.ok(orderDetails);
+            } else {
+                // Service 返回 null 表示订单不存在或不属于该用户
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("获取订单详情失败：订单不存在或您无权访问。" );
+            }
+        } catch (IllegalArgumentException e) {
+            // 例如，无效的 orderId
+            return ResponseEntity.badRequest().body("获取订单详情失败: " + e.getMessage());
+        } catch (RuntimeException e) { 
+            // 其他运行时异常，主要来自 checkAuthorization
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("获取订单详情失败: " + e.getMessage());
+        }
+    }
 }
