@@ -130,12 +130,16 @@ public class OrderSqlProvider implements ProviderMethodResolver {
     public String countTotalMerchantOrders(Map<String, Object> params) {
         Long merchantId = (Long) params.get("merchantId");
 
+        // Valid statuses for counting total merchant orders
+        String validStatusesClause = "o.status IN ('PENDING', 'SHIPPED', 'COMPLETED')";
+
         return new SQL() {{
             SELECT("COUNT(DISTINCT o.id)");
-            FROM(ORDERS_TABLE);
+            FROM(ORDERS_TABLE); // Alias o is applied by default by convention in other methods
             INNER_JOIN(ORDER_ITEMS_TABLE + " ON o.id = oi.order_id");
             INNER_JOIN(PRODUCTS_TABLE + " ON oi.product_id = p.id");
             WHERE("p.owner_id = #{merchantId}");
+            WHERE(validStatusesClause); // Filter by valid statuses
         }}.toString();
     }
 
@@ -145,15 +149,16 @@ public class OrderSqlProvider implements ProviderMethodResolver {
     public String calculateTotalMerchantSales(Map<String, Object> params) {
         Long merchantId = (Long) params.get("merchantId");
 
+        // Valid statuses for calculating sales
+        String validStatusesClause = "o.status IN ('PENDING', 'SHIPPED', 'COMPLETED')";
+
         return new SQL() {{
-            // 只计算该商家商品的销售额
             SELECT("SUM(oi.purchased_price * oi.quantity)");
             FROM(ORDER_ITEMS_TABLE);
             INNER_JOIN(PRODUCTS_TABLE + " ON oi.product_id = p.id");
-            // 可以选择是否只计算特定状态订单的销售额，例如已完成或已发货+已完成
-            // INNER_JOIN(ORDERS_TABLE + " ON oi.order_id = o.id");
-            // WHERE("o.status IN ('已完成', '已发货')"); // 根据需要调整
+            INNER_JOIN(ORDERS_TABLE + " ON oi.order_id = o.id"); // Ensure join with orders table
             WHERE("p.owner_id = #{merchantId}");
+            WHERE(validStatusesClause); // Filter by valid statuses for sales calculation
         }}.toString();
     }
 
