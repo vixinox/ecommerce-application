@@ -1,4 +1,4 @@
-import { OrderTimeline } from "@/components/order-timeline";
+import OrderTimeline from "@/components/order-timeline";
 import { API_URL } from "@/lib/api";
 import Image from "next/image";
 import { OrderDetails } from "@/lib/types";
@@ -15,15 +15,13 @@ export default function OrderDetail({orderDetails}: {orderDetails: OrderDetails}
       <h2 className="text-xl font-semibold mb-4">
         订单号：#{orderDetails.order.id}
       </h2>
-
       <div className="mb-6">
         <OrderTimeline
           status={orderDetails.order.status}
-          createdAt={formatDate(orderDetails.order.createdAt)}
-          updatedAt={formatDate(orderDetails.order.updatedAt)}
+          createdAt={orderDetails.order.createdAt}
+          updatedAt={orderDetails.order.updatedAt}
         />
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="space-y-2">
           <h3 className="text-lg font-semibold">客户信息</h3>
@@ -41,14 +39,12 @@ export default function OrderDetail({orderDetails}: {orderDetails: OrderDetails}
             </div>
           </div>
         </div>
-
         <div className="space-y-2">
           <h3 className="text-lg font-semibold">订单金额</h3>
           <p>商品总额：{formatCurrency(orderDetails.order.totalAmount)}</p>
           <p>实付金额：{formatCurrency(orderDetails.order.totalAmount)}</p>
         </div>
       </div>
-
       <div>
         <h3 className="text-lg font-semibold mb-4">商品清单</h3>
         <div className="space-y-4">
@@ -82,7 +78,6 @@ export default function OrderDetail({orderDetails}: {orderDetails: OrderDetails}
           ))}
         </div>
       </div>
-
       <div className="mt-6 pt-4 border-t">
         <div className="flex justify-end">
           <div className="text-right space-y-2">

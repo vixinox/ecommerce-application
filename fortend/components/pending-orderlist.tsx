@@ -1,6 +1,5 @@
 "use client";
-
-import React from "react";
+import React, { useState, useEffect } from "react"; // 引入 useState, useEffect
 import Image from "next/image";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
@@ -21,6 +20,7 @@ export default function PendingOrderList() {
     hasSelectableOrders,
     paymentInitiationDetails,
     toggleOrderSelection,
+    toggleSelectAll,
     preparePayment,
     cancelOrderHandler,
     clearExpiredOrders,
@@ -29,6 +29,9 @@ export default function PendingOrderList() {
     getPaymentProgress,
     getCountdownColorClass,
   } = usePendingPayment();
+
+  // 新增状态控制空订单提示
+  const [showEmptyOrders, setShowEmptyOrders] = useState(false);
 
   const totalPayable = pendingOrders.reduce((total, order) => {
     if (order.isSelected && !order.isExpired) {
@@ -41,11 +44,34 @@ export default function PendingOrderList() {
   const isInteractiveDisabled = isLoading || paymentInitiationDetails !== null;
   const isOrderPartOfPaymentAttempt = (orderId: number) =>
     paymentInitiationDetails?.orderIds.includes(orderId);
-
   const hasExpiredOrders = pendingOrders.some(order => order.isExpired);
   const expiredOrderCount = pendingOrders.filter(order => order.isExpired).length;
+  const selectableOrders = pendingOrders.filter(order =>
+    !order.isExpired && !isOrderPartOfPaymentAttempt(order.order.id)
+  );
+  const selectableOrderCount = selectableOrders.length;
+  const bulkSelectCheckboxState =
+    selectableOrderCount === 0
+      ? false
+      : selectedCount === selectableOrderCount
+        ? true
+        : selectedCount > 0
+          ? "indeterminate"
+          : false;
 
+  // 监听 pendingOrders 变化，延迟显示空订单提示
+  useEffect(() => {
+    if (pendingOrders.length === 0) {
+      const timeout = setTimeout(() => {
+        setShowEmptyOrders(true);
+      }, 300); // 等待退出动画完成 (0.3s)
+      return () => clearTimeout(timeout);
+    } else {
+      setShowEmptyOrders(false);
+    }
+  }, [pendingOrders]);
 
+  // 加载中状态
   if (isLoading) {
     return (
       <div className="flex h-full flex-col space-y-4 p-6">
@@ -69,8 +95,8 @@ export default function PendingOrderList() {
     );
   }
 
-
-  if (pendingOrders.length === 0) {
+  // 空订单提示
+  if (showEmptyOrders) {
     return (
       <div className="flex h-full flex-col items-center justify-center space-y-4 p-6">
         <Clock className="h-16 w-16 text-muted-foreground" />
@@ -85,7 +111,23 @@ export default function PendingOrderList() {
       <div className="flex items-center justify-between py-4">
         <h2 className="text-lg font-semibold">待支付订单 ({pendingOrders.length})</h2>
       </div>
-      <Separator />
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="select-all-orders"
+          checked={bulkSelectCheckboxState}
+          onCheckedChange={(checkedState) => {
+            toggleSelectAll(!!checkedState);
+          }}
+          disabled={isInteractiveDisabled || selectableOrderCount === 0}
+          aria-label="全选所有待支付订单"
+        />
+        <label
+          htmlFor="select-all-orders"
+          className={`text-sm font-medium cursor-${(isInteractiveDisabled || selectableOrderCount === 0) ? 'not-allowed' : 'pointer'} peer-disabled:cursor-not-allowed peer-disabled:opacity-70 pt-0.5`}
+        >
+          全选
+        </label>
+      </div>
       <div
         className="flex-1 overflow-y-auto py-2 pr-2"
         style={{
@@ -98,34 +140,31 @@ export default function PendingOrderList() {
             const orderTotal = orderDto.items.reduce((sum, item) => sum + item.purchasedPrice * item.quantity, 0);
             const progress = getPaymentProgress(orderDto);
             const isPartOfPaymentAttempt = isOrderPartOfPaymentAttempt(orderDto.order.id);
-
             return (
               <motion.div
                 key={orderDto.order.id}
                 layout
-                initial={{opacity: 1, x: 0}}
-                animate={{opacity: 1, x: 0}}
-                exit={{opacity: 0, x: 500, transition: {duration: 0.3}}}
+                initial={{ opacity: 1, x: 0 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 500, transition: { duration: 0.3, ease: "easeOut" } }} // 优化退出动画
                 className={`order-item border-b last:border-b-0 py-4 ${orderDto.isExpired ? "grayscale opacity-60" : ""} ${isPartOfPaymentAttempt ? "pointer-events-none opacity-80" : ""}`}
               >
                 <div className="flex items-start mb-4 space-x-3">
                   <Checkbox
                     id={`order-${orderDto.order.id}`}
                     checked={orderDto.isSelected}
-
                     onCheckedChange={() => toggleOrderSelection(orderDto.order.id)}
                     disabled={orderDto.isExpired || isInteractiveDisabled || isPartOfPaymentAttempt}
                     className={orderDto.isExpired || isInteractiveDisabled || isPartOfPaymentAttempt ? "cursor-not-allowed" : ""}
                   />
                   <label
                     htmlFor={`order-${orderDto.order.id}`}
-                    className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 ${
+                    className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 cursor-pointer ${
                       orderDto.isExpired ? "text-gray-500 dark:text-gray-600" : ""
                     }`}
                   >
                     订单号: {orderDto.order.id}
                   </label>
-
                   <div className={`ml-auto text-sm font-medium flex items-center ${getCountdownColorClass(orderDto.timeRemaining, orderDto.isExpired)}`}>
                     <Clock className="h-4 w-4 inline-block mr-1 align-text-bottom" />
                     {orderDto.isExpired ? "已过期" : formatTimeRemaining(orderDto.timeRemaining)}
@@ -161,7 +200,6 @@ export default function PendingOrderList() {
                     />
                   </div>
                 )}
-
                 <div className="space-y-4 pl-6">
                   {orderDto.items.map((item) => (
                     <div key={item.id} className="flex items-start">
@@ -202,15 +240,12 @@ export default function PendingOrderList() {
           })}
         </AnimatePresence>
       </div>
-
       <Separator className="mt-2" />
-
       <div className="space-y-4 py-4">
         <div className="flex justify-between font-semibold text-base text-gray-900 dark:text-amber-50">
           <span>已选 ({selectedCount || 0}) 总计</span>
           <span>{formatPrice(totalPayable)}</span>
         </div>
-
         <Link href="/payment">
           <Button
             className="w-full min-h-10"
@@ -221,7 +256,6 @@ export default function PendingOrderList() {
             去支付已选订单 ({selectedCount || 0})
           </Button>
         </Link>
-
         {hasExpiredOrders && (
           <Button
             variant="secondary"
@@ -232,7 +266,6 @@ export default function PendingOrderList() {
             清除所有 {expiredOrderCount} 个已过期订单
           </Button>
         )}
-
         {!hasSelectableOrders && pendingOrders.length > 0 && !isLoading && (
           <p className="text-center text-sm text-orange-500">所有订单已过期，无法支付。</p>
         )}

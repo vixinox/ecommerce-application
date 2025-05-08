@@ -18,10 +18,11 @@ const MotionButton = motion.create(Button);
 
 export function ProductCard({product}: { product: Product }) {
   const router = useRouter();
-  const {token} = useAuth()
+  const {token, isLoading} = useAuth()
   const [isWishlisted, setIsWishlisted] = useState(product.wishlisted)
 
   const checkLogin = () => {
+    if (isLoading) return;
     if (!token) {
       toast.error("请先登录", {
         action: {

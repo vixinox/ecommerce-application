@@ -50,7 +50,7 @@ interface FetchedProductDTO extends Omit<UploadProductDTO, 'colorImages'> {
 }
 
 export function ProductForm({param}: { param?: string }) {
-  const {token} = useAuth();
+  const {token, isLoading: isAuthLoading} = useAuth();
   const router = useRouter();
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -78,7 +78,9 @@ export function ProductForm({param}: { param?: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
+
   useEffect(() => {
+    if (isAuthLoading) return;
     if (!param) {
       setIsLoading(false);
       setIsHydrated(true);

@@ -1,5 +1,4 @@
 "use client"
-
 import { motion } from "framer-motion"
 import { CheckCircle2, Clock, Truck, XCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -10,7 +9,7 @@ interface OrderTimelineProps {
   updatedAt: string
 }
 
-export function OrderTimeline({status, createdAt, updatedAt}: OrderTimelineProps) {
+export default function OrderTimeline({status, createdAt, updatedAt}: OrderTimelineProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return new Intl.DateTimeFormat("zh-CN", {
@@ -24,14 +23,25 @@ export function OrderTimeline({status, createdAt, updatedAt}: OrderTimelineProps
 
   const steps = [
     {
+      id: "PENDING_PAYMENT",
+      name: "待付款",
+      description: `订单创建于 ${formatDate(createdAt)}，等待付款`,
+      icon: Clock,
+      status: status === "CANCELED"
+        ? "canceled"
+        : ["PENDING_PAYMENT", "PENDING", "SHIPPED", "COMPLETED"].includes(status)
+          ? "complete"
+          : "upcoming",
+    },
+    {
       id: "PENDING",
       name: "待处理",
-      description: `订单创建于 ${formatDate(createdAt)}`,
+      description: "付款完成，待商家处理",
       icon: Clock,
-      status: ["PENDING", "SHIPPED", "COMPLETED"].includes(status)
-        ? "complete"
-        : status === "CANCELED"
-          ? "canceled"
+      status: status === "CANCELED"
+        ? "canceled"
+        : ["PENDING", "SHIPPED", "COMPLETED"].includes(status)
+          ? "complete"
           : "upcoming",
     },
     {
@@ -39,10 +49,10 @@ export function OrderTimeline({status, createdAt, updatedAt}: OrderTimelineProps
       name: "已发货",
       description: "订单已发出",
       icon: Truck,
-      status: ["SHIPPED", "COMPLETED"].includes(status)
-        ? "complete"
-        : status === "CANCELED"
-          ? "canceled"
+      status: status === "CANCELED"
+        ? "canceled"
+        : ["SHIPPED", "COMPLETED"].includes(status)
+          ? "complete"
           : "upcoming",
     },
     {
@@ -50,13 +60,13 @@ export function OrderTimeline({status, createdAt, updatedAt}: OrderTimelineProps
       name: "已完成",
       description: status === "COMPLETED" ? `订单已于 ${formatDate(updatedAt)} 送达` : "订单将送达",
       icon: CheckCircle2,
-      status: status === "COMPLETED"
-        ? "complete"
-        : status === "CANCELED"
-          ? "canceled"
+      status: status === "CANCELED"
+        ? "canceled"
+        : status === "COMPLETED"
+          ? "complete"
           : "upcoming",
     },
-  ]
+  ];
 
   if (status === "CANCELED") {
     steps.push({
@@ -65,7 +75,7 @@ export function OrderTimeline({status, createdAt, updatedAt}: OrderTimelineProps
       description: `订单已于 ${formatDate(updatedAt)} 取消`,
       icon: XCircle,
       status: "complete",
-    })
+    });
   }
 
   const container = {
@@ -76,12 +86,12 @@ export function OrderTimeline({status, createdAt, updatedAt}: OrderTimelineProps
         staggerChildren: 0.1,
       },
     },
-  }
+  };
 
   const item = {
     hidden: {opacity: 0, y: 10},
     show: {opacity: 1, y: 0},
-  }
+  };
 
   return (
     <motion.div initial="hidden" animate="show" variants={container}>
@@ -118,5 +128,5 @@ export function OrderTimeline({status, createdAt, updatedAt}: OrderTimelineProps
         ))}
       </ol>
     </motion.div>
-  )
+  );
 }

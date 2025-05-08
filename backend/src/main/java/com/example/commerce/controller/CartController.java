@@ -77,7 +77,7 @@ public class CartController {
         }
     }
 
-    @PostMapping("/remove")
+    @DeleteMapping("/remove")
     public ResponseEntity<?> removeFromCart(
             @RequestBody Map<String, String> data,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
