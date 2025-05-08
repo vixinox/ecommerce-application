@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useTheme } from 'next-themes'
-import { Heart, LogOut, Search, ShoppingBag, SunMoon, User } from "lucide-react"
+import { Heart, LogOut, Receipt, Search, ShoppingBag, SunMoon, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { API_URL } from "@/lib/api";
 import NavLinks from "@/components/nav-links";
+import PendingPayment from "@/components/pending-orderlist";
+import { usePendingPayment } from "@/hooks/usePendingPayment";
 
 export default function SiteHeader() {
   const router = useRouter()
@@ -32,6 +34,7 @@ export default function SiteHeader() {
   const {setTheme, theme} = useTheme()
   const [isScrolled, setIsScrolled] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const { pendingOrders } = usePendingPayment();
 
   const {cartItems} = useShoppingCart()
   const itemCount = cartItems.reduce((total, item) => total + item.quantity, 0)
@@ -110,6 +113,26 @@ export default function SiteHeader() {
               </Link>
             </Button>
           )}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="relative h-8 w-8" aria-label="待付款订单">
+                <Receipt className="h-5 w-5"/>
+                {pendingOrders && pendingOrders.length > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                  >
+                    {pendingOrders.length}
+                  </Badge>
+                )}
+                <span className="sr-only">待付款订单</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="w-full sm:max-w-md">
+              <SheetTitle>待付款订单</SheetTitle>
+              <PendingPayment/>
+            </SheetContent>
+          </Sheet>
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="relative h-8 w-8" aria-label="打开购物车">

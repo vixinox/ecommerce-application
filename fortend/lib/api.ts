@@ -123,7 +123,7 @@ export async function getMyOrderDetails(id: number, token: string) {
 }
 
 export async function getWishlist(token: string) {
-  return fetchData("/api/wishlist", token, {method: "POST"});
+  return fetchData("/api/wishlist", token, {method: "GET"});
 }
 
 export async function deleteMyProduct(productId: number, token: string) {
@@ -132,4 +132,22 @@ export async function deleteMyProduct(productId: number, token: string) {
 
 export async function searchMyProducts(token: string, query: string = "") {
   return fetchData(`/api/products/search?${query}`, token);
+}
+
+export async function getPendingOrders(token: string) {
+  return fetchData(`/api/orders/pending`, token);
+}
+
+export async function payOrder(token: string, orderIds: number[], transactId: string, amount: number) {
+  return fetchData(`/api/orders/pending`, token, {
+    method: "POST",
+    body: JSON.stringify({orderIds: orderIds, transactionId: transactId, amount: amount}),
+  });
+}
+
+export async function cancelOrder(token: string, orderId: number) {
+  return fetchData(`/api/orders/cancel`, token, {
+    method: "POST",
+    body: JSON.stringify({orderId: orderId}),
+  });
 }

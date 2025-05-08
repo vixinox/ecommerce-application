@@ -6,6 +6,7 @@ import { Toaster } from "sonner"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth-provider"
 import "./globals.css"
+import { PendingPaymentProvider } from "@/hooks/usePendingPayment";
 
 const inter = Inter({subsets: ["latin"]})
 
@@ -20,12 +21,14 @@ export default function RootLayout({children}: {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
     <body className={inter.className}>
-    <ThemeProvider attribute="class" defaultTheme="system" storageKey="e-commerce-theme">
-      <AuthProvider>
-        {children}
-        <Toaster position="bottom-right"/>
-      </AuthProvider>
-    </ThemeProvider>
+    <AuthProvider>
+      <PendingPaymentProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" storageKey="e-commerce-theme">
+          {children}
+          <Toaster position="bottom-right"/>
+        </ThemeProvider>
+      </PendingPaymentProvider>
+    </AuthProvider>
     </body>
     </html>
   )
