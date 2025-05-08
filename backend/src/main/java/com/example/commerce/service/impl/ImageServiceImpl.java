@@ -220,20 +220,43 @@ public class ImageServiceImpl implements ImageService {
 
     /**
      * !!! 新增方法 !!! 将数据库中存储的文件路径转换为外部可访问的URL。
-     * @param dbPath 数据库中存储的文件路径 (例如 "/products/xyz.jpg")
-     * @return 文件的完整URL，如果路径无效或为空则返回空字符串或占位符
+     * @param dbPath 数据库中存储的文件路径 (例如 "products/xyz.jpg" 或 "avatars/abc.png")
+     * @return 文件的完整前端可访问API路径，如果路径无效或为空则返回空字符串或占位符
      */
     @Override
     public String generateImageUrl(String dbPath) {
         if (dbPath == null || dbPath.isEmpty() || dbPath.trim().isEmpty()) {
-            return "";
+            return ""; // Or a default placeholder image URL if you have one
         }
-        dbPath = dbPath.trim();
-        if (!dbPath.startsWith("/")) {
-            dbPath = "/" + dbPath;
-            logger.warn("警告: 数据库路径 '{}' 没有以斜杠开头，已内部修正。", dbPath);
+        String trimmedDbPath = dbPath.trim();
+
+        // Remove leading slash if present, as we'll reconstruct the path part by part
+        if (trimmedDbPath.startsWith("/")) {
+            trimmedDbPath = trimmedDbPath.substring(1);
         }
-        return dbPath;
+
+        String type = null;
+        String imageName = null;
+
+        if (trimmedDbPath.startsWith(PRODUCTS_SUBDIR_NAME + "/")) {
+            type = PRODUCTS_SUBDIR_NAME;
+            imageName = trimmedDbPath.substring(PRODUCTS_SUBDIR_NAME.length() + 1);
+        } else if (trimmedDbPath.startsWith(AVATARS_SUBDIR_NAME + "/")) {
+            type = AVATARS_SUBDIR_NAME;
+            imageName = trimmedDbPath.substring(AVATARS_SUBDIR_NAME.length() + 1);
+        } else {
+            logger.warn("无法从dbPath '{}' 确定图片类型和名称，它不以 '{}/' 或 '{}/' 开头。", 
+                        trimmedDbPath, PRODUCTS_SUBDIR_NAME, AVATARS_SUBDIR_NAME);
+            return ""; // Or a default placeholder image URL
+        }
+
+        if (imageName == null || imageName.isEmpty()) {
+            logger.warn("从dbPath '{}' 解析出的图片名称为空。", trimmedDbPath);
+            return ""; // Or a default placeholder image URL
+        }
+
+        // Construct the URL that matches the ImageController mapping and is excluded from Auth
+        return "/api/image/" + type + "/" + imageName;
     }
 
     /**

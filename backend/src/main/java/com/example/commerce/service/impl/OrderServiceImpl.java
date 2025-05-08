@@ -9,6 +9,7 @@ import com.example.commerce.dto.OrderSearchDTO;
 import com.example.commerce.dto.SpendingReportDTO;
 import com.example.commerce.model.Order;
 import com.example.commerce.model.OrderItem;
+import com.example.commerce.model.Product;
 import com.example.commerce.model.ProductVariant;
 import com.example.commerce.model.User;
 import com.example.commerce.service.OrderService;
@@ -18,10 +19,12 @@ import com.github.pagehelper.PageInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -34,13 +37,19 @@ public class OrderServiceImpl implements OrderService {
     private static final String ORDER_STATUS_SHIPPED = "SHIPPED";
     private static final String ORDER_STATUS_COMPLETED = "COMPLETED";
     private static final String ORDER_STATUS_CANCELED = "CANCELED";
+    private static final String ORDER_STATUS_PENDING_PAYMENT = "PENDING_PAYMENT";
+    private static final String ORDER_STATUS_CANCELED_TIMEOUT = "CANCELED_TIMEOUT";
+
+    private static final int PAYMENT_EXPIRY_MINUTES = 15; // 支付过期时间：15分钟
 
     // 定义合法的状态集合，方便校验
     private static final Set<String> VALID_ORDER_STATUSES = Set.of(
             ORDER_STATUS_PENDING,
             ORDER_STATUS_SHIPPED,
             ORDER_STATUS_COMPLETED,
-            ORDER_STATUS_CANCELED
+            ORDER_STATUS_CANCELED,
+            ORDER_STATUS_PENDING_PAYMENT,
+            ORDER_STATUS_CANCELED_TIMEOUT
     );
 
     @Autowired
@@ -58,73 +67,121 @@ public class OrderServiceImpl implements OrderService {
         if (requiredQuantity == null || requiredQuantity <= 0)
             throw new IllegalArgumentException("商品数量无效");
 
-        //TODO: DAO检查库存
-        Integer availableStock = variant.getStockQuantity();
+        // 计算可用库存 = 总库存 - 已预留库存
+        Integer stockQuantity = variant.getStockQuantity() != null ? variant.getStockQuantity() : 0;
+        Integer reservedQuantity = variant.getReservedQuantity() != null ? variant.getReservedQuantity() : 0;
+        Integer availableStock = stockQuantity - reservedQuantity;
 
-        if (availableStock == null || availableStock < requiredQuantity)
+        if (availableStock < requiredQuantity)
             throw new RuntimeException("商品 [" + item.getProductName() + " - " + variant.getColor() + "/" +
-                    variant.getSize() + "] 库存不足，需要 " + requiredQuantity + " 库存只有 " + availableStock);
+                    variant.getSize() + "] 库存不足，需要 " + requiredQuantity + " 当前可用库存 " + availableStock +
+                    " (总库存:" + stockQuantity + ", 已预留:" + reservedQuantity + ")");
 
         return requiredQuantity;
     }
 
     /**
      * 创建新订单。
+     * 按照商家分组购物车商品，为每个商家创建独立的订单。
      * 包含库存检查、订单/明细保存、库存扣减和购物车清理等步骤。
      * 使用 @Transactional 注解确保操作的原子性。
      *
      * @param user  用户信息
      * @param items 购物车中选定的商品列表（CartItemDTO）
+     * @return 创建的订单ID列表
      * @throws RuntimeException 如果库存不足或订单创建失败
      */
+    @Override
     @Transactional
-    public void createOrder(User user, List<CartItemDTO> items) {
+    public List<Long> createOrder(User user, List<CartItemDTO> items) {
         if (items == null || items.isEmpty())
             throw new IllegalArgumentException("订单商品列表不能为空");
 
-        BigDecimal totalAmount = BigDecimal.ZERO;
-        List<OrderItem> orderItemsToCreate = new ArrayList<>();
-
+        // 创建的订单ID列表
+        List<Long> createdOrderIds = new ArrayList<>();
+        
+        // 首先按照商品所属的商家对购物车项进行分组
+        Map<Long, List<CartItemDTO>> itemsByMerchant = new HashMap<>();
+        
+        // 先检查所有商品的库存，避免后续创建部分订单成功，部分失败
         for (CartItemDTO item : items) {
             ProductVariant variant = item.getProductVariant();
             if (variant == null || variant.getId() == null)
                 throw new IllegalArgumentException("购物车项包含无效的商品款式信息");
-
-            totalAmount = totalAmount.add(
-                    variant.getPrice().multiply(
-                            BigDecimal.valueOf(
-                                    checkQuantity(item, variant))));
+            
+            // 验证库存
+            checkQuantity(item, variant);
+            
+            // 获取商品信息，以获取商家ID
+            Product product = productDao.getProductById(variant.getProductId());
+            if (product == null) {
+                throw new IllegalArgumentException("商品信息不存在，商品ID: " + variant.getProductId());
+            }
+            
+            Long merchantId = product.getOwnerId();
+            
+            // 将购物车项添加到对应商家的列表中
+            if (!itemsByMerchant.containsKey(merchantId)) {
+                itemsByMerchant.put(merchantId, new ArrayList<>());
+            }
+            itemsByMerchant.get(merchantId).add(item);
         }
-
-        Order newOrder = new Order();
-        newOrder.setUserId(user.getId());
-        newOrder.setTotalAmount(totalAmount);
-        newOrder.setStatus(ORDER_STATUS_PENDING);
-
-        int orderCreatedRows = orderDao.createOrder(newOrder);
-        if (orderCreatedRows != 1 || newOrder.getId() == null)
-            throw new RuntimeException("创建订单主记录失败");
-
-        Long newOrderId = newOrder.getId();
-
-        for (CartItemDTO item : items) {
-            OrderItem orderItem = getOrderItem(item, newOrderId);
-            orderItemsToCreate.add(orderItem);
+        
+        // 为每个商家创建独立的订单
+        for (Map.Entry<Long, List<CartItemDTO>> entry : itemsByMerchant.entrySet()) {
+            Long merchantId = entry.getKey();
+            List<CartItemDTO> merchantItems = entry.getValue();
+            
+            // 计算该商家订单的总金额
+            BigDecimal totalAmount = BigDecimal.ZERO;
+            List<OrderItem> orderItemsToCreate = new ArrayList<>();
+            
+            for (CartItemDTO item : merchantItems) {
+                ProductVariant variant = item.getProductVariant();
+                totalAmount = totalAmount.add(
+                        variant.getPrice().multiply(
+                                BigDecimal.valueOf(
+                                        item.getQuantity())));
+            }
+            
+            // 创建订单主记录
+            Order newOrder = new Order();
+            newOrder.setUserId(user.getId());
+            newOrder.setTotalAmount(totalAmount);
+            newOrder.setStatus(ORDER_STATUS_PENDING_PAYMENT); // 设置为"待支付"状态
+            newOrder.setExpiresAt(LocalDateTime.now().plusMinutes(PAYMENT_EXPIRY_MINUTES)); // 设置过期时间
+            
+            int orderCreatedRows = orderDao.createOrder(newOrder);
+            if (orderCreatedRows != 1 || newOrder.getId() == null)
+                throw new RuntimeException("创建订单主记录失败，商家ID: " + merchantId);
+            
+            Long newOrderId = newOrder.getId();
+            createdOrderIds.add(newOrderId);
+            
+            // 创建订单明细
+            for (CartItemDTO item : merchantItems) {
+                OrderItem orderItem = getOrderItem(item, newOrderId);
+                orderItemsToCreate.add(orderItem);
+            }
+            
+            int orderItemsCreatedRows = orderDao.createOrderItems(orderItemsToCreate);
+            if (orderItemsCreatedRows != orderItemsToCreate.size())
+                throw new RuntimeException("批量创建订单明细失败，预期插入 " + orderItemsToCreate.size() +
+                        " 条，实际插入 " + orderItemsCreatedRows + " 条，商家ID: " + merchantId);
+            
+            // 扣减库存
+            for (OrderItem item : orderItemsToCreate)
+                if (productDao.reserveStock(item.getProductVariantId(), item.getQuantity()) == 0)
+                    throw new RuntimeException("预留库存失败，商品可用库存不足。");
+            
+            // 清理购物车
+            for (CartItemDTO item : merchantItems)
+                cartDao.removeCardItem(user.getId(), item.getCartId());
+            
+            System.out.println("商家" + merchantId + "的订单创建成功，订单ID: " + newOrderId);
         }
-
-        int orderItemsCreatedRows = orderDao.createOrderItems(orderItemsToCreate);
-        if (orderItemsCreatedRows != orderItemsToCreate.size())
-            throw new RuntimeException("批量创建订单明细失败，预期插入 " + orderItemsToCreate.size() +
-                    " 条，实际插入 " + orderItemsCreatedRows + " 条");
-
-        for (OrderItem item : orderItemsToCreate)
-            if (productDao.deductStock(item.getProductVariantId(), item.getQuantity()) == 0)
-                throw new RuntimeException("库存扣减失败，商品库存不足。");
-
-        for (CartItemDTO item : items)
-            cartDao.removeCardItem(user.getId(), item.getCartId());
-
-        System.out.println("新订单创建成功，订单ID: " + newOrderId);
+        
+        return createdOrderIds;
     }
 
     @Override
@@ -508,5 +565,258 @@ public class OrderServiceImpl implements OrderService {
 
         logger.debug("Found {} orders matching criteria.", pageInfoResult.getTotal());
         return pageInfoResult;
+    }
+
+    /**
+     * 处理支付成功的回调。
+     * 更新相关订单状态为"待发货"，确认库存扣减。
+     *
+     * @param orderIds 此次支付成功对应的所有订单ID列表
+     * @param paymentGatewayTransactionId 支付网关返回的交易流水号
+     * @param paidAmount 用户实际支付的金额
+     * @throws IllegalArgumentException 如果订单状态不正确或支付金额不匹配等
+     * @throws RuntimeException 如果库存确认失败或其他系统级错误
+     */
+    @Override
+    @Transactional
+    public void processPaymentSuccess(List<Long> orderIds, String paymentGatewayTransactionId, BigDecimal paidAmount) {
+        if (orderIds == null || orderIds.isEmpty()) {
+            throw new IllegalArgumentException("订单ID列表不能为空。");
+        }
+        
+        logger.info("开始处理模拟支付成功：订单ID列表: {}, 模拟交易ID: {}, 模拟支付金额: {}", 
+                    orderIds, paymentGatewayTransactionId, paidAmount);
+
+        List<Order> ordersToProcess = new ArrayList<>();
+        BigDecimal calculatedTotalAmount = BigDecimal.ZERO; // 用于计算订单总额
+
+        for (Long orderId : orderIds) {
+            Order order = orderDao.getOrderById(orderId);
+            if (order == null) {
+                logger.error("模拟支付成功处理失败：订单 {} 不存在。", orderId);
+                throw new IllegalArgumentException("支付确认失败：订单 " + orderId + " 未找到。");
+            }
+
+            if (!ORDER_STATUS_PENDING_PAYMENT.equals(order.getStatus())) {
+                if (ORDER_STATUS_PENDING.equals(order.getStatus())) {
+                    logger.warn("模拟支付成功：订单 {} 当前状态已为 {} (已支付/待发货)，视为重复请求或已处理。", orderId, order.getStatus());
+                    // 将其加入列表以便后续统一处理订单项（如果适用）或仅作记录
+                    ordersToProcess.add(order); 
+                    calculatedTotalAmount = calculatedTotalAmount.add(order.getTotalAmount());
+                    continue; // 跳过状态更新
+                }
+                logger.error("模拟支付成功处理失败：订单 {} 当前状态为 {}，期望状态为 {}", orderId, order.getStatus(), ORDER_STATUS_PENDING_PAYMENT);
+                throw new IllegalStateException("支付确认失败：订单 " + orderId + " 状态不正确。");
+            }
+            
+            calculatedTotalAmount = calculatedTotalAmount.add(order.getTotalAmount());
+            ordersToProcess.add(order);
+        }
+        
+        // 打印一下计算的总金额和模拟传入的金额
+        logger.info("模拟支付：订单预期总金额: {}, 模拟传入支付金额: {}", calculatedTotalAmount, paidAmount);
+        
+        for (Order order : ordersToProcess) {
+            // 只处理真实需要从未支付 -> 已支付的订单
+            if (ORDER_STATUS_PENDING_PAYMENT.equals(order.getStatus())) {
+                // 更新数据库中的订单状态和过期时间
+                int updatedRows = orderDao.updateOrderStatusAndClearExpiry(order.getId(), ORDER_STATUS_PENDING);
+                if (updatedRows != 1) {
+                    logger.error("更新订单 {} 状态为支付成功失败。影响行数: {}。可能订单状态已被并发修改。", order.getId(), updatedRows);
+                    throw new RuntimeException("更新订单 " + order.getId() + " 状态为支付成功失败。");
+                }
+
+                List<OrderItem> orderItems = orderDao.getOrderItemsByOrderIds(Collections.singletonList(order.getId()));
+                if (orderItems == null || orderItems.isEmpty()) {
+                    logger.error("模拟支付成功处理：订单 {} 没有找到任何订单项。", order.getId());
+                    throw new IllegalStateException("订单 " + order.getId() + " 数据异常：缺少订单项。");
+                }
+
+                for (OrderItem item : orderItems) {
+                    if (productDao.confirmStockDeduction(item.getProductVariantId(), item.getQuantity()) == 0) {
+                        logger.error("确认库存扣减失败 - 订单ID: {}, 商品: {}, 款式ID: {}, 数量: {}. 可能预留的库存已被非法修改或总库存不足。",
+                                order.getId(), item.getSnapshotProductName(), item.getProductVariantId(), item.getQuantity());
+                        throw new RuntimeException("关键错误：确认商品 " + item.getSnapshotProductName() + " (款式ID: " + item.getProductVariantId() + ") 的库存扣减失败。");
+                    }
+                }
+                logger.info("订单 {} 已成功模拟支付，状态更新为 {}，相关库存已确认扣减。", order.getId(), ORDER_STATUS_PENDING);
+            }
+        }
+        logger.info("所有选定订单已处理模拟支付。订单ID列表: {}, 模拟交易ID: {}", orderIds, paymentGatewayTransactionId);
+    }
+
+    /**
+     * 定时任务：处理过期未支付订单
+     * 每分钟执行一次，查找所有已过期但状态仍为 PENDING_PAYMENT 的订单
+     * 将其状态更新为 CANCELED_TIMEOUT，并释放预留的库存
+     */
+    @Scheduled(fixedRate = 60000) // 每60秒执行一次
+    @Transactional
+    public void processExpiredOrders() {
+        logger.info("开始处理过期未支付订单...");
+        
+        List<Order> expiredOrders = orderDao.findExpiredPendingPaymentOrders();
+        if (expiredOrders.isEmpty()) {
+            logger.info("没有找到过期未支付订单");
+            return;
+        }
+        
+        logger.info("找到 {} 个过期未支付订单", expiredOrders.size());
+        
+        for (Order order : expiredOrders) {
+            logger.info("处理过期订单 ID: {}, 用户: {}, 金额: {}, 过期时间: {}", 
+                order.getId(), order.getUserId(), order.getTotalAmount(), order.getExpiresAt());
+            
+            try {
+                // 更新订单状态为超时取消
+                int updatedRows = orderDao.updateOrderStatusToTimeout(order.getId(), ORDER_STATUS_CANCELED_TIMEOUT);
+                
+                if (updatedRows != 1) {
+                    logger.warn("更新订单 {} 状态为超时取消失败，可能已被其他进程处理", order.getId());
+                    continue;
+                }
+                
+                // 获取订单项
+                List<OrderItem> orderItems = orderDao.getOrderItemsByOrderIds(Collections.singletonList(order.getId()));
+                
+                if (orderItems == null || orderItems.isEmpty()) {
+                    logger.warn("过期订单 {} 没有找到任何订单项", order.getId());
+                    continue;
+                }
+                
+                // 释放每个商品的预留库存
+                for (OrderItem item : orderItems) {
+                    if (productDao.releaseReservedStock(item.getProductVariantId(), item.getQuantity()) == 0) {
+                        logger.error("释放商品 {} (款式ID: {}) 的预留库存失败，数量: {}",
+                            item.getSnapshotProductName(), item.getProductVariantId(), item.getQuantity());
+                    } else {
+                        logger.info("成功释放商品 {} (款式ID: {}) 的预留库存，数量: {}",
+                            item.getSnapshotProductName(), item.getProductVariantId(), item.getQuantity());
+                    }
+                }
+                
+                logger.info("订单 {} 已标记为超时取消，并释放了所有预留库存", order.getId());
+                
+            } catch (Exception e) {
+                logger.error("处理过期订单 {} 时发生错误", order.getId(), e);
+            }
+        }
+        
+        logger.info("过期订单处理完成");
+    }
+
+    @Override
+    public List<OrderDTO> getPendingPaymentOrders(User user) {
+        List<Order> pendingOrders = orderDao.getPendingPaymentOrdersByUserId(user.getId());
+        if (pendingOrders == null || pendingOrders.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        List<Long> orderIds = pendingOrders.stream()
+                .map(Order::getId)
+                .collect(Collectors.toList());
+        
+        List<OrderItem> items = orderDao.getOrderItemsByOrderIds(orderIds);
+        Map<Long, List<OrderItem>> itemsByOrderId = items.stream()
+                .collect(Collectors.groupingBy(OrderItem::getOrderId));
+        
+        return pendingOrders.stream()
+                .map(order -> {
+                    List<OrderItem> orderItems = itemsByOrderId.getOrDefault(order.getId(), Collections.emptyList());
+                    OrderDTO dto = new OrderDTO(order, orderItems);
+                    // 计算订单距离过期还有多少时间（秒）
+                    if (order.getExpiresAt() != null) {
+                        LocalDateTime now = LocalDateTime.now();
+                        LocalDateTime expiresAt = order.getExpiresAt();
+                        long secondsRemaining = java.time.Duration.between(now, expiresAt).getSeconds();
+                        // 如果已经过期，设置为0
+                        dto.setSecondsRemaining(Math.max(0, secondsRemaining));
+                    }
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 用户取消订单
+     * 
+     * @param user 当前用户
+     * @param orderId 要取消的订单ID
+     * @return 取消成功返回true，失败返回false
+     */
+    @Override
+    @Transactional
+    public boolean cancelOrder(User user, Long orderId) {
+        // 1. 获取订单详情
+        Order order = orderDao.getOrderById(orderId);
+        if (order == null) {
+            throw new IllegalArgumentException("订单不存在: " + orderId);
+        }
+        
+        // 2. 检查订单是否属于该用户
+        if (!order.getUserId().equals(user.getId())) {
+            throw new IllegalArgumentException("无权操作此订单，订单不属于当前用户");
+        }
+        
+        // 3. 检查订单状态是否允许取消
+        String currentStatus = order.getStatus();
+        
+        // 用户只能取消"待支付"和"待发货"状态的订单
+        if (ORDER_STATUS_PENDING_PAYMENT.equals(currentStatus)) {
+            // 3.1 如果是待支付状态，执行取消并释放库存
+            logger.info("用户 {} 取消待支付订单 {}", user.getId(), orderId);
+            
+            int updatedRows = orderDao.updateOrderStatusByUser(
+                    orderId, 
+                    user.getId(), 
+                    ORDER_STATUS_PENDING_PAYMENT, 
+                    ORDER_STATUS_CANCELED);
+            
+            if (updatedRows != 1) {
+                logger.warn("取消订单失败，订单 {} 可能已被其他进程更新", orderId);
+                return false;
+            }
+            
+            // 释放预留的库存
+            List<OrderItem> orderItems = orderDao.getOrderItemsByOrderIds(Collections.singletonList(orderId));
+            if (orderItems != null && !orderItems.isEmpty()) {
+                for (OrderItem item : orderItems) {
+                    if (productDao.releaseReservedStock(item.getProductVariantId(), item.getQuantity()) == 0) {
+                        logger.error("释放商品 {} (款式ID: {}) 的预留库存失败，数量: {}",
+                                item.getSnapshotProductName(), item.getProductVariantId(), item.getQuantity());
+                    } else {
+                        logger.info("成功释放商品 {} (款式ID: {}) 的预留库存，数量: {}",
+                                item.getSnapshotProductName(), item.getProductVariantId(), item.getQuantity());
+                    }
+                }
+            }
+            
+            logger.info("订单 {} 已被用户成功取消，并释放了预留库存", orderId);
+            return true;
+            
+        } else if (ORDER_STATUS_PENDING.equals(currentStatus)) {
+            // 3.2 如果是待发货状态，仅执行取消（不涉及库存操作，因为库存已确认扣减）
+            logger.info("用户 {} 取消待发货订单 {}", user.getId(), orderId);
+            
+            int updatedRows = orderDao.updateOrderStatusByUser(
+                    orderId, 
+                    user.getId(), 
+                    ORDER_STATUS_PENDING, 
+                    ORDER_STATUS_CANCELED);
+            
+            if (updatedRows != 1) {
+                logger.warn("取消订单失败，订单 {} 可能已被其他进程更新", orderId);
+                return false;
+            }
+            
+            logger.info("待发货订单 {} 已被用户成功取消", orderId);
+            return true;
+            
+        } else {
+            // 3.3 其他状态不允许取消
+            String message = "订单当前状态为 '" + currentStatus + "'，不允许取消。只有待支付或待发货状态的订单可以取消。";
+            logger.warn("用户 {} 尝试取消状态为 {} 的订单 {}: {}", user.getId(), currentStatus, orderId, message);
+            throw new IllegalStateException(message);
+        }
     }
 }

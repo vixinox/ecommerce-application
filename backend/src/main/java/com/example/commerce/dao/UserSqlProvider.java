@@ -49,6 +49,10 @@ public class UserSqlProvider implements ProviderMethodResolver {
                 // 使用LOWER转换进行不区分大小写的模糊搜索
                 WHERE("LOWER(u.email) LIKE LOWER(CONCAT('%', #{criteria.email}, '%'))");
             }
+            if (StringUtils.hasText(criteria.getNickname())) {
+                // 使用LOWER转换进行不区分大小写的模糊搜索
+                WHERE("LOWER(u.nickname) LIKE LOWER(CONCAT('%', #{criteria.nickname}, '%'))");
+            }
             if (StringUtils.hasText(criteria.getRole())) {
                 WHERE("u.role = #{criteria.role}");
             }

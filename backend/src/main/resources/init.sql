@@ -180,6 +180,9 @@ BEGIN
     WHERE id = OLD.product_id;
 END//
 
+ALTER TABLE orders
+    ADD COLUMN expires_at TIMESTAMP NULL DEFAULT NULL;
+
 DELIMITER ;
 
 INSERT INTO users (username, email, password, nickname, avatar, role)
