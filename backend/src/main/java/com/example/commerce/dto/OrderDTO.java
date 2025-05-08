@@ -16,10 +16,17 @@ public class OrderDTO {
     private Order order;
     private List<OrderItem> items;
     private User buyerInfo;
+    private Long secondsRemaining; // 订单距离过期还有多少秒，仅对待支付订单有效
 
     public OrderDTO(Order order, List<OrderItem> items) {
         this.order = order;
         this.items = items;
         this.buyerInfo = null;
+    }
+    
+    public OrderDTO(Order order, List<OrderItem> items, User buyerInfo) {
+        this.order = order;
+        this.items = items;
+        this.buyerInfo = buyerInfo;
     }
 }

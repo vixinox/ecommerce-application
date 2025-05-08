@@ -164,6 +164,18 @@ public interface OrderDAO {
     @Select("SELECT SUM(total_amount) FROM orders")
     BigDecimal calculateTotalRevenue();
 
+    /**
+     * 更新订单状态为支付成功，并清除过期时间。
+     * 此方法仅当订单当前状态为 PENDING_PAYMENT 时才会成功更新。
+     * @param orderId 订单ID
+     * @param newStatus 新状态 (通常是"已支付待发货"状态)
+     * @return 更新的行数 (1表示成功，0表示失败)
+     */
+    @Update("UPDATE orders SET status = #{newStatus}, expires_at = NULL, updated_at = NOW() " +
+            "WHERE id = #{orderId} AND status = 'PENDING_PAYMENT'")
+    int updateOrderStatusAndClearExpiry(@Param("orderId") Long orderId, 
+                                       @Param("newStatus") String newStatus);
+
     List<AdminDashboardDTO.RecentSaleDTO> getRecentSales(@Param("days") int days);
 
     List<AdminDashboardDTO.OrderStatusCountDTO> getOrderStatusCounts();
@@ -183,4 +195,62 @@ public interface OrderDAO {
             @Result(property = "updatedAt", column = "o_updated_at") // 使用别名
     })
     List<Order> searchOrdersByCriteria(@Param("criteria") OrderSearchDTO criteria);
+    
+    /**
+     * 查找所有已过期但仍处于"待支付"状态的订单
+     * 即当前时间已超过expires_at且status为PENDING_PAYMENT的订单
+     * @return 过期未支付订单列表
+     */
+    @Select("SELECT * FROM orders WHERE status = 'PENDING_PAYMENT' AND expires_at < NOW()")
+    @Results({
+            @Result(property = "userId", column = "user_id"),
+            @Result(property = "totalAmount", column = "total_amount"),
+            @Result(property = "createdAt", column = "created_at"),
+            @Result(property = "updatedAt", column = "updated_at"),
+            @Result(property = "expiresAt", column = "expires_at")
+    })
+    List<Order> findExpiredPendingPaymentOrders();
+    
+    /**
+     * 将订单状态更新为超时取消，并清除过期时间
+     * 仅当订单当前状态为"待支付"时才会更新
+     * @param orderId 订单ID
+     * @param timeoutStatus 超时状态（通常为"超时取消"）
+     * @return 更新的行数（1表示成功，0表示失败）
+     */
+    @Update("UPDATE orders SET status = #{timeoutStatus}, updated_at = NOW() " +
+            "WHERE id = #{orderId} AND status = 'PENDING_PAYMENT'")
+    int updateOrderStatusToTimeout(@Param("orderId") Long orderId, 
+                                  @Param("timeoutStatus") String timeoutStatus);
+
+    /**
+     * 获取用户待支付的订单列表
+     * @param userId 用户ID
+     * @return 待支付订单列表
+     */
+    @Select("SELECT * FROM orders WHERE user_id = #{userId} AND status = 'PENDING_PAYMENT' ORDER BY created_at DESC")
+    @Results({
+            @Result(property = "userId", column = "user_id"),
+            @Result(property = "totalAmount", column = "total_amount"),
+            @Result(property = "createdAt", column = "created_at"),
+            @Result(property = "updatedAt", column = "updated_at"),
+            @Result(property = "expiresAt", column = "expires_at")
+    })
+    List<Order> getPendingPaymentOrdersByUserId(@Param("userId") Long userId);
+
+    /**
+     * 用户取消自己的订单
+     * 只有当订单属于该用户并且状态是指定状态时才能更新
+     * @param orderId 订单ID
+     * @param userId 用户ID
+     * @param currentStatus 当前状态
+     * @param newStatus 新状态（通常是"已取消"）
+     * @return 更新的行数（1表示成功，0表示失败）
+     */
+    @Update("UPDATE orders SET status = #{newStatus}, updated_at = NOW() " +
+            "WHERE id = #{orderId} AND user_id = #{userId} AND status = #{currentStatus}")
+    int updateOrderStatusByUser(@Param("orderId") Long orderId, 
+                               @Param("userId") Long userId,
+                               @Param("currentStatus") String currentStatus,
+                               @Param("newStatus") String newStatus);
 }

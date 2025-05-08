@@ -12,5 +12,6 @@ public class ProductVariant {
     private BigDecimal price;
     private String image;
     private Integer stockQuantity;
+    private Integer reservedQuantity;
     private Boolean inStock;
 }

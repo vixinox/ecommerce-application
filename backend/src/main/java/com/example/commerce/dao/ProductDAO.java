@@ -58,6 +58,42 @@ public interface ProductDAO {
     int deductStock(@Param("variantId") Long variantId, @Param("quantity") Integer quantity);
 
     /**
+     * 预留库存：增加预留数量。
+     * 条件：确保可用库存 (stock_quantity - reserved_quantity) 大于等于预留数量。
+     *
+     * @param variantId 商品变体ID
+     * @param quantity  要预留的数量
+     * @return 受影响的行数 (成功为1, 失败为0)
+     */
+    @Update("UPDATE product_variants SET reserved_quantity = reserved_quantity + #{quantity}, updated_at = NOW() " +
+            "WHERE id = #{variantId} AND (stock_quantity - reserved_quantity) >= #{quantity}")
+    int reserveStock(@Param("variantId") Long variantId, @Param("quantity") Integer quantity);
+
+    /**
+     * 释放预留库存：减少预留数量。
+     * 条件：确保预留数量大于等于要释放的数量。
+     *
+     * @param variantId 商品变体ID
+     * @param quantity  要释放的数量
+     * @return 受影响的行数 (成功为1, 失败为0)
+     */
+    @Update("UPDATE product_variants SET reserved_quantity = reserved_quantity - #{quantity}, updated_at = NOW() " +
+            "WHERE id = #{variantId} AND reserved_quantity >= #{quantity}")
+    int releaseReservedStock(@Param("variantId") Long variantId, @Param("quantity") Integer quantity);
+
+    /**
+     * 确认库存扣减：从总库存和预留库存中同时扣减。
+     * 条件：确保总库存和预留库存都大于等于要扣减的数量。
+     *
+     * @param variantId 商品变体ID
+     * @param quantity  要扣减的数量
+     * @return 受影响的行数 (成功为1, 失败为0)
+     */
+    @Update("UPDATE product_variants SET stock_quantity = stock_quantity - #{quantity}, reserved_quantity = reserved_quantity - #{quantity}, updated_at = NOW() " +
+            "WHERE id = #{variantId} AND reserved_quantity >= #{quantity} AND stock_quantity >= #{quantity}")
+    int confirmStockDeduction(@Param("variantId") Long variantId, @Param("quantity") Integer quantity);
+
+    /**
      * 插入商品
      *
      * @param product 商品对象
