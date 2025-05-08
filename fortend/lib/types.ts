@@ -112,3 +112,51 @@ export interface FetchedProductDTO {
   colorImageUrls?: { [key: string]: string };
   status?: string;
 }
+
+export interface OrderDetails {
+  order: {
+    id: number;
+    totalAmount: number;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  items: {
+    id: number;
+    snapshotProductName: string;
+    snapshotVariantColor: string;
+    snapshotVariantSize: string;
+    snapshotVariantImage: string;
+    quantity: number;
+    purchasedPrice: number;
+  }[];
+  buyerInfo: {
+    nickname: string;
+    email: string;
+    avatar: string;
+  };
+}
+
+
+export interface OrderDto {
+  order: {
+    id: number;
+    orderNumber?: string;
+    userId: number;
+    status: string;
+    totalAmount: number;
+    createdAt: string;
+    updatedAt: string;
+  };
+  items: any[];
+  buyerInfo?: any;
+}
+
+export interface OrdersResponse {
+  list: OrderDto[];
+  total: number;
+  pageNum: number;
+  pageSize: number;
+  size: number;
+  pages: number;
+}

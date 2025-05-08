@@ -118,6 +118,10 @@ export async function getOrderDetails(id: number, token: string) {
   return fetchData(`/api/orders/${id}`, token);
 }
 
+export async function getMyOrderDetails(id: number, token: string) {
+  return fetchData(`/api/orders/merchant/${id}`, token);
+}
+
 export async function getWishlist(token: string) {
   return fetchData("/api/wishlist", token, {method: "POST"});
 }
@@ -127,5 +131,5 @@ export async function deleteMyProduct(productId: number, token: string) {
 }
 
 export async function searchMyProducts(token: string, query: string = "") {
-  return fetchData(`/api/products/search/merchant?${query}`, token);
+  return fetchData(`/api/products/search?${query}`, token);
 }

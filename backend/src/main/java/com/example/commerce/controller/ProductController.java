@@ -168,6 +168,21 @@ public class ProductController {
         }
     }
 
+    @PutMapping("/update/status")
+    public ResponseEntity<?> updateProductStatus(
+            @RequestBody Map<String, String> statusData,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        try {
+            User user = userService.checkMerchantOrAdmin(authHeader);
+            Long productId = Long.valueOf(statusData.get("productId"));
+            String newStatus = statusData.get("status");
+            productService.updateProductStatus(productId, newStatus.trim(), user);
+            return ResponseEntity.ok(Map.of("message", "商品 " + productId + " 状态已更新为 " + newStatus));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(403).body("更新商品状态失败: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/search")
     public ResponseEntity<?> searchProductsAdmin(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
@@ -182,7 +197,7 @@ public class ProductController {
             @RequestParam(value = "page", defaultValue = "1") int pageNum,
             @RequestParam(value = "size", defaultValue = "10") int pageSize) {
         try {
-            userService.checkAdmin(authHeader);
+            userService.checkAuthorization(authHeader);// TODO: 方便参数暂时改为商家允许
             ProductSearchCriteria criteria = new ProductSearchCriteria(
                     productId, name, categoryName, status, minPrice, maxPrice,
                     Optional.ofNullable(dateAddedStart), Optional.ofNullable(dateAddedEnd)

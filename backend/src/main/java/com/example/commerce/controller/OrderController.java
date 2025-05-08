@@ -106,28 +106,31 @@ public class OrderController {
         }
     }
 
-    @PutMapping("/merchant/{orderId}/status")
-    public ResponseEntity<?> updateOrderStatusByMerchant(
-            @RequestHeader(value = "Authorization", required = false) String authHeader,
-            @PathVariable Long orderId,
-            @RequestBody Map<String, String> statusUpdate) {
+    /**
+     * 管理员更新订单状态
+     * 需要管理员权限
+     * @param statusData 请求体，应包含 {"orderId": "ORDER_ID", "status": "NEW_STATUS"}
+     * @param authHeader 认证头
+     * @return ResponseEntity
+     */
+    @PutMapping("/orders/update/status")
+    public ResponseEntity<?> updateOrderStatusAdmin(
+            @RequestBody Map<String, String> statusData,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            User merchant = userService.checkMerchant(authHeader);
-            String newStatus = statusUpdate.get("status");
-            if (!StringUtils.hasText(newStatus)) {
-                return ResponseEntity.badRequest().body("请求体中必须包含 'status' 字段");
-            }
+            User user = userService.checkMerchantOrAdmin(authHeader);
 
-            boolean success = orderService.updateOrderStatusByMerchant(merchant, orderId, newStatus);
-            if (success) {
-                return ResponseEntity.ok("订单状态更新成功");
-            } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body("订单状态更新失败 (可能原因: 订单不存在, 无权限, 或状态不允许)");
-            }
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("更新订单状态时发生错误: " + e.getMessage());
+            String orderId = statusData.get("orderId");
+            String newStatus = statusData.get("status");
+
+            orderService.updateOrderStatusAdmin(Long.valueOf(orderId), newStatus.trim(), user);
+            return ResponseEntity.ok(Map.of("message", "订单 " + orderId + " 状态已更新为 " + newStatus));
+        } catch (IllegalArgumentException e) {
+            // 无效的状态值
+            return ResponseEntity.badRequest().body("更新订单状态失败: " + e.getMessage());
+        } catch (RuntimeException e) {
+            // 权限不足、订单不存在或其他运行时异常
+            return ResponseEntity.status(403).body("更新订单状态失败: " + e.getMessage());
         }
     }
 
@@ -144,7 +147,7 @@ public class OrderController {
             @RequestParam(value = "page", defaultValue = "1") int pageNum,
             @RequestParam(value = "size", defaultValue = "10") int pageSize) {
         try {
-            userService.checkAdmin(authHeader);
+            userService.checkMerchantOrAdmin(authHeader);// TODO: 方便参数暂时改为商家允许
             OrderSearchDTO criteria = new OrderSearchDTO(orderId, userId, username, productName, status, dateFrom, dateTo);
             PageInfo<OrderDTO> orderPageInfo = orderService.searchOrders(criteria, pageNum, pageSize);
             return ResponseEntity.ok(orderPageInfo);

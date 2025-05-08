@@ -91,7 +91,7 @@ export default function AdminLayout({children}: AdminLayoutProps) {
 
   return (
     <div className="min-h-screen flex">
-      <aside className="hidden lg:flex flex-col w-64 border-r">
+      <aside className="hidden lg:flex flex-col w-64 border-r h-screen fixed">
         <div className="p-6">
           <Link className="text-xl font-bold" href="/">电商管理系统</Link>
         </div>
@@ -143,7 +143,7 @@ export default function AdminLayout({children}: AdminLayoutProps) {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto lg:ml-64">
         <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
           {children}
         </div>

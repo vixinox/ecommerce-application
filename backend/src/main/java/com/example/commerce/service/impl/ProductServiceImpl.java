@@ -605,7 +605,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
-    public void updateProductStatus(Long productId, String status) {
+    public void updateProductStatus(Long productId, String status, User user) {
         // 1. 校验状态值
         if (!VALID_PRODUCT_STATUSES.contains(status)) {
             throw new IllegalArgumentException("无效的商品状态: " + status + ". 合法状态为: " + VALID_PRODUCT_STATUSES);
@@ -614,6 +614,10 @@ public class ProductServiceImpl implements ProductService {
         Product product = productDAO.getProductById(productId);
         if (product == null) {
             throw new RuntimeException("商品不存在: " + productId);
+        }
+
+        if (Objects.equals(user.getRole(), "MERCHANT") && !product.getOwnerId().equals(user.getId())) {
+            throw new IllegalArgumentException("你没有权限修改此商品。");
         }
         String oldStatus = product.getStatus(); // 获取旧状态
         productDAO.updateProductStatus(productId, status);

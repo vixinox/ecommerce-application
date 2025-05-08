@@ -46,7 +46,7 @@ public interface OrderService {
     // 添加管理员获取所有订单列表的方法 (分页)
     PageInfo<OrderDTO> getAllOrdersAdmin(int pageNum, int pageSize, String statusFilter);
 
-    void updateOrderStatusAdmin(Long orderId, String newStatus);
+    void updateOrderStatusAdmin(Long orderId, String newStatus, User user);
 
     OrderDTO getOrderDetailsAdmin(Long orderId);
 

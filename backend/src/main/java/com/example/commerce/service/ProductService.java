@@ -30,7 +30,7 @@ public interface ProductService {
 
     PageInfo<Product> getAllProductsAdmin(int pageNum, int pageSize, String statusFilter);
 
-    void updateProductStatus(Long productId, String status);
+    void updateProductStatus(Long productId, String status, User user);
 
     Optional<ProductEditResponseDTO> getProductDetailsAdmin(Long productId);
 

@@ -369,7 +369,7 @@ public class OrderServiceImpl implements OrderService {
     // 新增 updateOrderStatusAdmin 实现
     @Override
     @Transactional // 状态更新需要事务
-    public void updateOrderStatusAdmin(Long orderId, String newStatus) {
+    public void updateOrderStatusAdmin(Long orderId, String newStatus, User user) {
         // 1. 校验状态是否合法
         if (!VALID_ORDER_STATUSES.contains(newStatus)) {
             throw new IllegalArgumentException("无效的订单状态: " + newStatus + ". 合法状态为: " + VALID_ORDER_STATUSES);

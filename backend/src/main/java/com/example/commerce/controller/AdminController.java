@@ -116,28 +116,6 @@ public class AdminController {
     }
 
     /**
-     * 更新商品状态
-     * 需要管理员权限
-     * @param statusData 请求体，应包含 {"status": "NEW_STATUS"}
-     * @param authHeader 认证头
-     * @return ResponseEntity
-     */
-    @PutMapping("/products/update/status")
-    public ResponseEntity<?> updateProductStatus(
-            @RequestBody Map<String, String> statusData,
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        try {
-            userService.checkAdmin(authHeader);
-            Long productId = Long.valueOf(statusData.get("productId"));
-            String newStatus = statusData.get("status");
-            productService.updateProductStatus(productId, newStatus.trim());
-            return ResponseEntity.ok(Map.of("message", "商品 " + productId + " 状态已更新为 " + newStatus));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(403).body("更新商品状态失败: " + e.getMessage());
-        }
-    }
-
-    /**
      * 获取所有订单列表（分页，可选状态过滤）
      * 需要管理员权限
      */
@@ -157,37 +135,6 @@ public class AdminController {
         } catch (RuntimeException e) {
             // 权限不足或其他运行时异常
             return ResponseEntity.status(403).body("获取订单列表失败: " + e.getMessage());
-        }
-    }
-
-    /**
-     * 管理员更新订单状态
-     * 需要管理员权限
-     * @param statusData 请求体，应包含 {"orderId": "ORDER_ID", "status": "NEW_STATUS"}
-     * @param authHeader 认证头
-     * @return ResponseEntity
-     */
-    @PutMapping("/orders/update/status")
-    public ResponseEntity<?> updateOrderStatusAdmin(
-            @RequestBody Map<String, String> statusData,
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        try {
-            // 1. 检查管理员权限
-            userService.checkAdmin(authHeader);
-
-            String orderId = statusData.get("orderId");
-            String newStatus = statusData.get("status");
-            // 2. 调用服务更新状态
-            orderService.updateOrderStatusAdmin(Long.valueOf(orderId), newStatus.trim());
-
-            // 3. 返回成功响应
-            return ResponseEntity.ok(Map.of("message", "订单 " + orderId + " 状态已更新为 " + newStatus));
-        } catch (IllegalArgumentException e) {
-            // 无效的状态值
-            return ResponseEntity.badRequest().body("更新订单状态失败: " + e.getMessage());
-        } catch (RuntimeException e) {
-            // 权限不足、订单不存在或其他运行时异常
-            return ResponseEntity.status(403).body("更新订单状态失败: " + e.getMessage());
         }
     }
 
