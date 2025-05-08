@@ -228,7 +228,7 @@ public interface OrderDAO {
      * @param userId 用户ID
      * @return 待支付订单列表
      */
-    @Select("SELECT * FROM orders WHERE user_id = #{userId} AND status = 'PENDING_PAYMENT' ORDER BY created_at DESC")
+    @Select("SELECT * FROM orders WHERE user_id = #{userId} AND status = 'PENDING_PAYMENT' AND expires_at > NOW() ORDER BY created_at DESC")
     @Results({
             @Result(property = "userId", column = "user_id"),
             @Result(property = "totalAmount", column = "total_amount"),
