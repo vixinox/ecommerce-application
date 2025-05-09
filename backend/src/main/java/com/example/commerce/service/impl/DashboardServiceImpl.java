@@ -27,6 +27,8 @@ public class DashboardServiceImpl implements DashboardService {
     private static final String ORDER_STATUS_PENDING = "PENDING";
     private static final int LOW_STOCK_THRESHOLD = 10;
     private static final int DEFAULT_LOW_STOCK_THRESHOLD = 10;
+    private static final int SALES_OVERVIEW_PERIODS = 30;
+    private static final int RECENT_ORDERS_LIMIT = 10;
 
     @Autowired
     public DashboardServiceImpl(OrderDAO orderDAO, ProductDAO productDAO, UserDAO userDAO) {
@@ -35,16 +37,17 @@ public class DashboardServiceImpl implements DashboardService {
         this.userDAO = userDAO;
     }
 
-    @Override
     public MerchantDashboardDTO getMerchantDashboardData(User merchant) {
         Long merchantId = merchant.getId();
 
         Long pendingOrdersCount = orderDAO.countMerchantOrdersByStatus(merchantId, ORDER_STATUS_PENDING);
         Long totalOrdersCount = orderDAO.countTotalMerchantOrders(merchantId);
         BigDecimal totalSalesAmount = orderDAO.calculateTotalMerchantSales(merchantId);
-
         Long activeProductsCount = productDAO.countMerchantProductsByStatus(merchantId, PRODUCT_STATUS_ACTIVE);
         Long lowStockProductsCount = productDAO.countMerchantLowStockVariants(merchantId, LOW_STOCK_THRESHOLD);
+
+        List<MerchantDashboardDTO.SalesDataPoint> salesOverviewData = orderDAO.getMerchantSalesOverview(merchantId, SALES_OVERVIEW_PERIODS);
+        List<MerchantDashboardDTO.RecentOrderDTO> recentOrders = orderDAO.getMerchantRecentOrders(merchantId, RECENT_ORDERS_LIMIT);
 
         MerchantDashboardDTO dashboardData = new MerchantDashboardDTO();
         dashboardData.setPendingOrdersCount(pendingOrdersCount != null ? pendingOrdersCount : 0L);
@@ -52,6 +55,10 @@ public class DashboardServiceImpl implements DashboardService {
         dashboardData.setTotalSalesAmount(totalSalesAmount != null ? totalSalesAmount : BigDecimal.ZERO);
         dashboardData.setActiveProductsCount(activeProductsCount != null ? activeProductsCount : 0L);
         dashboardData.setLowStockProductsCount(lowStockProductsCount != null ? lowStockProductsCount : 0L);
+
+        // 设置新的数据字段
+        dashboardData.salesOverviewData = salesOverviewData;
+        dashboardData.recentOrders = recentOrders;
 
         return dashboardData;
     }
