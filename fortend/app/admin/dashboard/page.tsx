@@ -269,10 +269,12 @@ export default function DashboardPage() {
                 <ChartContainer config={orderStatusesChartConfig} className="h-full w-full">
                   <BarChart
                     accessibilityLayer
-                    data={data?.orderStatusCounts?.map(item => ({
-                      ...item,
-                      status: statusMap[item.status] || item.status,
-                    })) || []}
+                    data={
+                      (data?.orderStatusCounts?.map(item => ({
+                        ...item,
+                        status: statusMap[item.status] || item.status,
+                      })) || []).filter(item => item.status !== "PENDING_PAYMENT")
+                    }
                     layout="vertical"
                     margin={{
                       left: 20,

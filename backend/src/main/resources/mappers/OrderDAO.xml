@@ -125,4 +125,33 @@
         WHERE user_id = #{userId}
     </select>
 
+    <select id="getMerchantSalesOverview" parameterType="map" resultType="com.example.commerce.dto.MerchantDashboardDTO$SalesDataPoint">
+        SELECT
+            DATE_FORMAT(o.created_at, '%Y-%m-%d') AS period,
+            COALESCE(SUM(o.total_amount), 0) AS amount
+        FROM orders o
+                 INNER JOIN order_items oi ON o.id = oi.order_id
+                 INNER JOIN products p ON oi.product_id = p.id
+        WHERE p.owner_id = #{merchantId}
+          AND o.created_at >= DATE_SUB(CURRENT_DATE, INTERVAL #{periods} DAY)
+        GROUP BY DATE_FORMAT(o.created_at, '%Y-%m-%d')
+        ORDER BY period DESC
+    </select>
+
+    <select id="getMerchantRecentOrders" parameterType="map" resultType="com.example.commerce.dto.MerchantDashboardDTO$RecentOrderDTO">
+        SELECT
+            o.id AS orderId,
+            o.created_at AS orderDate,
+            o.total_amount AS totalAmount,
+            o.status AS status,
+            u.username AS customerUsername
+        FROM orders o
+                 INNER JOIN users u ON o.user_id = u.id
+                 INNER JOIN order_items oi ON o.id = oi.order_id
+                 INNER JOIN products p ON oi.product_id = p.id
+        WHERE p.owner_id = #{merchantId} AND o.status != 'PENDING_PAYMENT'
+        GROUP BY o.id, o.created_at
+        ORDER BY o.created_at DESC
+        LIMIT #{limit}
+    </select>
 </mapper>

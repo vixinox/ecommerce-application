@@ -162,7 +162,7 @@ export function ProductDetail({productDetail}: { productDetail: ProductDetails }
     return <div>商品信息不完整，无法显示详情。</div>;
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 lg:px-32 md:px-24">
       <div className="flex items-center gap-2">
         <Button onClick={() => router.back()} variant="outline" size="sm" className="flex items-center gap-1">
           <ChevronLeft className="h-4 w-4"/>

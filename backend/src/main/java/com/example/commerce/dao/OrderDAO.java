@@ -1,6 +1,7 @@
 package com.example.commerce.dao;
 
 import com.example.commerce.dto.AdminDashboardDTO;
+import com.example.commerce.dto.MerchantDashboardDTO;
 import com.example.commerce.dto.OrderSearchDTO;
 import com.example.commerce.dto.SpendingReportDTO;
 import com.example.commerce.model.Order;
@@ -253,4 +254,9 @@ public interface OrderDAO {
                                @Param("userId") Long userId,
                                @Param("currentStatus") String currentStatus,
                                @Param("newStatus") String newStatus);
+
+
+    List<MerchantDashboardDTO.SalesDataPoint> getMerchantSalesOverview(Long merchantId, int periods);
+
+    List<MerchantDashboardDTO.RecentOrderDTO> getMerchantRecentOrders(Long merchantId, int limit);
 }

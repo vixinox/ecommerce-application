@@ -9,6 +9,7 @@ export interface Product {
   status: string;
   totalStock: number;
   wishlisted: boolean;
+  createdAt: Date;
 }
 
 export interface Variant {
