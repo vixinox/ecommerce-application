@@ -1,7 +1,7 @@
 "use client"
-import React, { createContext, ReactNode, useContext, useEffect, useRef, useState, } from 'react';
+import { createContext, ReactNode, useContext, useEffect, useRef, useState, } from 'react';
 import { toast } from 'sonner';
-import { useAuth } from "@/components/auth-provider";
+import { useAuth } from "@/providers/auth-provider";
 import { cancelOrder, getPendingOrders } from "@/lib/api";
 
 interface OrderItem {

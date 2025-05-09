@@ -224,7 +224,6 @@ public class ProductController {
             @RequestParam(value = "size", defaultValue = "10") int pageSize) {
         try {
             User merchant = userService.checkMerchant(authHeader);
-            // TODO: 仅搜索当前商户的商品
             return ResponseEntity.ok(emptyList());
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("搜索商品失败: " + e.getMessage());

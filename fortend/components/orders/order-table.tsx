@@ -22,9 +22,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import Link from "next/link";
 import { OrderDto } from "@/lib/types";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@radix-ui/react-hover-card";
 
 interface OrdersTableProps {
   orders: OrderDto[];
@@ -110,21 +110,21 @@ const getAllItemNames = (items?: OrderDto["items"]) => {
   return items.map((item) => `${item.snapshotProductName} x${item.quantity} (${formatCurrency(item.purchasedPrice)})`).join(";\n");
 };
 
-const OrdersTable: React.FC<OrdersTableProps> = ({
-                                                   orders,
-                                                   isLoading,
-                                                   isInitialLoading,
-                                                   totalOrders,
-                                                   currentPage,
-                                                   totalPages,
-                                                   pageSize,
-                                                   onPageChange,
-                                                   onStatusChange,
-                                                   visibleColumns,
-                                                   allColumns,
-                                                   isContentDisabled,
-                                                   isAnyFilterActive,
-                                                 }) => {
+export default function OrdersTable({
+                                      orders,
+                                      isLoading,
+                                      isInitialLoading,
+                                      totalOrders,
+                                      currentPage,
+                                      totalPages,
+                                      pageSize,
+                                      onPageChange,
+                                      onStatusChange,
+                                      visibleColumns,
+                                      allColumns,
+                                      isContentDisabled,
+                                      isAnyFilterActive,
+                                    }: OrdersTableProps) {
 
   return (
     <motion.div variants={item}>
@@ -253,7 +253,7 @@ const OrdersTable: React.FC<OrdersTableProps> = ({
                           ))}
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
-                              <Link href={`/admin/orders/${order?.id}`} passHref legacyBehavior>
+                              <Link href={`/admin/orders/${order?.id}`} passHref>
                                 <Button
                                   variant="outline"
                                   size="icon"
@@ -399,5 +399,3 @@ const OrdersTable: React.FC<OrdersTableProps> = ({
     </motion.div>
   );
 };
-
-export default OrdersTable;

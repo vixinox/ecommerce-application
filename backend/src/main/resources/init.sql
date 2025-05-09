@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS product_variants
     in_stock       BOOLEAN AS (stock_quantity > 0) STORED,
     created_at     TIMESTAMP       DEFAULT CURRENT_TIMESTAMP,
     updated_at     TIMESTAMP       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    reserved_quantity INT NOT NULL DEFAULT 0,
     CONSTRAINT uk_product_variant UNIQUE (product_id, color, size),
     CONSTRAINT fk_product_variant_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
     INDEX idx_product_variants_product_id (product_id)
@@ -135,11 +136,8 @@ CREATE TRIGGER after_product_variant_insert
 BEGIN
     UPDATE products
     SET
-        -- 重新计算 default_image: 找到 image 非空且 id 最小的 variant 的图片
         default_image = (SELECT image FROM product_variants WHERE product_id = NEW.product_id AND image IS NOT NULL ORDER BY id LIMIT 1),
-        -- 重新计算 min_price
         min_price     = IFNULL((SELECT MIN(price) FROM product_variants WHERE product_id = NEW.product_id), 0),
-        -- 重新计算 total_stock
         total_stock   = IFNULL((SELECT SUM(stock_quantity) FROM product_variants WHERE product_id = NEW.product_id), 0)
     WHERE id = NEW.product_id;
 END//
@@ -153,11 +151,8 @@ CREATE TRIGGER after_product_variant_update
 BEGIN
     UPDATE products
     SET
-        -- 重新计算 default_image: 找到 image 非空且 id 最小的 variant 的图片
         default_image = (SELECT image FROM product_variants WHERE product_id = NEW.product_id AND image IS NOT NULL ORDER BY id LIMIT 1),
-        -- 重新计算 min_price
         min_price     = IFNULL((SELECT MIN(price) FROM product_variants WHERE product_id = NEW.product_id), 0),
-        -- 重新计算 total_stock
         total_stock   = IFNULL((SELECT SUM(stock_quantity) FROM product_variants WHERE product_id = NEW.product_id), 0)
     WHERE id = NEW.product_id;
 END//
@@ -171,11 +166,8 @@ CREATE TRIGGER after_product_variant_delete
 BEGIN
     UPDATE products
     SET
-        -- 重新计算 default_image: 找到剩余 variants 中 image 非空且 id 最小的图片
         default_image = (SELECT image FROM product_variants WHERE product_id = OLD.product_id AND image IS NOT NULL ORDER BY id LIMIT 1),
-        -- 重新计算 min_price
         min_price     = IFNULL((SELECT MIN(price) FROM product_variants WHERE product_id = OLD.product_id), 0),
-        -- 重新计算 total_stock
         total_stock   = IFNULL((SELECT SUM(stock_quantity) FROM product_variants WHERE product_id = OLD.product_id), 0)
     WHERE id = OLD.product_id;
 END//
@@ -184,6 +176,3 @@ ALTER TABLE orders
     ADD COLUMN expires_at TIMESTAMP NULL DEFAULT NULL;
 
 DELIMITER ;
-
-INSERT INTO users (username, email, password, nickname, avatar, role)
-VALUES ('123', 'aa@aa.aa', '96cae35ce8a9b0244178bf28e4966c2ce1b8385723a96a6b838858cdd6ca0a1e', 'aa', '', 'MERCHANT');

@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { FilterIcon, Loader2, Tag, InfoIcon } from "lucide-react"
 import { getProductsAdmin, updateProductStatus } from "@/lib/api"
-import { useAuth } from "@/components/auth-provider"
+import { useAuth } from "@/providers/auth-provider"
 import { useRouter } from "next/navigation"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
 import { Product } from "@/lib/types";
-import ProductTable from "@/components/product-table";
+import ProductTable from "@/components/products/product-table";
 import { cn } from "@/lib/utils";
 
 interface ProductFilters {

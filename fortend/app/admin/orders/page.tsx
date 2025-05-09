@@ -22,7 +22,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/components/auth-provider";
+import { useAuth } from "@/providers/auth-provider";
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -31,7 +31,7 @@ import { format, isValid } from "date-fns"
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label";
 import { OrderDto, OrdersResponse } from "@/lib/types";
-import OrdersTable from "@/components/order-table";
+import OrdersTable from "@/components/orders/order-table";
 
 const container = {
   hidden: { opacity: 0 },

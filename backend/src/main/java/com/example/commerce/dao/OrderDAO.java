@@ -73,7 +73,6 @@ public interface OrderDAO {
             @Result(property = "totalAmount", column = "total_amount"),
             @Result(property = "createdAt", column = "created_at"),
             @Result(property = "updatedAt", column = "updated_at")
-            // 可以补充其他需要的字段映射
     })
     List<Order> getOrdersByIds(@Param("orderIds") List<Long> orderIds);
 
@@ -123,8 +122,6 @@ public interface OrderDAO {
      */
      @UpdateProvider(type = OrderSqlProvider.class, method = "updateOrderStatusByMerchant")
      int updateOrderStatusByMerchant(@Param("orderId") Long orderId, @Param("status") String status, @Param("merchantId") Long merchantId);
-
-    // --- 新增商家仪表盘统计方法 ---
 
     /**
      * 统计商家特定状态的订单数量
@@ -188,12 +185,12 @@ public interface OrderDAO {
      */
     @SelectProvider(type = OrderSqlProvider.class, method = "searchOrdersByCriteria")
     @Results({
-            @Result(property = "id", column = "o_id"), // 使用别名以防与join的表冲突
+            @Result(property = "id", column = "o_id"),
             @Result(property = "userId", column = "user_id"),
             @Result(property = "totalAmount", column = "total_amount"),
-            @Result(property = "status", column = "o_status"), // 使用别名
-            @Result(property = "createdAt", column = "o_created_at"), // 使用别名
-            @Result(property = "updatedAt", column = "o_updated_at") // 使用别名
+            @Result(property = "status", column = "o_status"),
+            @Result(property = "createdAt", column = "o_created_at"),
+            @Result(property = "updatedAt", column = "o_updated_at")
     })
     List<Order> searchOrdersByCriteria(@Param("criteria") OrderSearchDTO criteria);
     

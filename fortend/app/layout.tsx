@@ -1,13 +1,13 @@
-import type React from "react"
+import { ReactNode } from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { Toaster } from "sonner"
 
-import { ThemeProvider } from "@/components/theme-provider"
-import { AuthProvider } from "@/components/auth-provider"
+import { ThemeProvider } from "@/providers/theme-provider"
+import { AuthProvider } from "@/providers/auth-provider"
 import "./globals.css"
 import { PendingPaymentProvider } from "@/hooks/usePendingPayment";
-import { ShoppingCartProvider } from "@/components/shopping-cart-provider"
+import { ShoppingCartProvider } from "@/providers/shopping-cart-provider"
 
 const inter = Inter({subsets: ["latin"]})
 
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 }
 
 export default function RootLayout({children}: {
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>

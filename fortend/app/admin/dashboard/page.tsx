@@ -7,10 +7,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Package, ShoppingBag, TrendingUp, Users } from "lucide-react"
 import { getDashboardData } from "@/lib/api"
 import { useRouter } from "next/navigation";
-import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent, } from "@/components/ui/chart"
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
-import { useAuth } from "@/components/auth-provider";
+import { useAuth } from "@/providers/auth-provider";
 import { DashboardData } from "@/lib/types";
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
 const container = {
   hidden: {opacity: 0},

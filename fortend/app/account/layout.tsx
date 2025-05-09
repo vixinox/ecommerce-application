@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useEffect } from "react";
+import { useEffect, ReactNode } from "react";
 import { NavItem } from "@/components/nav-item";
 import { useRouter } from "next/navigation";
-import { ChartNoAxesCombined, FileText, Package, Settings, UserIcon, Warehouse, ReceiptText } from "lucide-react";
-import { useAuth } from "@/components/auth-provider";
+import { ChartNoAxesCombined, FileText, Package, Settings, UserIcon, Warehouse } from "lucide-react";
+import { useAuth } from "@/providers/auth-provider";
 import SiteHeader from "@/components/site-header";
-import { ShoppingCartProvider } from "@/components/shopping-cart-provider";
+import { ShoppingCartProvider } from "@/providers/shopping-cart-provider";
 
 interface AccountLayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export default function AccountLayout({children}: AccountLayoutProps) {
@@ -70,9 +70,6 @@ export default function AccountLayout({children}: AccountLayoutProps) {
                 </NavItem>
                 <NavItem href="/account/merchant/products" icon={<Warehouse className="mr-2 h-4 w-4"/>}>
                   商品管理
-                </NavItem>
-                <NavItem href="/account/merchant/orders" icon={<ReceiptText className="mr-2 h-4 w-4"/>}>
-                  订单管理
                 </NavItem>
               </nav>
             </div>

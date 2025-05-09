@@ -12,11 +12,11 @@ import java.util.Optional;
 @AllArgsConstructor
 public class ProductSearchCriteria {
     private Long productId;
-    private String name; // 商品名称 (模糊搜索)
-    private String categoryName; // 分类名称 (模糊搜索)
-    private String status; // 商品状态 (精确匹配, e.g., AVAILABLE, UNAVAILABLE, DELETED)
-    private Double minPrice; // 最低价格
-    private Double maxPrice; // 最高价格
-    private Optional<LocalDate> dateAddedStart; // 上架日期范围开始
-    private Optional<LocalDate> dateAddedEnd; // 上架日期范围结束
+    private String name;
+    private String categoryName;
+    private String status;
+    private Double minPrice;
+    private Double maxPrice;
+    private Optional<LocalDate> dateAddedStart;
+    private Optional<LocalDate> dateAddedEnd;
 } 

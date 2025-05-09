@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, CheckCircle, CreditCard, RotateCw, XCircle } from "lucide-react";
 import { formatPrice, usePendingPayment } from "@/hooks/usePendingPayment";
 import { toast } from "sonner";
-import { useAuth } from "@/components/auth-provider";
+import { useAuth } from "@/providers/auth-provider";
 import { API_URL, payOrder } from "@/lib/api";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useState } from "react";

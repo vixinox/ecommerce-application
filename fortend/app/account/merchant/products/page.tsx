@@ -4,7 +4,7 @@ import { Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import ProductDashboard from "@/components/product-dashboard";
+import ProductDashboard from "@/components/products/product-dashboard";
 
 export const metadata: Metadata = {
   title: "商品管理 | 管理面板",

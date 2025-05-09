@@ -1,6 +1,6 @@
 "use client";
 
-import type React from "react";
+import { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils";
 
 interface NavItemProps {
   href: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
+  icon: ReactNode;
+  children: ReactNode;
 }
 
 export function NavItem({href, icon, children}: NavItemProps) {

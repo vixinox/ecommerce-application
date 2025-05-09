@@ -1,12 +1,12 @@
 "use client"
 
 import { getOrderDetails } from "@/lib/api";
-import { useAuth } from "@/components/auth-provider";
+import { useAuth } from "@/providers/auth-provider";
 import { use, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import OrderDetail from "@/components/order-detail";
+import OrderDetail from "@/components/orders/order-detail";
 import { OrderDetails } from "@/lib/types";
 
 export default function OrderPage({params: paramsPromise}: { params: Promise<{ id: string }> }) {

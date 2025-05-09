@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ProductCard } from "@/components/product-card";
+import { ProductCard } from "@/components/products/product-card";
 import { Badge } from "@/components/ui/badge";
 import { AnimatePresence, motion } from "framer-motion";
 import { Product } from "@/lib/types";
@@ -22,13 +22,32 @@ const itemVariants = {
   exit: {opacity: 0, y: 20, transition: {duration: 0.1}},
 };
 
-export default function ProductGrid({initialProducts}: { initialProducts: Product[] }) {
+interface ProductGridProps {
+  initialProducts: Product[];
+  isNetworkError?: boolean;
+}
+
+export default function ProductGrid({initialProducts, isNetworkError = false}: ProductGridProps) {
+  if (isNetworkError)
+    return (
+      <div className="text-center py-16 flex flex-col items-center">
+        <p className="text-lg font-bold">请检查网络连接......</p>
+      </div>
+    );
+
   const [selectedCategory, setSelectedCategory] = useState("全部");
   const categories = ["全部", ...new Set(initialProducts.map((product) => product.category))];
   const filteredProducts =
     selectedCategory === "全部"
       ? initialProducts
       : initialProducts.filter((product) => product.category === selectedCategory);
+
+  if (filteredProducts.length === 0)
+    return (
+      <div className="text-center py-16 flex flex-col items-center">
+        <p className="text-lg font-bold">似乎还没有商品......</p>
+      </div>
+    );
 
   return (
     <div className="space-y-6">

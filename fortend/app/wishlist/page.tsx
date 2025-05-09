@@ -7,13 +7,13 @@ import { ArrowDown, Heart, Loader2, Plus, ShoppingCart, Trash2, X } from "lucide
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import { useAuth } from "@/components/auth-provider"
+import { useAuth } from "@/providers/auth-provider"
 import SiteHeader from "@/components/site-header"
 import SiteFooter from "@/components/site-footer"
 import { motion } from "framer-motion"
 import { API_URL, getWishlist } from "@/lib/api"
 import { formatPrice } from "@/lib/utils"
-import { ShoppingCartProvider, useShoppingCart } from "@/components/shopping-cart-provider"
+import { ShoppingCartProvider, useShoppingCart } from "@/providers/shopping-cart-provider"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -173,7 +173,7 @@ export default function WishlistPage() {
         const defaultVariant = productDetail.variants[0]
         if (defaultVariant.inStock) {
           if (!isBatch) {
-            addToCart(defaultVariant.id, 1)
+            await addToCart(defaultVariant.id, 1)
             toast.success(`${productName} 已加入购物车`, {
               description: `已添加默认款式：${defaultVariant.color} ${defaultVariant.size}`
             })
@@ -255,7 +255,7 @@ export default function WishlistPage() {
   return (
     <ShoppingCartProvider>
       <div
-        className="flex min-h-screen flex-col bg-gradient-to-b from-background via-background to-background/80 dark:from-background dark:via-background/95 dark:to-background/90">
+        className="flex min-h-screen flex-col">
         <SiteHeader/>
         <main className="flex-1">
           <div className="container py-8 md:py-12 mx-auto lg:px-32 md:px-16">
@@ -315,7 +315,7 @@ export default function WishlistPage() {
                   className="relative mx-auto w-32 h-32 grid place-items-center"
                   variants={emptyStateChildVariants}
                 >
-                  <div className="absolute inset-0 rounded-full bg-primary/10 animate-pulse"></div>
+                  <div className="absolute inset-0 rounded-full bg-primary/10"></div>
                   <Heart className="h-20 w-20 text-primary/70" strokeWidth={1.5}/>
                 </MotionDiv>
                 <MotionDiv className="space-y-2 max-w-md mx-auto" variants={emptyStateChildVariants}>
@@ -335,7 +335,7 @@ export default function WishlistPage() {
               <>
                 {wishlistItems.length > 0 && (
                   <MotionDiv
-                    className="flex justify-between items-center mb-8 p-4 bg-card border border-border rounded-xl shadow-sm"
+                    className="flex justify-between items-center mb-8 p-4 border border-border rounded-xl shadow-sm"
                     initial="initial"
                     animate="animate"
                     variants={batchToolbarVariants}

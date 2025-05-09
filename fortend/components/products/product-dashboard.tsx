@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { FilterIcon, Loader2, Tag, ChevronDown, ChevronUp } from "lucide-react"
 import { searchMyProducts, updateProductStatus } from "@/lib/api"
-import { useAuth } from "@/components/auth-provider"
+import { useAuth } from "@/providers/auth-provider"
 import { useRouter } from "next/navigation"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
@@ -24,8 +24,8 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
 import { Product } from "@/lib/types";
-import { ProductsStats } from "@/components/products-stats";
-import ProductTable from "@/components/product-table";
+import { ProductsStats } from "@/components/products/products-stats";
+import ProductTable from "@/components/products/product-table";
 
 interface ProductFilters {
   name?: string
@@ -205,7 +205,7 @@ export default function ProductDashboard() {
   return (
     <motion.div initial="hidden" animate="show" variants={container} className="space-y-6 mt-6">
       <motion.div variants={item} className="rounded-lg border bg-card text-card-foreground shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 p-6">
           <CardTitle className="text-2xl font-bold">商品统计概览</CardTitle>
           <Button
             variant="ghost"
@@ -227,7 +227,7 @@ export default function ProductDashboard() {
               transition={{ duration: 0.3, ease: "easeInOut" }}
               className="overflow-hidden"
             >
-              <CardContent className="pt-0"><ProductsStats products={products}/></CardContent>
+              <CardContent className="pt-0 pb-6"><ProductsStats products={products}/></CardContent>
             </motion.div>
           )}
         </AnimatePresence>

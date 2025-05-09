@@ -155,3 +155,7 @@ export async function getProducts(token: string, size: number = 4) {
 export async function getProductsWithoutAuth(size: number = 4) {
   return fetchData(`/api/products/random?size=${size}`);
 }
+
+export async function changeRoleForTest(username: string, role: string) {
+  return fetchData(`/api/user/test/update/role/${username}?role=${role}`, "", {method: "POST"})
+}

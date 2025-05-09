@@ -20,7 +20,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { useAuth } from "@/components/auth-provider";
+import { useAuth } from "@/providers/auth-provider";
 import { API_URL } from "@/lib/api";
 import { toast } from "sonner";
 

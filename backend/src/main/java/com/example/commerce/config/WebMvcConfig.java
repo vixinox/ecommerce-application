@@ -22,7 +22,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                     "/api/user/register",
                     "/api/image/**",
                     "/api/user/check/**",
-                    "/api/products/**"
+                    "/api/products/**",
+                    "/api/user/test/**"
                 );
     }
 

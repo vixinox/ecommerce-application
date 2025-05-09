@@ -11,9 +11,6 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class AuthInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        if (request.getRequestURI().startsWith("/api/avatar/")) {
-            return true;
-        }
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
         }

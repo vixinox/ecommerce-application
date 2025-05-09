@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import { MouseEvent } from "react"
 import { useState } from "react"
 import Image from "next/image"
 import { Expand, X } from "lucide-react"
@@ -21,7 +21,7 @@ export function ProductGallery({images}: { images: string[] }) {
     setIsZoomed(!isZoomed)
   }
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
     if (!isZoomed) return
 
     const {left, top, width, height} = e.currentTarget.getBoundingClientRect()

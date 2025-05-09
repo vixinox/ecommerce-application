@@ -35,7 +35,6 @@ public class ProductServiceImpl implements ProductService {
 
     private static final Logger logger = LoggerFactory.getLogger(ProductServiceImpl.class);
 
-    // 定义商品状态常量和有效状态集
     public static final String PRODUCT_STATUS_PENDING = "PENDING";
     public static final String PRODUCT_STATUS_ACTIVE = "ACTIVE";
     public static final String PRODUCT_STATUS_INACTIVE = "INACTIVE";
@@ -253,7 +252,7 @@ public class ProductServiceImpl implements ProductService {
             }
         }
 
-        // 使用无参构造函数和 setters 创建 DTO
+
         ProductEditResponseDTO responseDTO = new ProductEditResponseDTO();
         responseDTO.setId(product.getId());
         responseDTO.setName(product.getName());
@@ -264,7 +263,7 @@ public class ProductServiceImpl implements ProductService {
         responseDTO.setVariants(variantDtos);
         responseDTO.setColorImageUrls(colorImageUrls);
         responseDTO.setStatus(product.getStatus());
-        // getProductForEdit 不需要 ownerInfo，所以设为 null 或不设置
+
         responseDTO.setOwnerInfo(null);
 
         return Optional.of(responseDTO);
@@ -312,7 +311,7 @@ public class ProductServiceImpl implements ProductService {
         List<ProductVariant> currentVariants = productDAO.getVariantsByProductId(productId);
         Map<String, String> currentColorImagePaths = currentVariants.stream()
                 .filter(pv -> pv.getImage() != null && !pv.getImage().trim().isEmpty())
-                .collect(Collectors.toMap(ProductVariant::getColor, ProductVariant::getImage, (existing, replacement) -> existing)); // Handle potential duplicate colors by keeping the first one
+                .collect(Collectors.toMap(ProductVariant::getColor, ProductVariant::getImage, (existing, replacement) -> existing));
 
         List<String> deletedFilePaths = new ArrayList<>();
         if (updatedProductDTO.getDeletedColors() != null && !updatedProductDTO.getDeletedColors().isEmpty()) {
@@ -607,11 +606,10 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public void updateProductStatus(Long productId, String status, User user) {
-        // 1. 校验状态值
+
         if (!VALID_PRODUCT_STATUSES.contains(status)) {
             throw new IllegalArgumentException("无效的商品状态: " + status + ". 合法状态为: " + VALID_PRODUCT_STATUSES);
         }
-
         Product product = productDAO.getProductById(productId);
         if (product == null) {
             throw new RuntimeException("商品不存在: " + productId);
@@ -620,9 +618,9 @@ public class ProductServiceImpl implements ProductService {
         if (Objects.equals(user.getRole(), "MERCHANT") && !product.getOwnerId().equals(user.getId())) {
             throw new IllegalArgumentException("你没有权限修改此商品。");
         }
-        String oldStatus = product.getStatus(); // 获取旧状态
+        String oldStatus = product.getStatus();
         productDAO.updateProductStatus(productId, status);
-        logger.info("管理员更新了商品 {} 的状态: {} -> {}", productId, oldStatus, status); // 添加日志
+        logger.info("管理员更新了商品 {} 的状态: {} -> {}", productId, oldStatus, status);
     }
 
     @Override
@@ -680,20 +678,19 @@ public class ProductServiceImpl implements ProductService {
         if (product == null) {
             throw new RuntimeException("商品不存在");
         }
-        // 检查是否已经是DELETED状态，如果是则不执行操作或抛出特定异常
         if (PRODUCT_STATUS_DELETED.equals(product.getStatus())) {
             logger.warn("商品 {} 已经是DELETED状态，无需再次删除。", productId);
-            return; // 或者可以抛出异常，例如: throw new IllegalStateException("商品已删除");
+            return;
         }
         productDAO.updateProductStatus(productId, PRODUCT_STATUS_DELETED);
-        // 可选: 记录日志或发送通知等
+
         logger.info("商品 {} 已被软删除。", productId);
     }
 
     @Override
     public PageInfo<Product> searchProductsAdmin(com.example.commerce.dto.ProductSearchCriteria criteria, int pageNum, int pageSize) {
         PageHelper.startPage(pageNum, pageSize);
-        List<Product> products = productDAO.searchProductsAdmin(criteria); // Assuming ProductDAO will have this method
+        List<Product> products = productDAO.searchProductsAdmin(criteria);
         return new PageInfo<>(products);
     }
 }

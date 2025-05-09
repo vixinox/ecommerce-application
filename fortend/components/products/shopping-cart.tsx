@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useShoppingCart } from "@/components/shopping-cart-provider";
+import { useShoppingCart } from "@/providers/shopping-cart-provider";
 import { formatPrice } from "@/lib/utils";
 import { API_URL } from "@/lib/api";
 import { CartItem } from "@/lib/types";

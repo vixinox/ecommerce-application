@@ -51,4 +51,6 @@ public interface UserService {
      * @return 包含用户信息的 PageInfo 对象 (不含密码)
      */
     PageInfo<User> searchUsers(UserSearchDTO criteria, int pageNum, int pageSize);
+
+    void updateUserRoleForTest(String username, String role);
 }

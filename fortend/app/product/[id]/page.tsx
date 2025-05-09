@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation"
-import { ShoppingCartProvider } from "@/components/shopping-cart-provider"
+import { ShoppingCartProvider } from "@/providers/shopping-cart-provider"
 import SiteHeader from "@/components/site-header"
-import { ProductDetail } from "@/components/product-detail"
+import { ProductDetail } from "@/components/products/product-detail"
 import { ProductDetails } from "@/lib/types"
 import SiteFooter from "@/components/site-footer";
 import { API_URL } from "@/lib/api";

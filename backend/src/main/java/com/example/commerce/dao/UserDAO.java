@@ -62,8 +62,8 @@ public interface UserDAO {
      * @return 用户列表 (不含密码)
      */
     @SelectProvider(type = UserSqlProvider.class, method = "findUsersByCriteria")
-    // 确保这里的@Results映射了所有需要的字段，特别是如果User模型和数据库列名不完全一致时
-    // 通常 User 模型字段名和数据库列名通过驼峰<->下划线自动映射，或者在MyBatis配置中全局设置
-    // 如果没有特殊情况，可以不加@Results，依赖默认映射
     List<User> findUsersByCriteria(@Param("criteria") UserSearchDTO criteria);
+
+    @Update("UPDATE users SET role = #{newRole} WHERE username = #{username}")
+    void updateUserRoleForTest(String username, String newRole);
 }

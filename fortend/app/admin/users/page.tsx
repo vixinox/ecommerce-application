@@ -26,7 +26,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { useAuth } from "@/components/auth-provider";
+import { useAuth } from "@/providers/auth-provider";
 import { useRouter } from "next/navigation"
 import { API_URL, deleteUser, getUsers, updateUserRole, updateUserStatus } from "@/lib/api";
 import { motion } from "framer-motion"
@@ -136,7 +136,7 @@ export default function UsersPage() {
     }
 
     try {
-      if (!isAuthLoading)
+      if (isAuthLoading)
         return;
       if (!token) {
         toast.error("请先登录");

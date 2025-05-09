@@ -1,13 +1,12 @@
 "use client"
 
-import type React from "react";
-import { useState } from "react"
+import { useState, MouseEvent } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Heart, ShoppingCart } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/components/auth-provider"
+import { useAuth } from "@/providers/auth-provider"
 import { cn, formatPrice } from "@/lib/utils"
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -53,7 +52,7 @@ export function ProductCard({product, index = 0}: ProductCardProps) {
     return true;
   };
 
-  const toggleWishlist = async (e: React.MouseEvent) => {
+  const toggleWishlist = async (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!checkLogin()) {

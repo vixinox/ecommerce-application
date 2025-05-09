@@ -1,6 +1,5 @@
 "use client";
-import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
@@ -17,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { API_URL } from "@/lib/api";
-import { useAuth } from "@/components/auth-provider";
+import { useAuth } from "@/providers/auth-provider";
 
 const productSchema = z.object({
   name: z.string().min(1, {message: "商品名称不能为空"}),
@@ -321,7 +320,7 @@ export function ProductForm({param}: { param?: string }) {
   const removeSize = useCallback((sizeToRemove: string) => {
     setSizes(prevSizes => prevSizes.filter(size => size !== sizeToRemove))
   }, []);
-  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>, color: string) => {
+  const handleImageUpload = useCallback((e: ChangeEvent<HTMLInputElement>, color: string) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];

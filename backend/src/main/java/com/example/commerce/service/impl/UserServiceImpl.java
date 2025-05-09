@@ -25,7 +25,6 @@ public class UserServiceImpl implements UserService {
     private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+$");
     private static final Set<String> VALID_ROLES = Set.of("USER", "MERCHANT", "ADMIN");
-    // 定义用户状态常量和有效状态集
     public static final String STATUS_ACTIVE = "ACTIVE";
     public static final String STATUS_SUSPENDED = "SUSPENDED";
     public static final String STATUS_DELETED = "DELETED";
@@ -213,11 +212,11 @@ public class UserServiceImpl implements UserService {
     @Override
     public User findUserById(Long userId) {
         if (userId == null) {
-            return null; // 或者抛出异常
+            return null;
         }
         User user = userDAO.findById(userId);
         if (user != null) {
-            user.setPassword(null); // 确保不返回密码
+            user.setPassword(null);
         }
         return user;
     }
@@ -232,7 +231,7 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("目标用户ID不能为空。");
         }
 
-        // 关键检查：管理员不能修改自己的角色
+
         if (adminUser.getId().equals(userIdToChange)) {
             throw new IllegalArgumentException("管理员不能修改自己的角色。");
         }
@@ -254,7 +253,6 @@ public class UserServiceImpl implements UserService {
                 oldRole, newRole);
     }
 
-    // 新增 softDeleteUser 实现
     @Override
     @Transactional
     public void softDeleteUser(Long userId) {
@@ -266,13 +264,17 @@ public class UserServiceImpl implements UserService {
     public PageInfo<User> searchUsers(UserSearchDTO criteria, int pageNum, int pageSize) {
         logger.debug("Searching users with criteria: {}, page: {}, size: {}", criteria, pageNum, pageSize);
         PageHelper.startPage(pageNum, pageSize);
-        List<User> users = userDAO.findUsersByCriteria(criteria); // This DAO method needs to be created
+        List<User> users = userDAO.findUsersByCriteria(criteria);
 
-        // IMPORTANT: Ensure passwords are not exposed
         if (users != null) {
             users.forEach(user -> user.setPassword(null));
         }
 
         return new PageInfo<>(users);
+    }
+
+    @Override
+    public void updateUserRoleForTest(String username, String newRole) {
+        userDAO.updateUserRoleForTest(username, newRole);
     }
 }

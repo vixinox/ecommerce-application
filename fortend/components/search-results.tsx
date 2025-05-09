@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarIcon, Loader2, SlidersHorizontal } from "lucide-react";
+import { Loader2, SlidersHorizontal } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
@@ -11,8 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ProductCard } from "@/components/product-card";
-import { cn, formatPrice } from "@/lib/utils";
+import { ProductCard } from "@/components/products/product-card";
+import { formatPrice } from "@/lib/utils";
 import {
   Pagination,
   PaginationContent,
@@ -23,9 +23,6 @@ import {
 } from "@/components/ui/pagination";
 import { API_URL } from "@/lib/api";
 import { Product } from "@/lib/types";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { format, isValid, parseISO } from "date-fns";
 
 interface PageInfo<T> {
   pageNum: number;
@@ -34,6 +31,7 @@ interface PageInfo<T> {
   pages: number;
   list: T[];
 }
+
 interface SearchResultsProps {
   query: string;
   category: string;
@@ -45,8 +43,10 @@ interface SearchResultsProps {
   initialDateAddedStart?: string;
   initialDateAddedEnd?: string;
 }
+
 const DEFAULT_SLIDER_MAX_PRICE = 100000;
 const MAX_PRICE_INPUT_STEP = 1;
+
 const containerVariants = {
   hidden: {opacity: 0},
   visible: {
@@ -56,16 +56,13 @@ const containerVariants = {
     },
   },
 };
+
 const itemVariants = {
   hidden: {opacity: 0, y: 20},
   visible: {opacity: 1, y: 0},
   exit: {opacity: 0, y: 20, transition: {duration: 0.2}},
 };
-const dateStringToDate = (dateStr: string | null | undefined): Date | undefined => {
-  if (!dateStr) return undefined;
-  const date = parseISO(dateStr);
-  return isValid(date) ? date : undefined;
-};
+
 export function SearchResults({
                                 query,
                                 category: initialCategory,
@@ -74,8 +71,6 @@ export function SearchResults({
                                 sort: initialSort,
                                 initialPage,
                                 initialSize,
-                                initialDateAddedStart,
-                                initialDateAddedEnd,
                               }: SearchResultsProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -91,17 +86,13 @@ export function SearchResults({
   ]);
   const [appliedSort, setAppliedSort] = useState(initialSort);
   const [appliedPage, setAppliedPage] = useState(initialPage);
-  const [appliedSize, setAppliedSize] = useState(initialSize);
-  const [appliedDateAddedStart, setAppliedDateAddedStart] = useState<string | null>(initialDateAddedStart ?? null);
-  const [appliedDateAddedEnd, setAppliedDateAddedEnd] = useState<string | null>(initialDateAddedEnd ?? null);
   const [sliderPriceRange, setSliderPriceRange] = useState<[number, number]>(appliedPriceRange);
   const initialSliderMax = Math.max(DEFAULT_SLIDER_MAX_PRICE, initialMaxPrice ?? 0);
   const [sliderDisplayMaxPrice, setSliderDisplayMaxPrice] = useState(initialSliderMax);
   const [inputMaxPrice, setInputMaxPrice] = useState(String(initialSliderMax));
   const [inputMaxPriceError, setInputMaxPriceError] = useState<string | null>(null);
+
   useEffect(() => {
-    const controller = new AbortController();
-    const signal = controller.signal;
     const fetchData = async () => {
       setIsLoading(true);
       setError(null);
@@ -111,16 +102,16 @@ export function SearchResults({
         if (appliedPriceRange[0] > 0) params.set("minPrice", String(appliedPriceRange[0]));
         if (appliedPriceRange[1] < sliderDisplayMaxPrice && appliedPriceRange[1] !== 0) params.set("maxPrice", String(appliedPriceRange[1]));
         if (appliedSort !== "relevance") params.set("sort", appliedSort);
-        if (appliedDateAddedStart) params.set("dateAddedStart", appliedDateAddedStart);
-        if (appliedDateAddedEnd) params.set("dateAddedEnd", appliedDateAddedEnd);
+
         params.set("page", String(appliedPage));
-        params.set("size", String(appliedSize));
-        const url = `${API_URL}/api/products?${params.toString()}`;
-        const response = await fetch(url, {signal});
+        params.set("size", String(initialSize));
+
+        const response = await fetch(`${API_URL}/api/products?${params.toString()}`);
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({message: '未知错误'}));
           throw new Error(`API Error: ${response.status} ${response.statusText}${errorData.message ? ' - ' + errorData.message : ''}`);
         }
+
         const data: PageInfo<Product> = await response.json();
         setProducts(data.list);
         setTotalItems(data.total);
@@ -138,10 +129,8 @@ export function SearchResults({
       }
     };
     fetchData();
-    return () => {
-      controller.abort();
-    };
-  }, [query, appliedPriceRange, appliedSort, appliedPage, appliedSize, appliedDateAddedStart, appliedDateAddedEnd, sliderDisplayMaxPrice]);
+  }, [query, appliedPriceRange, appliedSort, appliedPage, initialSize, sliderDisplayMaxPrice]);
+
   useEffect(() => {
     const params = new URLSearchParams();
     const setOrDelete = (key: string, value: string | number | null | undefined, defaultValue?: string | number | string[]) => {
@@ -157,57 +146,66 @@ export function SearchResults({
         params.delete(key);
       }
     };
+
     setOrDelete("q", query, "");
     setOrDelete("minPrice", appliedPriceRange[0], 0);
     setOrDelete("maxPrice", appliedPriceRange[1], DEFAULT_SLIDER_MAX_PRICE);
     setOrDelete("sort", appliedSort, "relevance");
     setOrDelete("page", appliedPage, 1);
-    setOrDelete("size", appliedSize, initialSize);
-    setOrDelete("dateAddedStart", appliedDateAddedStart, undefined);
-    setOrDelete("dateAddedEnd", appliedDateAddedEnd, undefined);
+    setOrDelete("size", initialSize, initialSize);
+
     const currentParamsString = searchParams.toString();
     const nextParamsString = params.toString();
     if (currentParamsString !== nextParamsString) {
       router.replace(`/search?${params.toString()}`, {scroll: false});
     }
-  }, [query, appliedPriceRange, appliedSort, appliedPage, appliedSize, appliedDateAddedStart, appliedDateAddedEnd, router, searchParams, initialSize]);
+  }, [query, appliedPriceRange, appliedSort, appliedPage, initialSize, router, searchParams, initialSize]);
+
   const handleCategoryChange = useCallback((cat: string) => {
     setAppliedCategory(cat);
     setAppliedPage(1);
   }, [setAppliedCategory, setAppliedPage]);
+
   const handleSliderValueChange = useCallback((value: number[]) => {
     if (value && value.length === 2) {
       setSliderPriceRange(value as [number, number]);
     }
   }, [setSliderPriceRange]);
+
   const handleConfirmPriceFilter = useCallback(() => {
     setAppliedPriceRange(sliderPriceRange);
     setAppliedPage(1);
   }, [sliderPriceRange, setAppliedPriceRange, setAppliedPage]);
+
   const handleSortChange = useCallback((val: string) => {
     setAppliedSort(val);
     setAppliedPage(1);
   }, [setAppliedSort, setAppliedPage]);
+
   const handlePageChange = useCallback((page: number) => {
-    const totalPages = Math.ceil(totalItems / appliedSize);
+    const totalPages = Math.ceil(totalItems / initialSize);
     if (page >= 1 && page <= totalPages) {
       setAppliedPage(page);
       window.scrollTo({top: 0, behavior: 'smooth'});
     }
-  }, [totalItems, appliedSize, setAppliedPage]);
-  const handleInputMaxPriceChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+  }, [totalItems, setAppliedPage]);
+
+  const handleInputMaxPriceChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     setInputMaxPrice(event.target.value);
   }, [setInputMaxPrice]);
+
   const handleApplyMaxPrice = useCallback(() => {
     const value = parseFloat(inputMaxPrice);
     if (isNaN(value) || value < 0) {
       setInputMaxPriceError("请输入有效的非负数字");
       return;
     }
+
     if (value <= 0) {
       setInputMaxPriceError("最高价需大于 0");
       return;
     }
+
     setInputMaxPriceError(null);
     setSliderDisplayMaxPrice(value);
     setSliderPriceRange(prevRange => {
@@ -217,11 +215,14 @@ export function SearchResults({
       if (newMin > newMax) newMin = newMax;
       return [newMin, newMax] as [number, number];
     });
+
     setAppliedPriceRange(prevAppliedRange => {
       const [appliedMin] = prevAppliedRange;
       const newAppliedMax = Math.min(prevAppliedRange[1], value);
       let newAppliedMin = Math.min(appliedMin, newAppliedMax);
+
       if (newAppliedMin > newAppliedMax) newAppliedMin = newAppliedMax;
+
       if (newAppliedMax !== prevAppliedRange[1] || newAppliedMin !== appliedMin) {
         setAppliedPage(1);
         return [newAppliedMin, newAppliedMax] as [number, number];
@@ -229,26 +230,21 @@ export function SearchResults({
       return prevAppliedRange;
     });
   }, [inputMaxPrice, setSliderDisplayMaxPrice, setSliderPriceRange, setAppliedPriceRange, setAppliedPage]);
-  const handleDateAddedStartChange = useCallback((date: Date | undefined) => {
-    const dateStr = date ? format(date, 'yyyy-MM-dd') : null;
-    setAppliedDateAddedStart(dateStr);
-    setAppliedPage(1);
-  }, [setAppliedDateAddedStart, setAppliedPage]);
-  const handleDateAddedEndChange = useCallback((date: Date | undefined) => {
-    const dateStr = date ? format(date, 'yyyy-MM-dd') : null;
-    setAppliedDateAddedEnd(dateStr);
-    setAppliedPage(1);
-  }, [setAppliedDateAddedEnd, setAppliedPage]);
+
   const filteredProducts = appliedCategory === "全部" || appliedCategory === ""
     ? products
     : products.filter(product => product.category === appliedCategory);
-  const totalPages = Math.ceil(totalItems / appliedSize);
+
+  const totalPages = Math.ceil(totalItems / initialSize);
+
   useEffect(() => {
     setSliderPriceRange(appliedPriceRange);
   }, [appliedPriceRange]);
+
   useEffect(() => {
     setInputMaxPrice(String(sliderDisplayMaxPrice));
   }, [sliderDisplayMaxPrice]);
+
   return (
     <div className="flex flex-col md:flex-row gap-6">
       <motion.div
@@ -329,67 +325,6 @@ export function SearchResults({
                 {inputMaxPriceError && (
                   <p className="text-xs text-destructive">{inputMaxPriceError}</p>
                 )}
-              </div>
-            </div>
-            <div>
-              <h4 className="font-medium mb-3">添加日期</h4>
-              <div className="space-y-2">
-                <Label htmlFor="date-added-start-trigger" className="text-sm font-medium">开始日期</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      id="date-added-start-trigger"
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal px-3 relative",
-                        !appliedDateAddedStart && "text-muted-foreground"
-                      )}
-                      disabled={isLoading}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4"/>
-                      {appliedDateAddedStart ? format(parseISO(appliedDateAddedStart), "yyyy-MM-dd") :
-                        <span>选择开始日期</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateStringToDate(appliedDateAddedStart)}
-                      onSelect={handleDateAddedStartChange}
-                      initialFocus
-                      disabled={isLoading}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-2 mt-4">
-                <Label htmlFor="date-added-end-trigger" className="text-sm font-medium">结束日期</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      id="date-added-end-trigger"
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal px-3 relative",
-                        !appliedDateAddedEnd && "text-muted-foreground"
-                      )}
-                      disabled={isLoading}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4"/>
-                      {appliedDateAddedEnd ? format(parseISO(appliedDateAddedEnd), "yyyy-MM-dd") :
-                        <span>选择结束日期</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateStringToDate(appliedDateAddedEnd)}
-                      onSelect={handleDateAddedEndChange}
-                      initialFocus
-                      disabled={isLoading}
-                    />
-                  </PopoverContent>
-                </Popover>
               </div>
             </div>
           </div>

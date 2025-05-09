@@ -1,4 +1,4 @@
-import OrderTimeline from "@/components/order-timeline";
+import OrderTimeline from "@/components/orders/order-timeline";
 import { API_URL } from "@/lib/api";
 import Image from "next/image";
 import { OrderDetails } from "@/lib/types";

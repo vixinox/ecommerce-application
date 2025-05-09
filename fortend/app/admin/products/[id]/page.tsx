@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Separator } from "@/components/ui/separator";
-import { ProductView } from "@/components/product-view";
+import { ProductView } from "@/components/products/product-view";
 
 export const metadata: Metadata = {
   title: "商品详情 | 管理员面板",

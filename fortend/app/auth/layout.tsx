@@ -1,9 +1,9 @@
-import type React from "react"
+import { ReactNode } from "react"
 import Link from "next/link"
 import { ShoppingBag } from "lucide-react"
 import SiteFooter from "@/components/site-footer";
 
-export default function AuthLayout({children}: { children: React.ReactNode }) {
+export default function AuthLayout({children}: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-b bg-background/95 backdrop-blur flex justify-between ml-12">

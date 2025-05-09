@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { Separator } from "@/components/ui/separator"
-import OrderList from "@/components/order-list";
+import OrderList from "@/components/orders/order-list";
 
 export const metadata: Metadata = {
   title: "订单 | Modern E-commerce",

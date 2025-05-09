@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/components/auth-provider";
+import { useAuth } from "@/providers/auth-provider";
 import { ReactNode, useEffect, useState } from "react";
 
 interface NavItem {
   title: string;
   href: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
 }
 
 const navItems: NavItem[] = [

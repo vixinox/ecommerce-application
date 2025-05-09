@@ -152,4 +152,17 @@ public class UserController {
         }
         return ResponseEntity.ok("邮箱可用");
     }
+
+    @PostMapping("/test/update/role/{username}")
+    public ResponseEntity<String> updateUserRoleForTest(
+            @PathVariable("username") String username,
+            @RequestParam("role") String role) {
+        try {
+            userService.updateUserRoleForTest(username, role);
+            return ResponseEntity.ok("角色修改成功");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(e.getMessage());
+        }
+    }
 }

@@ -4,7 +4,7 @@ import { createContext, type ReactNode, useContext, useEffect, useState } from "
 import { API_URL } from "@/lib/api";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/components/auth-provider";
+import { useAuth } from "@/providers/auth-provider";
 import { CartItem } from "@/lib/types";
 
 interface ShoppingCartContext {
@@ -162,7 +162,7 @@ export function ShoppingCartProvider({children}: { children: ReactNode }) {
           toast.error("更新商品数量失败", {description: res.text()});
         }
       } else {
-        getCartItems();
+        await getCartItems();
       }
     } catch (e: any) {
       toast.error("更新商品数量发生意外错误", {description: e.message});

@@ -56,7 +56,6 @@ public class DashboardServiceImpl implements DashboardService {
         dashboardData.setActiveProductsCount(activeProductsCount != null ? activeProductsCount : 0L);
         dashboardData.setLowStockProductsCount(lowStockProductsCount != null ? lowStockProductsCount : 0L);
 
-        // 设置新的数据字段
         dashboardData.salesOverviewData = salesOverviewData;
         dashboardData.recentOrders = recentOrders;
 

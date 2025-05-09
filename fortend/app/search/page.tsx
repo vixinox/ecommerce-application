@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { SearchResults } from "@/components/search-results";
 import SiteHeader from "@/components/site-header";
-import { ShoppingCartProvider } from "@/components/shopping-cart-provider";
+import { ShoppingCartProvider } from "@/providers/shopping-cart-provider";
 import SiteFooter from "@/components/site-footer";
 
 interface SearchPageProps {
@@ -12,8 +12,6 @@ interface SearchPageProps {
     maxPrice?: string;
     sort?: string;
     status?: string;
-    dateAddedStart?: string;
-    dateAddedEnd?: string;
     page?: string;
     size?: string;
   };
@@ -21,13 +19,10 @@ interface SearchPageProps {
 
 export default function SearchPage({searchParams}: SearchPageProps) {
   const query = searchParams.q || "";
-  const category = searchParams.category || ""; // Let SearchResults handle "全部" logic based on backend param name
+  const category = searchParams.category || "";
   const minPrice = searchParams.minPrice ? Number.parseFloat(searchParams.minPrice) : undefined;
   const maxPrice = searchParams.maxPrice ? Number.parseFloat(searchParams.maxPrice) : undefined;
   const sort = searchParams.sort || "relevance";
-  const status = searchParams.status; // New param
-  const dateAddedStart = searchParams.dateAddedStart; // New param
-  const dateAddedEnd = searchParams.dateAddedEnd; // New param
   const page = searchParams.page ? Number.parseInt(searchParams.page, 10) : 1;
   const size = searchParams.size ? Number.parseInt(searchParams.size, 10) : 12;
 
@@ -44,8 +39,6 @@ export default function SearchPage({searchParams}: SearchPageProps) {
               <SearchResults
                 query={query}
                 category={category}
-                initialDateAddedStart={dateAddedStart}
-                initialDateAddedEnd={dateAddedEnd}
                 minPrice={minPrice}
                 maxPrice={maxPrice}
                 sort={sort}
