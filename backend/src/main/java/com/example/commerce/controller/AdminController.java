@@ -35,19 +35,6 @@ public class AdminController {
         this.dashboardService = dashboardService;
     }
 
-    // 示例：一个需要管理员权限的测试端点
-    @GetMapping("/test")
-    public ResponseEntity<String> adminTest(@RequestHeader(value = "Authorization", required = false) String authHeader) {
-        try {
-            User adminUser = userService.checkAdmin(authHeader);
-            // 如果 checkAdmin 成功，说明是管理员
-            return ResponseEntity.ok("你好, 管理员 " + adminUser.getUsername() + "!");
-        } catch (RuntimeException e) {
-            // 如果 checkAdmin 抛出异常，说明无权限
-            return ResponseEntity.status(403).body("无权限访问: " + e.getMessage());
-        }
-    }
-
     /**
      * 获取用户列表（分页）
      * 需要管理员权限
@@ -59,14 +46,11 @@ public class AdminController {
             @RequestParam(value = "size", defaultValue = "10") int pageSize,
             @RequestParam(value = "status", required = false) String statusFilter) {
         try {
-            // 1. 检查管理员权限
             userService.checkAdmin(authHeader);
-            // 2. 调用服务获取分页用户数据，传入过滤器
             PageInfo<User> userPageInfo = userService.getAllUsers(pageNum, pageSize, statusFilter);
-            // 3. 返回成功响应
             return ResponseEntity.ok(userPageInfo);
         } catch (RuntimeException e) {
-            // 权限不足或其他运行时异常
+
             return ResponseEntity.status(403).body("获取用户列表失败: " + e.getMessage());
         }
     }
@@ -126,14 +110,11 @@ public class AdminController {
             @RequestParam(value = "size", defaultValue = "10") int pageSize,
             @RequestParam(value = "status", required = false) String statusFilter) {
         try {
-            // 1. 检查管理员权限
             userService.checkAdmin(authHeader);
-            // 2. 调用服务获取分页订单数据
             PageInfo<OrderDTO> orderPageInfo = orderService.getAllOrdersAdmin(pageNum, pageSize, statusFilter);
-            // 3. 返回成功响应
             return ResponseEntity.ok(orderPageInfo);
         } catch (RuntimeException e) {
-            // 权限不足或其他运行时异常
+
             return ResponseEntity.status(403).body("获取订单列表失败: " + e.getMessage());
         }
     }
@@ -152,7 +133,6 @@ public class AdminController {
         try {
             userService.checkAdmin(authHeader);
             Optional<ProductEditResponseDTO> productDetailsOpt = productService.getProductDetailsAdmin(productId);
-
             if (productDetailsOpt.isPresent()) {
                 return ResponseEntity.ok(productDetailsOpt.get());
             } else {
@@ -176,25 +156,14 @@ public class AdminController {
             @PathVariable String username,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            // 1. 检查管理员权限
             userService.checkAdmin(authHeader);
-
-            // 2. 调用服务获取用户信息
             User user = userService.findByName(username);
-
-            // 3. 检查用户是否存在
             if (user == null) {
                 return ResponseEntity.status(404).body("获取用户详情失败: 用户不存在");
             }
-
-            // 4. 手动清除密码 (因为 service.findByName 未清除)
             user.setPassword(null);
-
-            // 5. 返回成功响应
             return ResponseEntity.ok(user);
-
         } catch (RuntimeException e) {
-            // 权限不足或其他运行时异常
             return ResponseEntity.status(403).body("获取用户详情失败: " + e.getMessage());
         }
     }
@@ -223,7 +192,7 @@ public class AdminController {
                 return ResponseEntity.badRequest().body("更新用户角色失败: 角色不能为空。");
             }
 
-            Long userIdToChange;
+            long userIdToChange;
             try {
                 userIdToChange = Long.parseLong(userIdStr);
             } catch (NumberFormatException e) {
@@ -302,10 +271,8 @@ public class AdminController {
             @RequestParam(value = "size", defaultValue = "10") int pageSize) {
         try {
             userService.checkAdmin(authHeader);
-
             UserSearchDTO criteria = new UserSearchDTO();
             criteria.setUserId(userId);
-
             if (searchField != null && searchTerm != null && !searchTerm.trim().isEmpty()) {
                 if ("username".equalsIgnoreCase(searchField)) {
                     criteria.setUsername(searchTerm.trim());
@@ -351,27 +318,25 @@ public class AdminController {
             if (orderIdObj == null || newStatus == null) {
                 return ResponseEntity.badRequest().body("请求体缺少 orderId 或 status 字段");
             }
-
-            Long orderId;
+            long orderId;
             if (orderIdObj instanceof Number) {
                 orderId = ((Number) orderIdObj).longValue();
             } else if (orderIdObj instanceof String) {
                 try {
-                    orderId = Long.valueOf((String) orderIdObj);
+                    orderId = Long.parseLong((String) orderIdObj);
                 } catch (NumberFormatException e) {
                     return ResponseEntity.badRequest().body("无效的 orderId 格式");
                 }
             } else {
                 return ResponseEntity.badRequest().body("无效的 orderId 类型");
             }
-
             orderService.updateOrderStatusAdmin(orderId, newStatus.trim(), user);
             return ResponseEntity.ok(Map.of("message", "订单 " + orderId + " 状态已更新为 " + newStatus));
         } catch (IllegalArgumentException e) {
-            // 无效的状态值或订单不存在等
+
             return ResponseEntity.badRequest().body("更新订单状态失败: " + e.getMessage());
         } catch (RuntimeException e) {
-            // 权限不足或其他运行时异常
+
             return ResponseEntity.status(403).body("更新订单状态失败: " + e.getMessage());
         }
     }

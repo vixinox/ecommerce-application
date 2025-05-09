@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -20,8 +19,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import static java.util.Collections.emptyList;
 
 
 @RestController
@@ -61,17 +58,13 @@ public class OrderController {
             OrderDTO orderDetails = orderService.getOrderDetailsAdmin(orderId, requester);
             
             if (orderDetails == null) {
-                // 根据 OrderServiceImpl 的逻辑，如果 orderId 无效或找不到订单，可能会返回 null
+
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("获取订单详情失败: 订单不存在或无法访问。");
             }
             return ResponseEntity.ok(orderDetails);
         } catch (IllegalArgumentException e) {
-            // 例如，来自 serviceImpl 的无效参数异常
             return ResponseEntity.badRequest().body("获取订单详情失败: " + e.getMessage());
-        } catch (RuntimeException e) { // 其他运行时异常，如权限问题
-            // if (e.getMessage() != null && e.getMessage().startsWith("订单不存在")) { // 这个判断现在可能多余了，因为service可能返回null
-            //     return ResponseEntity.status(HttpStatus.NOT_FOUND).body("获取订单详情失败: " + e.getMessage());
-            // }
+        } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("获取订单详情失败: " + e.getMessage());
         }
     }
@@ -129,7 +122,7 @@ public class OrderController {
             @RequestParam(value = "page", defaultValue = "1") int pageNum,
             @RequestParam(value = "size", defaultValue = "10") int pageSize) {
         try {
-            userService.checkMerchantOrAdmin(authHeader);// TODO: 方便参数暂时改为商家允许
+            userService.checkMerchantOrAdmin(authHeader);
             OrderSearchDTO criteria = new OrderSearchDTO(orderId, userId, username, productName, status, dateFrom, dateTo);
             PageInfo<OrderDTO> orderPageInfo = orderService.searchOrders(criteria, pageNum, pageSize);
             return ResponseEntity.ok(orderPageInfo);
@@ -178,21 +171,16 @@ public class OrderController {
             @RequestBody Map<String, Object> paymentData,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            // 在实际的支付网关中，这里通常会验证签名等安全措施
-            // 在Demo中，我们简化处理，只要求用户登录
             User user = userService.checkAuthorization(authHeader);
-            
-            // 获取支付数据
             Object orderIdsObj = paymentData.get("orderIds");
             List<Long> orderIds = null;
 
-            if (orderIdsObj instanceof List) {
-                List<?> rawList = (List<?>) orderIdsObj;
+            if (orderIdsObj instanceof List<?> rawList) {
                 orderIds = new ArrayList<>();
                 for (Object idObj : rawList) {
                     if (idObj instanceof Number) {
-                        orderIds.add(((Number) idObj).longValue()); // 显式转换为 Long
-                    } else if (idObj instanceof String) { // 也处理一下字符串形式的数字ID
+                        orderIds.add(((Number) idObj).longValue());
+                    } else if (idObj instanceof String) {
                         try {
                             orderIds.add(Long.parseLong((String) idObj));
                         } catch (NumberFormatException nfe) {
@@ -205,14 +193,10 @@ public class OrderController {
             } else {
                 return ResponseEntity.badRequest().body("orderIds 必须是一个列表");
             }
-
-            if (orderIds == null || orderIds.isEmpty()) { // 确保 orderIds 被初始化且非空
+            if (orderIds.isEmpty()) {
                  return ResponseEntity.badRequest().body("orderIds 列表不能为空");
             }
-
             String transactionId = (String) paymentData.get("transactionId");
-            
-            // 转换支付金额
             BigDecimal paidAmount = null;
             Object amountObj = paymentData.get("amount");
             if (amountObj != null) {
@@ -227,7 +211,7 @@ public class OrderController {
                 }
             }
             
-            // 处理支付成功
+
             orderService.processPaymentSuccess(orderIds, transactionId, paidAmount);
             
             return ResponseEntity.ok(Map.of(
@@ -282,16 +266,13 @@ public class OrderController {
             if (orderIdStr == null || orderIdStr.trim().isEmpty()) {
                 return ResponseEntity.badRequest().body("请提供有效的订单ID");
             }
-            
-            Long orderId;
+            long orderId;
             try {
-                orderId = Long.valueOf(orderIdStr.trim());
+                orderId = Long.parseLong(orderIdStr.trim());
             } catch (NumberFormatException e) {
                 return ResponseEntity.badRequest().body("无效的订单ID格式");
             }
-            
             boolean success = orderService.cancelOrder(user, orderId);
-            
             if (success) {
                 return ResponseEntity.ok(Map.of("message", "订单 " + orderId + " 已成功取消"));
             } else {
@@ -299,10 +280,10 @@ public class OrderController {
                         .body("取消订单失败，该订单可能已被处理或处于不可取消的状态");
             }
         } catch (IllegalArgumentException e) {
-            // 订单不存在或不属于该用户
+
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("取消订单失败: " + e.getMessage());
         } catch (IllegalStateException e) {
-            // 订单状态不允许取消
+
             return ResponseEntity.status(HttpStatus.CONFLICT).body("取消订单失败: " + e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -327,14 +308,14 @@ public class OrderController {
             if (orderDetails != null) {
                 return ResponseEntity.ok(orderDetails);
             } else {
-                // Service 返回 null 表示订单不存在或不属于该用户
+
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("获取订单详情失败：订单不存在或您无权访问。" );
             }
         } catch (IllegalArgumentException e) {
-            // 例如，无效的 orderId
+
             return ResponseEntity.badRequest().body("获取订单详情失败: " + e.getMessage());
         } catch (RuntimeException e) { 
-            // 其他运行时异常，主要来自 checkAuthorization
+
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("获取订单详情失败: " + e.getMessage());
         }
     }

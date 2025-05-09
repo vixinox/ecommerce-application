@@ -191,19 +191,15 @@ public interface ProductDAO {
     @Update("UPDATE products SET status = #{status}, updated_at = CURRENT_TIMESTAMP WHERE id = #{productId}")
     void updateProductStatus(@Param("productId") Long productId, @Param("status") String status);
 
-    // 添加统计总商品数的方法
     @Select("SELECT COUNT(*) FROM products")
     Long countTotalProducts();
 
-    // 添加按状态统计商品数的方法
     @Select("SELECT COUNT(*) FROM products WHERE status = #{status}")
     Long countProductsByStatus(@Param("status") String status);
 
-    // 添加统计低库存变体数的方法
     @Select("SELECT COUNT(*) FROM product_variants WHERE (stock_quantity - COALESCE(reserved_quantity, 0)) < #{threshold}")
     Long countLowStockVariants(@Param("threshold") int threshold);
 
-    // 添加按分类统计商品数量的方法 (排除 DELETED)
     @Select("SELECT category, COUNT(*) as count FROM products WHERE status != 'DELETED' GROUP BY category ORDER BY count DESC")
     List<AdminDashboardDTO.CategoryCountDTO> getProductCountByCategory();
 

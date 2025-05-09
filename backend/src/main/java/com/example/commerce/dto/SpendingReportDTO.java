@@ -15,10 +15,7 @@ public class SpendingReportDTO {
     private Long totalOrders;
     private BigDecimal averageOrderValue;
 
-    // 消费趋势数据
     private List<TimeBasedSpend> monthlySpendTrend;
-
-    // 消费构成数据
     private List<CategorySpend> categorySpend;
     private List<ItemSpend> topItemSpend;
 

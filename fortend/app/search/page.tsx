@@ -21,13 +21,12 @@ interface SearchPageProps {
 
 export default function SearchPage({searchParams}: SearchPageProps) {
   const query = searchParams.q || "";
-  const category = searchParams.category || ""; // Let SearchResults handle "全部" logic based on backend param name
+  const category = searchParams.category || "";
   const minPrice = searchParams.minPrice ? Number.parseFloat(searchParams.minPrice) : undefined;
   const maxPrice = searchParams.maxPrice ? Number.parseFloat(searchParams.maxPrice) : undefined;
   const sort = searchParams.sort || "relevance";
-  const status = searchParams.status; // New param
-  const dateAddedStart = searchParams.dateAddedStart; // New param
-  const dateAddedEnd = searchParams.dateAddedEnd; // New param
+  const dateAddedStart = searchParams.dateAddedStart;
+  const dateAddedEnd = searchParams.dateAddedEnd;
   const page = searchParams.page ? Number.parseInt(searchParams.page, 10) : 1;
   const size = searchParams.size ? Number.parseInt(searchParams.size, 10) : 12;
 

@@ -53,7 +53,6 @@ public class ImageController {
         String uploadDir;
         String imageType;
 
-        // 根据 type 确定上传目录和图片类型
         if ("avatars".equals(type)) {
             uploadDir = avatarUploadDir;
             imageType = "用户头像";

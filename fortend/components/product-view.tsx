@@ -182,15 +182,11 @@ export function ProductView({param}: { param: string }) {
                   className="group relative aspect-square overflow-hidden rounded-md border"
                 >
                   <Image
-                    // 根据 URL 判断是内部路径还是外部路径，或者其他逻辑
-                    // 这里假设后端返回的已经是可直接访问的URL，如果需要API_URL前缀请加上
-                    src={`${API_URL}/api/image${imageUrl}`} // 假设图片路径需要这个前缀
+                    src={`${API_URL}/api/image${imageUrl}`}
                     alt={`商品图片 - ${color}`}
                     fill
                     className="object-cover"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    // 对于已存储的图片，通常不需要 unoptimized
-                    // unoptimized={true} // 如果图片服务器不支持优化或在开发环境需要
                   />
                   <Badge className="absolute left-1 top-1 z-10">{color}</Badge>
                 </div>

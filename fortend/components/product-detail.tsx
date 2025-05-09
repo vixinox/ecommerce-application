@@ -57,7 +57,6 @@ export function ProductDetail({productDetail}: { productDetail: ProductDetails }
       setSelectedSize(availableSizesForColor[0]);
   }, [selectedColor, availableSizesForColor, selectedSize]);
 
-  // 当用户登录时，检查商品是否在愿望单中
   useEffect(() => {
     if (user && token) {
       checkInWishlist();
@@ -125,7 +124,6 @@ export function ProductDetail({productDetail}: { productDetail: ProductDetails }
 
     setIsWishlistLoading(true);
     try {
-      // 修改URL和请求方法以匹配后端
       const url = isWishlisted
         ? `${API_URL}/api/wishlist/remove/${productDetail.id}`
         : `${API_URL}/api/wishlist/add/${productDetail.id}`;
@@ -147,7 +145,7 @@ export function ProductDetail({productDetail}: { productDetail: ProductDetails }
         else
           toast(`${productDetail.name} 已从愿望单移除`);
       } else {
-        const errorText = await response.text(); // 获取错误信息
+        const errorText = await response.text();
         throw new Error(errorText || "操作失败");
       }
     } catch (error) {

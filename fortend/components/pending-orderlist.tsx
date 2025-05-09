@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react"; // 引入 useState, useEffect
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
@@ -30,7 +30,7 @@ export default function PendingOrderList() {
     getCountdownColorClass,
   } = usePendingPayment();
 
-  // 新增状态控制空订单提示
+
   const [showEmptyOrders, setShowEmptyOrders] = useState(false);
 
   const totalPayable = pendingOrders.reduce((total, order) => {
@@ -59,19 +59,17 @@ export default function PendingOrderList() {
           ? "indeterminate"
           : false;
 
-  // 监听 pendingOrders 变化，延迟显示空订单提示
   useEffect(() => {
     if (pendingOrders.length === 0) {
       const timeout = setTimeout(() => {
         setShowEmptyOrders(true);
-      }, 300); // 等待退出动画完成 (0.3s)
+      }, 300);
       return () => clearTimeout(timeout);
     } else {
       setShowEmptyOrders(false);
     }
   }, [pendingOrders]);
 
-  // 加载中状态
   if (isLoading) {
     return (
       <div className="flex h-full flex-col space-y-4 p-6">
@@ -95,7 +93,7 @@ export default function PendingOrderList() {
     );
   }
 
-  // 空订单提示
+
   if (showEmptyOrders) {
     return (
       <div className="flex h-full flex-col items-center justify-center space-y-4 p-6">
@@ -146,7 +144,7 @@ export default function PendingOrderList() {
                 layout
                 initial={{ opacity: 1, x: 0 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 500, transition: { duration: 0.3, ease: "easeOut" } }} // 优化退出动画
+                exit={{ opacity: 0, x: 500, transition: { duration: 0.3, ease: "easeOut" } }}
                 className={`order-item border-b last:border-b-0 py-4 ${orderDto.isExpired ? "grayscale opacity-60" : ""} ${isPartOfPaymentAttempt ? "pointer-events-none opacity-80" : ""}`}
               >
                 <div className="flex items-start mb-4 space-x-3">

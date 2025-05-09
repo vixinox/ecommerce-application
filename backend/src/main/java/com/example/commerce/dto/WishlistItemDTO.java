@@ -13,11 +13,10 @@ import java.time.Instant;
 @Data
 @NoArgsConstructor
 public class WishlistItemDTO {
-    private Long wishlistItemId; // Wishlist item 的 ID
+    private Long wishlistItemId;
     private Long productId;
     private Instant addedAt;
 
-    // 关联的产品信息
     private String productName;
     private String productCategory;
     private String productDefaultImage;

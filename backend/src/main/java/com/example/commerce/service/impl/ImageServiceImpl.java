@@ -226,11 +226,10 @@ public class ImageServiceImpl implements ImageService {
     @Override
     public String generateImageUrl(String dbPath) {
         if (dbPath == null || dbPath.isEmpty() || dbPath.trim().isEmpty()) {
-            return ""; // Or a default placeholder image URL if you have one
+            return "";
         }
         String trimmedDbPath = dbPath.trim();
 
-        // Remove leading slash if present, as we'll reconstruct the path part by part
         if (trimmedDbPath.startsWith("/")) {
             trimmedDbPath = trimmedDbPath.substring(1);
         }
@@ -247,15 +246,14 @@ public class ImageServiceImpl implements ImageService {
         } else {
             logger.warn("无法从dbPath '{}' 确定图片类型和名称，它不以 '{}/' 或 '{}/' 开头。", 
                         trimmedDbPath, PRODUCTS_SUBDIR_NAME, AVATARS_SUBDIR_NAME);
-            return ""; // Or a default placeholder image URL
+            return "";
         }
-
-        if (imageName == null || imageName.isEmpty()) {
+        if (imageName.isEmpty()) {
             logger.warn("从dbPath '{}' 解析出的图片名称为空。", trimmedDbPath);
-            return ""; // Or a default placeholder image URL
+            return "";
         }
 
-        // Construct the URL that matches the ImageController mapping and is excluded from Auth
+
         return "/api/image/" + type + "/" + imageName;
     }
 

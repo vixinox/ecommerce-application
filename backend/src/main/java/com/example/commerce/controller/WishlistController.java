@@ -35,7 +35,6 @@ public class WishlistController {
             List<WishlistItemDTO> wishlist = wishlistService.getWishlist(user);
             return ResponseEntity.ok(wishlist);
         } catch (RuntimeException e) {
-            // checkAuthorization 会在无效时抛出 RuntimeException
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         } catch (Exception e) {
             System.err.println("Error fetching wishlist: " + e.getMessage());
@@ -74,7 +73,7 @@ public class WishlistController {
             if (removed) {
                 return ResponseEntity.ok("商品已从愿望单移除");
             } else {
-                // Service 返回 false 表示商品不在愿望单中
+
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("商品不在愿望单中");
             }
         } catch (RuntimeException e) {

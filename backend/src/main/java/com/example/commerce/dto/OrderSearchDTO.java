@@ -12,10 +12,9 @@ import java.time.LocalDate;
 public class OrderSearchDTO {
     private Long orderId;
     private Long userId;
-    private String username; // For searching by buyer's username
-    private String productName; // For searching by product name in order items
+    private String username;
+    private String productName;
     private String status;
     private LocalDate dateFrom;
     private LocalDate dateTo;
-    // Consider adding fields for merchant-specific searches if needed, e.g., merchantId
-} 
+}
