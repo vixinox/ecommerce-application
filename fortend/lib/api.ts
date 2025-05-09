@@ -119,7 +119,7 @@ export async function getOrderDetails(id: number, token: string) {
 }
 
 export async function getMyOrderDetails(id: number, token: string) {
-  return fetchData(`/api/orders/merchant/${id}`, token);
+  return fetchData(`/api/orders/mine/${id}`, token);
 }
 
 export async function getWishlist(token: string) {
@@ -146,4 +146,12 @@ export async function cancelOrder(token: string, orderId: number) {
     method: "POST",
     body: JSON.stringify({orderId: orderId}),
   });
+}
+
+export async function getProducts(token: string, size: number = 4) {
+  return fetchData(`/api/products/random?size=${size}`, token);
+}
+
+export async function getProductsWithoutAuth(size: number = 4) {
+  return fetchData(`/api/products/random?size=${size}`);
 }

@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth-provider"
 import "./globals.css"
 import { PendingPaymentProvider } from "@/hooks/usePendingPayment";
+import { ShoppingCartProvider } from "@/components/shopping-cart-provider"
 
 const inter = Inter({subsets: ["latin"]})
 
@@ -23,10 +24,12 @@ export default function RootLayout({children}: {
     <body className={inter.className}>
     <AuthProvider>
       <PendingPaymentProvider>
-        <ThemeProvider attribute="class" defaultTheme="system" storageKey="e-commerce-theme">
-          {children}
-          <Toaster position="bottom-right"/>
-        </ThemeProvider>
+        <ShoppingCartProvider>
+          <ThemeProvider attribute="class" defaultTheme="system" storageKey="e-commerce-theme">
+            {children}
+            <Toaster position="bottom-right"/>
+          </ThemeProvider>
+        </ShoppingCartProvider>
       </PendingPaymentProvider>
     </AuthProvider>
     </body>

@@ -1,13 +1,22 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, BarChart3, DollarSign, Loader2, PackageCheck, ShoppingBag, XCircle } from "lucide-react"
 import { useAuth } from "@/components/auth-provider";
 import { API_URL } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { formatPrice } from "@/lib/utils";
+import { format } from "date-fns"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+
+import { ChartContainer, ChartTooltipContent, } from "@/components/ui/chart";
+import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from "recharts";
+
+
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+
 
 interface MerchantDashboardData {
   pendingOrdersCount: number;
@@ -15,16 +24,60 @@ interface MerchantDashboardData {
   totalSalesAmount: number;
   activeProductsCount: number;
   lowStockProductsCount: number;
+  salesOverviewData: SalesDataPoint[] | null;
+  recentOrders: RecentOrderDTO[] | null;
 }
 
+interface SalesDataPoint {
+  period: string;
+  amount: number;
+}
+
+interface RecentOrderDTO {
+  orderId: number;
+  orderDate: string;
+  totalAmount: number;
+  status: string;
+  customerUsername: string;
+}
+
+
+const chartConfig = {
+  amount: {
+    label: "销售额",
+    color: "hsl(var(--chart-1))",
+  },
+  period: {
+    label: "日期",
+  },
+};
+
+const getStatusBadge = (status?: string) => {
+  switch (status?.toUpperCase()) {
+    case "PENDING_PAYMENT":
+      return <Badge variant="outline">待支付</Badge>;
+    case "PENDING":
+      return <Badge variant="outline">待发货</Badge>;
+    case "SHIPPED":
+      return <Badge className="bg-yellow-500 hover:bg-yellow-500/80">已发货</Badge>;
+    case "COMPLETED":
+      return <Badge className="bg-green-500 hover:bg-green-500/80">已完成</Badge>;
+    case "CANCELED":
+      return <Badge variant="destructive">已取消</Badge>;
+    default:
+      return <Badge variant="secondary">{status || "未知状态"}</Badge>;
+  }
+};
+
 export default function MerchantDashboardPage() {
-  const {token} = useAuth();
+  const {token, isLoading: isAuthLoading} = useAuth();
   const [data, setData] = useState<MerchantDashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchDashboardData() {
+      if (isAuthLoading) return;
       if (!token) {
         setError("用户未登录或授权已过期");
         setIsLoading(false);
@@ -36,6 +89,12 @@ export default function MerchantDashboardPage() {
         const res = await fetch(`${API_URL}/api/dashboard/merchant`, {
           headers: {Authorization: `Bearer ${token}`},
         });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || `HTTP error! status: ${res.status}`);
+        }
+
         const fetchedData: MerchantDashboardData = await res.json();
         setData(fetchedData);
       } catch (err: any) {
@@ -45,9 +104,15 @@ export default function MerchantDashboardPage() {
         setIsLoading(false);
       }
     }
-
     fetchDashboardData();
-  }, [token]);
+  }, [token, isAuthLoading]);
+
+
+  const formattedSalesData = useMemo(() => {
+    if (!data?.salesOverviewData) return [];
+    return data.salesOverviewData;
+  }, [data?.salesOverviewData]);
+
 
   if (isLoading) {
     return (
@@ -75,7 +140,7 @@ export default function MerchantDashboardPage() {
         <p className="text-sm text-muted-foreground">您的店铺表现和销售概览。</p>
       </div>
       <Separator/>
-
+      
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -130,16 +195,83 @@ export default function MerchantDashboardPage() {
           <CardHeader>
             <CardTitle>销售概览</CardTitle>
           </CardHeader>
-          <CardContent className="h-[300px] flex items-center justify-center border-t pt-6">
-            <p className="text-sm text-muted-foreground">销售图表将在此处显示</p>
+          <CardContent className="h-[300px] border-t pt-6">
+            {formattedSalesData.length > 0 ? (
+              <ChartContainer config={chartConfig} className="min-h-[200px] w-full h-full">
+                <LineChart
+                  accessibilityLayer
+                  data={formattedSalesData}
+                  margin={{
+                    left: 12,
+                    right: 12,
+                  }}
+                >
+                  <CartesianGrid vertical={false} strokeDasharray="3 3"/>
+                  <XAxis
+                    dataKey="period"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                  />
+                  <Tooltip content={<ChartTooltipContent/>}/>
+                  <Line
+                    dataKey="amount"
+                    type="monotone"
+                    stroke="var(--color-amount)"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ChartContainer>
+            ) : (
+
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-muted-foreground">暂无销售数据</p>
+              </div>
+            )}
           </CardContent>
         </Card>
+
         <Card className="col-span-3">
           <CardHeader>
             <CardTitle>近期订单</CardTitle>
           </CardHeader>
-          <CardContent className="h-[300px] flex items-center justify-center border-t pt-6">
-            <p className="text-sm text-muted-foreground">近期订单将在此处显示</p>
+          <CardContent className="h-[300px] flex flex-col border-t pt-6 overflow-hidden">
+            {data?.recentOrders && data.recentOrders.length > 0 ? (
+              <div className="overflow-y-auto h-full pr-2 -mr-2">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>订单号</TableHead>
+                      <TableHead>日期</TableHead>
+                      <TableHead>客户</TableHead>
+                      <TableHead className="text-right">金额</TableHead>
+                      <TableHead>状态</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data.recentOrders.map((order) => (
+                      <TableRow key={order.orderId}>
+                        <TableCell className="font-medium">{order.orderId}</TableCell>
+                        <TableCell>{format(new Date(order.orderDate), 'yyyy-MM-dd HH:mm')}</TableCell>
+                        <TableCell>{order.customerUsername}</TableCell>
+                        <TableCell className="text-right">{formatPrice(order.totalAmount)}</TableCell>
+                        <TableCell>{getStatusBadge(order.status)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-muted-foreground">暂无近期订单</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

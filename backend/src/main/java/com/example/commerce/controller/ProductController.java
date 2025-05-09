@@ -184,7 +184,7 @@ public class ProductController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<?> searchProductsAdmin(
+    public ResponseEntity<?> searchProducts(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestParam(required = false) Long productId,
             @RequestParam(required = false) String name,
@@ -197,7 +197,7 @@ public class ProductController {
             @RequestParam(value = "page", defaultValue = "1") int pageNum,
             @RequestParam(value = "size", defaultValue = "10") int pageSize) {
         try {
-            userService.checkAuthorization(authHeader);// TODO: 方便参数暂时改为商家允许
+            userService.checkAuthorization(authHeader);
             ProductSearchCriteria criteria = new ProductSearchCriteria(
                     productId, name, categoryName, status, minPrice, maxPrice,
                     Optional.ofNullable(dateAddedStart), Optional.ofNullable(dateAddedEnd)
