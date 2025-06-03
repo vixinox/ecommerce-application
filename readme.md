@@ -38,7 +38,8 @@
 
     ```bash
     cd frontend
-    npm install
+    npm install -g pnpm
+    pnpm install
     ```
 
     或者其它包管理器
