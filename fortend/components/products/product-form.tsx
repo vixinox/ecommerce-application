@@ -713,7 +713,7 @@ export function ProductForm({param}: { param?: string }) {
                       {imageUrl ? (
                         <>
                           <Image
-                            src={imageUrl.startsWith("blob") ? imageUrl : `${API_URL}/api/image${imageUrl}`}
+                            src={imageUrl.startsWith("blob") ? imageUrl : `${API_URL}${imageUrl}`}
                             alt={`商品图片 - ${color}`}
                             fill
                             className="object-cover"

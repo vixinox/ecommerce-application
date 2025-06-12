@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/pagination";
 
 import { Badge } from "@/components/ui/badge";
-import { Eye, Folder, Loader2, RefreshCw, Tag, Text } from "lucide-react";
+import { Eye, Folder, Loader2, RefreshCw, Tag, Text, PencilLine } from "lucide-react";
 import Image from "next/image";
 import { API_URL } from "@/lib/api";
 
@@ -44,6 +44,7 @@ interface ProductTableProps {
   allColumns: { key: string; label: string }[];
   isContentDisabled: boolean;
   isAnyFilterActive: boolean;
+  onEdit: (id: number) => void;
 }
 
 const hoverCardContent = {
@@ -90,8 +91,8 @@ export default function ProductTable({
                                        allColumns,
                                        isContentDisabled,
                                        isAnyFilterActive,
+                                       onEdit,
                                      }: ProductTableProps) {
-
   return (
     <Card>
       <CardHeader>
@@ -239,6 +240,14 @@ export default function ProductTable({
                       ))}
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => prod.id != null && onEdit(prod.id)}
+                            disabled={isContentDisabled || prod.id == null}
+                          >
+                            <PencilLine className="h-4 w-4"/>
+                          </Button>
                           <Button
                             variant="outline"
                             size="icon"

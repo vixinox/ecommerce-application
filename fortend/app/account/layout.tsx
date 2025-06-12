@@ -55,9 +55,6 @@ export default function AccountLayout({children}: AccountLayoutProps) {
               <NavItem href="/account/spending" icon={<FileText className="mr-2 h-4 w-4"/>}>
                 消费报告
               </NavItem>
-              <NavItem href="/account/settings" icon={<Settings className="mr-2 h-4 w-4"/>}>
-                设置
-              </NavItem>
             </nav>
           </div>
           {user && user.role === "MERCHANT" && (
