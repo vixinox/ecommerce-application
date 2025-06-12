@@ -211,6 +211,8 @@ function getOrderStatusBadgeVariant(status: string): 'default' | 'secondary' | '
       return 'outline';
     case 'CANCELED':
       return 'destructive';
+    case 'CANCELED_TIMEOUT':
+      return 'destructive';
     default:
       return 'outline';
   }
@@ -228,6 +230,8 @@ function getOrderStatusText(status: string): string {
       return '已完成';
     case 'CANCELED':
       return '已取消';
+    case 'CANCELED_TIMEOUT':
+      return '超时取消';
     default:
       return status;
   }
