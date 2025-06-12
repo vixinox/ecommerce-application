@@ -61,6 +61,8 @@ const getStatusBadge = (status?: string) => {
       return <Badge className="bg-green-500 hover:bg-green-500/80">已完成</Badge>;
     case "CANCELED":
       return <Badge variant="destructive">已取消</Badge>;
+    case "CANCELED_TIMEOUT":
+      return <Badge variant="destructive">已取消</Badge>;
     default:
       return <Badge variant="secondary">{status || "未知状态"}</Badge>;
   }
