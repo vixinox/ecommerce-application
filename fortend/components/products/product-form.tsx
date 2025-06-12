@@ -436,7 +436,7 @@ export function ProductForm({param}: { param?: string }) {
       if (res.ok) {
         const successMessage = isEditing ? '商品更新成功' : '商品添加成功';
         toast.success(successMessage, {description: data.name});
-        router.push("/account/merchant/products");
+        router.back();
       } else {
         const errorText = await res.text();
         console.error(`API Error (${res.status}):`, errorText);
@@ -961,7 +961,7 @@ export function ProductForm({param}: { param?: string }) {
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push("/account/merchant/products")}
+              onClick={() => router.back()}
               disabled={isSubmitting}
             >
               取消

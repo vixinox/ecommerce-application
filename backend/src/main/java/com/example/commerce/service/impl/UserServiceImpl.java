@@ -177,6 +177,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User checkMerchantOrAdmin(String authHeader) throws RuntimeException {
+        System.out.println("checkMerchantOrAdmin!!!!!!!!!!!!!!");
         User user = checkAuthorization(authHeader);
         if (!Objects.equals(user.getRole(), "MERCHANT") && !Objects.equals(user.getRole(), "ADMIN"))
             throw new RuntimeException("无权限访问该资源");

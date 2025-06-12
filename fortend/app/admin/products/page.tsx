@@ -218,6 +218,14 @@ export default function ProductsPage() {
     router.push(`/admin/products/${id}`);
   }
 
+  function onProductEdit(id: number) {
+    if (id == null || !Number.isFinite(id) || isContentDisabled) {
+      console.warn("[ViewDetails] Invalid product ID or content disabled:", id);
+      return;
+    }
+    router.push(`/account/merchant/products/${id}`);
+  }
+
   const isAnyFilterActive = () => {
 
     return Object.keys(filters).some(key => {
@@ -485,6 +493,7 @@ export default function ProductsPage() {
           allColumns={allColumns}
           isContentDisabled={isContentDisabled}
           isAnyFilterActive={isAnyFilterActive()}
+          onEdit={onProductEdit}
         />
       </motion.div>
     </motion.div>

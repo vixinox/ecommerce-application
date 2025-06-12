@@ -266,20 +266,12 @@ export default function ProductTable({
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>更新状态</DropdownMenuLabel>
                                 <DropdownMenuSeparator/>
-
                                 <DropdownMenuItem onClick={() => onStatusChange(prod.id, "ACTIVE")}>
                                   上架
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => onStatusChange(prod.id, "INACTIVE")}>
                                   下架
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => onStatusChange(prod.id, "PENDING")}>
-                                  待审核
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => onStatusChange(prod.id, "REJECTED")}>
-                                  拒绝
-                                </DropdownMenuItem>
-
                                 <DropdownMenuItem onClick={() => onStatusChange(prod.id, "DELETED")}
                                                   className="text-red-600">
                                   删除

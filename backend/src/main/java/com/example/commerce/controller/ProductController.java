@@ -146,7 +146,7 @@ public class ProductController {
             @ModelAttribute UploadProductDTO updatedProductDTO,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            User currentUser = userService.checkMerchant(authHeader);
+            User currentUser = userService.checkMerchantOrAdmin(authHeader);
             productService.editProduct(productId, updatedProductDTO, currentUser);
             return ResponseEntity.ok().body(Map.of("message", "商品更新成功"));
         } catch (Exception e) {

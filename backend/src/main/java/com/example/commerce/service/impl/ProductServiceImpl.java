@@ -282,9 +282,9 @@ public class ProductServiceImpl implements ProductService {
             throw new NoSuchElementException("商品不存在，ID: " + productId);
 
         Product existingProduct = existingProductOpt.get();
-        if (!existingProduct.getOwnerId().equals(user.getId()))
+        if (!existingProduct.getOwnerId().equals(user.getId()) && !Objects.equals(user.getRole(), "ADMIN"))
             throw new IllegalArgumentException("你没有权限编辑此商品。");
-        if (!Objects.equals(user.getRole(), "MERCHANT"))
+        if (!Objects.equals(user.getRole(), "MERCHANT") && !Objects.equals(user.getRole(), "ADMIN"))
             throw new IllegalArgumentException("你没有权限编辑商品。");
         if (updatedProductDTO.getName() == null || updatedProductDTO.getName().trim().isEmpty())
             throw new IllegalArgumentException("产品名称不能为空。");
