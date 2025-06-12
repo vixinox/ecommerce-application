@@ -13,7 +13,7 @@ import SiteFooter from "@/components/site-footer"
 import { motion } from "framer-motion"
 import { API_URL, getWishlist } from "@/lib/api"
 import { formatPrice } from "@/lib/utils"
-import { ShoppingCartProvider, useShoppingCart } from "@/providers/shopping-cart-provider"
+import { useShoppingCart } from "@/providers/shopping-cart-provider"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -253,7 +253,6 @@ export default function WishlistPage() {
     setSelectedItems([])
   }
   return (
-    <ShoppingCartProvider>
       <div
         className="flex min-h-screen flex-col">
         <SiteHeader/>
@@ -472,7 +471,7 @@ export default function WishlistPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="rounded-full hover:bg-primary dark:hover:text-black transition-colors group/cart-btn"
+                            className="rounded-full"
                             onClick={() => addItemToCart(item.productId, item.productName)}
                           >
                             <MotionPlusIcon
@@ -502,6 +501,5 @@ export default function WishlistPage() {
         </main>
         <SiteFooter/>
       </div>
-    </ShoppingCartProvider>
   )
 }

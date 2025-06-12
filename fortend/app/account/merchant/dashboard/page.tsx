@@ -9,14 +9,11 @@ import { formatPrice } from "@/lib/utils";
 import { format } from "date-fns"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-
 import { ChartContainer, ChartTooltipContent, } from "@/components/ui/chart";
 import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from "recharts";
 
-
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-
 
 interface MerchantDashboardData {
   pendingOrdersCount: number;
@@ -110,9 +107,8 @@ export default function MerchantDashboardPage() {
 
   const formattedSalesData = useMemo(() => {
     if (!data?.salesOverviewData) return [];
-    return data.salesOverviewData;
+    return [...data.salesOverviewData].sort((a, b) => a.period.localeCompare(b.period));
   }, [data?.salesOverviewData]);
-
 
   if (isLoading) {
     return (
@@ -222,9 +218,8 @@ export default function MerchantDashboardPage() {
                   <Line
                     dataKey="amount"
                     type="monotone"
-                    stroke="var(--color-amount)"
                     strokeWidth={2}
-                    dot={false}
+                    dot={true}
                   />
                 </LineChart>
               </ChartContainer>
