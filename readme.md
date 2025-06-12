@@ -38,7 +38,8 @@
 
     ```bash
     cd frontend
-    npm install
+    npm install -g pnpm
+    pnpm install
     ```
 
     或者其它包管理器
@@ -47,7 +48,7 @@
 2.  启动前端开发服务器：
 
     ```bash
-    next dev
+    npx next dev
     ```
 
 前端应用将在本地 3000 端口启动。
