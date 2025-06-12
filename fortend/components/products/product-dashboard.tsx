@@ -149,6 +149,14 @@ export default function ProductDashboard() {
     router.push(`/product/${id}`);
   }
 
+  function onProductEdit(id: number) {
+    if (id == null || !Number.isFinite(id) || isContentDisabled) {
+      console.warn("[ViewDetails] Invalid product ID or content disabled:", id);
+      return;
+    }
+    router.push(`/account/merchant/products/${id}`);
+  }
+
   useEffect(() => {
     if (!isAuthLoading) {
       fetchProducts();
@@ -393,6 +401,7 @@ export default function ProductDashboard() {
           allColumns={allColumns}
           isContentDisabled={isContentDisabled}
           isAnyFilterActive={isAnyFilterActive()}
+          onEdit={onProductEdit}
         />
       </motion.div>
     </motion.div>

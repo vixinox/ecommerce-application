@@ -181,7 +181,7 @@ export function ProductView({param}: { param: string }) {
                   className="group relative aspect-square overflow-hidden rounded-md border"
                 >
                   <Image
-                    src={`${API_URL}/api/image${imageUrl}`}
+                    src={`${API_URL}${imageUrl}`}
                     alt={`商品图片 - ${color}`}
                     fill
                     className="object-cover"
