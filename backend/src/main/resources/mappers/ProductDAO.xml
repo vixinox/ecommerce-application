@@ -76,6 +76,7 @@
         p.category,
         p.default_image AS defaultImage,
         p.min_price AS minPrice,
+        p.description AS description,
         EXISTS (SELECT 1 FROM wishlist_items wi WHERE wi.user_id = #{userId} AND wi.product_id = p.id) AS isWishlisted
         FROM
         products p

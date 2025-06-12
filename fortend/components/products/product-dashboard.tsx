@@ -146,7 +146,7 @@ export default function ProductDashboard() {
       console.warn("[ViewDetails] Invalid product ID or content disabled:", id);
       return;
     }
-    router.push(`/admin/products/${id}`);
+    router.push(`/product/${id}`);
   }
 
   useEffect(() => {

@@ -173,18 +173,6 @@ export function ProductDetail({productDetail}: { productDetail: ProductDetails }
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Badge variant="outline">{productDetail.category}</Badge>
-              {productDetail.overallInStock ? (
-                <Badge
-                  variant="secondary"
-                  className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                >
-                  有货
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100">
-                  缺货
-                </Badge>
-              )}
             </div>
             <h1 className="text-3xl font-bold">{productDetail.name}</h1>
             <div className="text-2xl font-semibold">

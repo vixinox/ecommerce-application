@@ -12,4 +12,5 @@ public class ProductDTO {
     private String defaultImage;
     private BigDecimal minPrice;
     private boolean isWishlisted;
+    private String description;
 }
